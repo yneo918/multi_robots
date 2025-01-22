@@ -43,7 +43,7 @@ enable:     /{ROBOT_ID}/enable          std_msgs.msg.Bool
 gps1:       /{ROBOT_ID}/gps1            sensor_msgs.msg.NavSatFix
 quaternion: /{ROBOT_ID}/imu/quaternion  geometry_msgs.msg.Quaternion
 eulerAngle: /{ROBOT_ID}/imu/eulerAngle  std_msgs.msg.Float32MultiArray
-calibInfo:  /{ROBOT_ID}/imu/calibInfo   std_msgs.msg.importInt16MultiArray
+calibInfo:  /{ROBOT_ID}/imu/calibInfo   std_msgs.msg.Int16MultiArray
 ```
 
 ## Structure
