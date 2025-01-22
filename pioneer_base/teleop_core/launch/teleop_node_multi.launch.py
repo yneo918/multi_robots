@@ -28,13 +28,13 @@ def generate_launch_description():
     joy_to_cmd_vel = Node(
         package="teleop_core",
         executable="joy2cmd",
-        parameters=["src/teleop_core/config/joy-assign.yaml"],
+        parameters=["pioneer_base/teleop_core/config/joy-assign.yaml"],
     )
 
     demux = Node(
         package="teleop_core",
         executable="cmd_demux",
-        parameters=["src/teleop_core/config/demux.yaml"],
+        parameters=["pioneer_base/teleop_core/config/demux.yaml"],
     )
 
     
