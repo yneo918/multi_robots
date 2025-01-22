@@ -37,7 +37,7 @@ LB: enable
 ## Message
 ```
 Role:       msg_name                    Type
-cmd_vel:    /{ROBOT_ID}/cmd_vel         geometry_msgs.msgTwist
+cmd_vel:    /{ROBOT_ID}/cmd_vel         geometry_msgs.msg.Twist
 ch_val:     /{ROBOT_ID}/ch_val          std_msgs.msg.Int32MultiArray
 enable:     /{ROBOT_ID}/enable          std_msgs.msg.Bool
 gps1:       /{ROBOT_ID}/gps1            sensor_msgs.msg.NavSatFix
