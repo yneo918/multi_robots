@@ -1,7 +1,4 @@
 # pioneer_ws
-https://github.com/yneo918/pioneer_ws.git
-ros source for pioneer rovers
-
 ## Setup
 ### Install GPS and IMU drivers
 ``` 
