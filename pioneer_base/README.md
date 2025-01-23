@@ -29,3 +29,16 @@ select_rover:  /select_rover               std_msgs.msg.Int16
 cmd_vel_rover: /{ROBOT_ID}/cmd_vel         geometry_msgs.msg.Twist
 
 ```
+
+## Structure
+```
+Representation:[package_name/run_name] (massage)
+
+[joy_core/joy_node]
+  ↓ (/joy)
+[teleop_core/joy2cmd]  → (enable) / Not used
+  ↓ (/joy/broadcast),(/joy/cmd_vel),(/joy/enable),(select_rover)
+[teleop_core/demux]
+  ↓ (/{ROBOT_ID}/cmd_vel)
+[[pioneer_ws]]
+```
