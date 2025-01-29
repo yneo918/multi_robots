@@ -10,7 +10,7 @@ from .my_ros_module import JoyBase
 
 
 class JoyCmd(JoyBase):
-    def __init__(self, n_rover=6):
+    def __init__(self):
         super().__init__('joy_cmd')
 
         self.declare_parameters(
@@ -21,9 +21,11 @@ class JoyCmd(JoyBase):
                 ('en', "LB"),
                 ('rover_sel', "Y"),
                 ('mode_sel', "B"),
+                ('angle_sel', "A"),
                 ('broadcast', "RB"),
                 ('revolution', "cross_lr"),
-                ('prismatic', "cross_ud")
+                ('prismatic', "cross_ud"),
+                ('n_rover', 6),
             ]
         )
 
@@ -32,14 +34,17 @@ class JoyCmd(JoyBase):
         self.en_buttonN = self.button_dict.get(self.get_parameter('en').value)
         self.rover_sel_button = self.button_dict.get(self.get_parameter('rover_sel').value)
         self.mode_sel_button = self.button_dict.get(self.get_parameter('mode_sel').value)
+        self.angle_sel_button = self.button_dict.get(self.get_parameter('angle_sel').value)
         self.broadcast_button = self.button_dict.get(self.get_parameter('broadcast').value)
+        self.N_ROVER = self.get_parameter('n_rover').value
 
         self.mode_list = ["NEU_M", "JOY_M", "NAV_M"]
         self.mode_dict = {"NEU_M": 0, "JOY_M": 1, "NAV_M": 2}
         self.rover_modeC = self.mode_list[0]
 
-        self.N_ROVER = n_rover
         self.select = 1
+
+        self.selected_angle = 0
 
         self.pubsub.create_publisher(Twist, '/joy/cmd_vel', 5)
         self.pubsub.create_publisher(Bool, '/joy/enable', 5)
@@ -47,6 +52,9 @@ class JoyCmd(JoyBase):
         
         self.pubsub.create_publisher(Int16, '/select_rover', 1)
         self.pubsub.create_publisher(String, '/modeC', 1)
+
+        
+        self.pubsub.create_publisher(Int16, '/joy/angle_sel', 5)
         
         self.pubsub.create_publisher(Float32MultiArray, '/joy/cross', 5)
         timer_period = 0.1
@@ -58,6 +66,7 @@ class JoyCmd(JoyBase):
             en: {self.get_parameter('en').value},\n \
             rover_sel: {self.get_parameter('rover_sel').value},\n \
             mode_sel: {self.get_parameter('mode_sel').value},\n \
+            angle_sel: {self.get_parameter('angle_sel').value},\n \
             broadcast: {self.get_parameter('broadcast').value},\n \
             revolution: {self.get_parameter('revolution').value},\n \
             prismatic: {self.get_parameter('prismatic').value}\n"
@@ -87,6 +96,13 @@ class JoyCmd(JoyBase):
         if _toggle[self.mode_sel_button] == 1:
             self.get_logger().info(f"Mode Button Toggled: {self.rover_modeC} to {self.mode_list[(self.mode_dict[self.rover_modeC] + 1) % 3]}")
             self.rover_modeC = self.mode_list[(self.mode_dict[self.rover_modeC] + 1) % 3]
+        
+        if _toggle[self.angle_sel_button] == 1:
+            self.get_logger().info(f"Angle Button Toggled: {self.selected_angle} to {(self.selected_angle+90)%360}")
+            self.selected_angle = (self.selected_angle+90)%360
+            angle_msg = Int16()
+            angle_msg.data = self.selected_angle
+            self.pubsub.publish('/joy/angle_sel', angle_msg)
             
         broadcast_msg = Bool()
         if msg.buttons[self.broadcast_button] == 1:

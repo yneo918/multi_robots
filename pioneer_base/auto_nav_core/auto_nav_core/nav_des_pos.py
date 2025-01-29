@@ -80,12 +80,12 @@ class NavController(NavNode):
             self.pubsub.create_subscription(
                 Float32MultiArray,
                 f'/{self.robot_id_list[i]}/imu/eulerAngle',
-                lambda msg: self.euler_callback(msg, i),
+                lambda msg, i=i: self.euler_callback(msg, i),
                 5)
             self.pubsub.create_subscription(
                 NavSatFix,
                 f'/{self.robot_id_list[i]}/gps1',
-                lambda msg: self.current_gps_callback(msg, i),
+                lambda msg, i=i: self.current_gps_callback(msg, i),
                 5)
         self.pubsub.create_subscription(
             NavSatFix,

@@ -16,9 +16,13 @@ class Demux(Node):
             namespace='',
             parameters=[
                 ('robot_id_list', ["p0"]),
-                ('mode', "Joy")
+                ('mode', "Joy"),
+                ('heading_controller', False)
             ]
         )
+        params = self._parameters
+        for name, param in params.items():
+            self.get_logger().info(f"PARAMS/ {name}: {param.value}")
         self.mode = self.get_parameter('mode').value
         self.block = '' if self.mode == "Joy" else '/joy'
         self.select = 0
@@ -48,6 +52,10 @@ class Demux(Node):
             return
         self.get_logger().info(f"ROVER: {self.robot_id_list} N: {self.n_rover}")
 
+
+        self.heading_controller = self.get_parameter('heading_controller').value
+        self.angular_vel = [0.0] * self.n_rover
+
         self.broadcast = False
 
         self.pubsub = PubSubManager(self)
@@ -74,6 +82,20 @@ class Demux(Node):
         for i in range(self.n_rover):
             self.pubsub.create_publisher(Twist, f'{self.block}/{self.robot_id_list[i]}/cmd_vel', 5)
             self.pubsub.create_publisher(Bool, f'{self.block}/{self.robot_id_list[i]}/enable', 5)
+            if self.heading_controller:
+                self.pubsub.create_subscription(
+                    Twist,
+                    f'/heading/{self.robot_id_list[i]}/anglar_vel',
+                    lambda msg, i=i: self.angular_callback(msg, i),
+                    5)
+                self.pubsub.create_publisher(Int16, f'/heading/{self.robot_id_list[i]}/desired', 5)
+        
+        if self.heading_controller:
+            self.pubsub.create_subscription(
+                Int16,
+                '/joy/angle_sel',
+                self.angle_sel_callback,
+                5)
         
     
     def joy_cmd_callback(self, msg):
@@ -101,17 +123,32 @@ class Demux(Node):
                 en_state.data = True
                 val.linear.x = self.lx
                 val.angular.z = self.az
+                if self.heading_controller:
+                    val.angular.z = self.angular_vel[i]
                 self.pubsub.publish(f'{self.block}/{self.robot_id_list[i]}/cmd_vel', val)
                 self.pubsub.publish(f'{self.block}/{self.robot_id_list[i]}/enable', en_state)
             elif _en and self.select == i+1:
                 en_state.data = True
                 val.linear.x = self.lx
                 val.angular.z = self.az
+                if self.heading_controller:
+                    val.angular.z = self.angular_vel[i]
                 self.pubsub.publish(f'{self.block}/{self.robot_id_list[i]}/cmd_vel', val)
                 self.pubsub.publish(f'{self.block}/{self.robot_id_list[i]}/enable', en_state)
             else:
                 self.pubsub.publish(f'{self.block}/{self.robot_id_list[i]}/cmd_vel', empty_twist)
-                self.pubsub.publish(f'{self.block}/{self.robot_id_list[i]}/enable', false_state)         
+                self.pubsub.publish(f'{self.block}/{self.robot_id_list[i]}/enable', false_state)  
+
+    def angular_callback(self, msg, i):
+        self.angular_vel[i] = msg.angular.z
+        self.get_logger().info(f"{self.robot_id_list[i]}/ Received angular vel: {msg.angular.z}")   
+
+    def angle_sel_callback(self, msg):
+        angle_msg = Int16()
+        angle_msg.data = msg.data
+        for i in range(self.n_rover):
+            self.pubsub.publish(f'/heading/{self.robot_id_list[i]}/desired', angle_msg)
+        self.get_logger().info(f"Angle selected: {msg.data}")    
 
 
 def main(args=None):
