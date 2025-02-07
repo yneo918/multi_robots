@@ -18,7 +18,7 @@ class ClusterNode(Node):
         self.cluster = Cluster()
         self.create_subscription(Imu, "/imu/eulerangle", self.Imu_callback, 10)
         
-
+    #create pubs and subs to communicate with cluster
        
     #     timer_period = 5  # seconds
     #     self.timer = self.create_timer(timer_period, self.listen_for_publishers)
@@ -34,8 +34,6 @@ class ClusterNode(Node):
         self.get_logger().info(f'Received: "{msg.heading}" from robot: "{msg.robotid}"')
         cluster.updateRobotHeading(msg.robotid, msg.heading)
 
-    def calculateLinearControl():
-        self.Fm = self.cdddes + self.Kv*()
 def main(args=None):
     rclpy.init(args=args)
     node = ClusterNode()
