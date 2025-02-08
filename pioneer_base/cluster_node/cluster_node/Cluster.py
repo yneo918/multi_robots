@@ -1,13 +1,28 @@
 import numpy as np
 import math
 import sympy as sp 
+from enum import Enum
+
+class ClusterConfig(Enum):
+    TRIANGLE = "Triangle"
+    ELLIPSE = "Ellipse"
+    DIAMOND = "Diamond"
+    SQUARE = "Square"
+    LINE = "Line"
+    
+    def __str__(self):
+        return self.value
 
 class Cluster():
-    def __init__(self):
-        #cluster control variables where n is the number of robots in the cluster and m is their DOF
-        self.cdes = np.array([[5], [4], [math.pi/2], [0], [0], [0], [3], [3], [math.pi/3]])  # Define as vertical matrix in one line
-        self.cddes = np.zeros((9, 1))  # Cluster ideal velocities 
-        self.cdddes = np.zeros((9, 1))  # Cluster ideal accelerations likely ignore for now
+    #Create a cluster with a set number of robots in a specific configuration with initial parameters
+    def __init__(self, numRobots=3, clusterType=ClusterConfig.TRIANGLE, clusterParams=[3, 3, math.pi/3]):
+        #cluster control variables DOF which is assumed 3
+        self.robots = numRobots
+        self.cdes = np.zeros((robots*3, 1))  
+        self.cddes = np.zeros((robots*3, 1)) 
+        self.cdddes = np.zeros((robots*3, 1)) 
+
+        self.FKine = self.configureCluster()
         self.Fm = np.zeros((9, 1))
         self.Kp = 4 #nm*nm diagonal matrix of gains
         self.Kv = 3 #nm*nm diagonal matrix of gains
@@ -82,7 +97,34 @@ class Cluster():
 
     def updateRobotVelocity(self, vel):
         self.rd = vel
+    
+    #Determine cluster space state variable by choosing from a list of pre derived cluster configurations
+    def configureCluster(self, clusterType, clusterParams):
         
+        #Triangle config
+        if(self.numRobots==3 and clusterType == ClusterConfig.Triangle):
+            r_sym = sp.symbols('r0:9') #symbols for robot space state variables
+            theta_C = sp.symbols('0c') #symbol for cluster heading
+            #Derived FKine equations for cluster space configuration
+            f1 = (r_sym[0] + r_sym[3] + r_sym[6]) / 3
+            f2 = (r_sym[1] + r_sym[4] + r_sym[7]) / 3
+            f3 = sp.atan2((2 / 3 * r_sym[0] - 1 / 3 (r_sym[3] - r_sym[6]))/(2 / 3 * r_symbols[1] - 1 / 3 (r_symbols[4] + r_symbols[7])))
+            f4 = r_sym[2] + theta_C
+            f5 = r_sym[5] + theta_C
+            f6 = r_sym[8] + theta_C
+            f7 = sp.sqrt((r_sym[0]-r_sym[3])**2 + (r_sym[1]-r_sym[4])**2)
+            f8 = sp.sqrt((r_sym[6]-r_sym[0])**2 + (r_sym[1]-r_sym[7])**2)
+            f9 = sp.acos((f7**2 + f8**2 - (r_sym[6]-r_sym[3])**2 - (r_sym[7]-r_sym[4])**2)/(2*f7*f8))
+
+            self.FKine =  sp.Matrix([[f1], [f2], [f3], [f4], [f5], [f6], [f7], [f8], [f9]])
+        
+            q = sp.symbols('q0:9')  # Cluster space variables corresponding to FKine
+
+            # Solve for r_sym in terms of q (Inverse Kinematics)
+            IKine = sp.solve(FKine - sp.Matrix(q), r_sym)
+            print("Inverse Kinematics Solutions:")
+            for key, value in IKine.items():
+                print(f"{key} = {value}")
     #checks to see if robot is already in cluster and if not adds it
     """ def checkRobotID(self, id):
         incluster = false
