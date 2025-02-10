@@ -8,31 +8,135 @@ from custom_msg.msg import Imu
 from .clustercontroller import Cluster
 from std_msgs.msg import Bool, Int16
 from std_msgs.msg import String
+from sensor_msgs.msg import NavSatFix
+from geometry_msgs.msg import Twist
 
 from .my_ros_module import PubSubManager
-
+#manage active robot IDs 
+#map robot IDs to robot state space variables
 class ClusterNode(Node):
-    def __init__(self):
+    def __init__(self, n_rover=6):
         super().__init__('cluster_controller')
+        self.declare_parameters(
+            namespace='',
+            parameters=[
+                ('robot_id_list', ["p0"])
+            ]
+        )
+        params = self._parameters
+        for name, param in params.items():
+            self.get_logger().info(f"PARAMS/ {name}: {param.value}")
+        
+        #Parse robot ID list
+        robot_id_list = self.get_parameter('robot_id_list').value
+        self.get_logger().info(f"robot_id_list: {robot_id_list}")
+        if len(robot_id_list) == 1 and robot_id_list[0] == "p0":
+            robot_id_list = None
+        self.robot_id_list = []
+        if robot_id_list is None:
+            self.n_rover = n_rover
+            for i in range(self.n_rover):
+                self.robot_id_list.append(f"{self.robot_id_list[i]}")
+        elif isinstance(robot_id_list, int):
+            self.n_rover = n_rover
+            for i in range(self.n_rover):
+                self.robot_id_list.append(f"p{i+1+robot_id_list}")
+        elif isinstance(robot_id_list, list):
+            self.n_rover = len(robot_id_list)
+            if isinstance(robot_id_list[0], int):
+                for i in range(self.n_rover):
+                    self.robot_id_list.append(f"p{robot_id_list[i]}")
+            else:
+                self.robot_id_list = robot_id_list
+        else:
+            print("ROBOT_ID_LIST ERROR")
+            return
+        self.get_logger().info(f"ROVER: {self.robot_id_list} N: {self.n_rover}")
+
         self.traj_publichers
         self.cluster = Cluster()
+        self.pubsub = PubSubManager(self)
+        self.robots = 0
+        self.cluster_robots = []
+        self.world_frame = None
+        self.r = None #stores latest robot state space variables
+        self.rd = None #stores lataest robot velocities
         self.create_subscription(Imu, "/imu/eulerangle", self.Imu_callback, 10)
         
-    #create pubs and subs to communicate with cluster
-       
-    #     timer_period = 5  # seconds
-    #     self.timer = self.create_timer(timer_period, self.listen_for_publishers)
+        self       
+        timer_period = 5  # seconds
+        self.timer = self.create_timer(timer_period, self.publish_velocities)
+        
+        self.pubsub = PubSubManager(self)
+        self.pubsub.create_subscription(
+            Twist,
+            '/joy/cmd_vel',
+            self.joy_cmd_callback,
+            5)
+        
+        for i in range(self.n_rover):
+            self.pubsub.create_subscription(
+                Float32MultiArray,
+                f'/{self.robot_id_list[i]}/imu/eulerAngle',
+                lambda msg, i=i: self.angular_callback(msg, i),
+                5)
+            self.pubsub.create_subscription(
+                NavSatFix,
+                f'/{self.robot_id_list[i]}/gps1',
+                lambda msg, i=i: self.gps_callback(msg, i),
+                5)
 
-    # def listen_for_publishers(self):
-    #     topic_names_and_types = self.get_topic_names_and_types()
-    #     for topic, types in topic_names_and_types:
-    #         if 'robot' in topic and '/imu/eulerAngle' in topic:
-    #             self.create_subscription(Float32MultiArray, topic, self.listener_callback, 10)
-    #             self.get_logger().info(f'Subscribed to: {topic}')
+    def listenForRobots(self):
 
-    def Imu_callback(self, msg, msg_info):
-        self.get_logger().info(f'Received: "{msg.heading}" from robot: "{msg.robotid}"')
-        cluster.updateRobotHeading(msg.robotid, msg.heading)
+    def angular_callback(self, msg, i):
+        self.get_logger().info(f"{self.robot_id_list[i]}/ Received angular vel: {msg.angular.z}") 
+        cluster_index = self.mapRobotId(i)
+        if cluster_index is None:
+            return
+        self.r[cluster_index*3+2, 0] = msg.angular.z #update robot heading in array
+
+    def gps_callback(self, msg, i):
+        self.get_logger().info(f"{self.robot_id_list[i]}/ Received angular vel: {msg.}") 
+        cluster_index = self.mapRobotId(i)
+        if cluster_index is None:
+            return
+        x, y = gps_to_xy(msg.latitude, msg.longitude, self.world_frame.latitude, self.world_frame.longitude)
+        self.r[cluster_index*3:(cluster_index*3+1), 0] = [[x, y]] #update robot position in array
+
+    #Maps Id of robot to its index in the cluster
+    def mapRobotId(self, i):
+        for j in range(self.cluster_robots):
+            if self.cluster_robots[j] == i:
+                return j
+        return None
+
+    #Publishes velocity commands to robots
+    def publish_velocities(self):
+        rd = self.cluster.getVelocityCommand(self.r , self.rd)
+
+    #Lat1 Lon1 are world frame coordinates
+    def gps_to_xy(lat1, lon1, lat2, lon2):
+        R = 6371000   # Earth radius in meters
+        # Convert degrees to radians
+        lat1_rad = math.radians(lat1)
+        lon1_rad = math.radians(lon1)
+        lat2_rad = math.radians(lat2)
+        lon2_rad = math.radians(lon2)
+
+        dlat = lat2_rad - lat1_rad
+        dlon = lon2_rad - lon1_rad
+        a = math.sin(dlat / 2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon / 2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        distance = R * c
+
+        # Calculate bearing
+        y = math.sin(dlon) * math.cos(lat2_rad)
+        x = math.cos(lat1_rad) * math.sin(lat2_rad) - math.sin(lat1_rad) * math.cos(lat2_rad) * math.cos(dlon)
+        bearing = math.atan2(y, x)
+        x = distance * math.sin(bearing)
+        y = distance * math.cos(bearing)
+
+        return x, y
 
 def main(args=None):
     rclpy.init(args=args)
