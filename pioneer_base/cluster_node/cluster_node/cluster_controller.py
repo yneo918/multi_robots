@@ -53,26 +53,18 @@ class ClusterNode(Node):
             return
         self.get_logger().info(f"ROVER: {self.robot_id_list} N: {self.n_rover}")
 
-        self.traj_publichers
         self.cluster = Cluster()
-        self.pubsub = PubSubManager(self)
         self.robots = 0
         self.cluster_robots = []
-        self.world_frame = None
+        self.world_frame = NavSatFix()
+        self.gpsStartup = []
         self.r = None #stores latest robot state space variables
-        self.rd = None #stores lataest robot velocities
-        self.create_subscription(Imu, "/imu/eulerangle", self.Imu_callback, 10)
+        self.rd = None #stores latest robot velocities commands
         
-        self       
-        timer_period = 5  # seconds
+        timer_period = 0.1  # set frequency to publish velocity commands
         self.timer = self.create_timer(timer_period, self.publish_velocities)
         
         self.pubsub = PubSubManager(self)
-        self.pubsub.create_subscription(
-            Twist,
-            '/joy/cmd_vel',
-            self.joy_cmd_callback,
-            5)
         
         for i in range(self.n_rover):
             self.pubsub.create_subscription(
@@ -85,23 +77,53 @@ class ClusterNode(Node):
                 f'/{self.robot_id_list[i]}/gps1',
                 lambda msg, i=i: self.gps_callback(msg, i),
                 5)
+        self.listeningForRobots = True
+        self.create_timer(2.0, self.assignRobots)
 
+        for i in range(self.n_rover):
+            self.pubsub.create_publisher(Twist, f'{self.block}/{self.robot_id_list[i]}/cmd_vel', 5)
+            self.pubsub.create_publisher(Bool, f'{self.block}/{self.robot_id_list[i]}/enable', 5)
+        
     def listenForRobots(self):
+        self.listeningForRobots = False #done listening for robots
+        self.cluster_robots.sort()
+        self.robots = self.cluster_robots.length()
+        self.get_logger().info(f"Formed cluster with robots: {self.cluster_robots} from list of possible: {self.robot_id_list}")
+        #average all read gps values to assign rough world frame
+        for coord in self.gpsStartup:
+            self.world_frame.latitude += coord.latitude
+            self.world_frame.longitude += coord.longitude
+        self.world_frame.latitude /= self.gpsStartup.len()
+        self.world_frame.longitude /= self.gpsStartup.len()
+
+    #checks if given robot id is in cluster and if not adds it to cluster
+    def checkRobotId(self, id):
+        for robot in self.cluster_robots:
+            if robot == id:
+                return
+        self.cluster_robots.append(i)
 
     def angular_callback(self, msg, i):
         self.get_logger().info(f"{self.robot_id_list[i]}/ Received angular vel: {msg.angular.z}") 
-        cluster_index = self.mapRobotId(i)
-        if cluster_index is None:
-            return
-        self.r[cluster_index*3+2, 0] = msg.angular.z #update robot heading in array
+        if self.listeningForRobots:
+            self.checkRobotId(i)
+        else:
+            cluster_index = self.mapRobotId(i)
+            if cluster_index is None:
+                return
+            self.r[cluster_index*3+2, 0] = msg.angular.z #update robot heading in array
 
     def gps_callback(self, msg, i):
-        self.get_logger().info(f"{self.robot_id_list[i]}/ Received angular vel: {msg.}") 
-        cluster_index = self.mapRobotId(i)
-        if cluster_index is None:
-            return
-        x, y = gps_to_xy(msg.latitude, msg.longitude, self.world_frame.latitude, self.world_frame.longitude)
-        self.r[cluster_index*3:(cluster_index*3+1), 0] = [[x, y]] #update robot position in array
+        self.get_logger().info(f"{self.robot_id_list[i]}/ Received gps coords: {msg.latitude}, {msg.longitude} ") 
+        if self.listeningForRobots:
+            self.checkRobotId(i)
+            self.gpsStartup.append(msg)
+        else:
+            cluster_index = self.mapRobotId(i)
+            if cluster_index is None:
+                return
+            x, y = gps_to_xy(msg.latitude, msg.longitude, self.world_frame.latitude, self.world_frame.longitude)
+            self.r[cluster_index*3:(cluster_index*3+1), 0] = [[x, y]] #update robot position in array
 
     #Maps Id of robot to its index in the cluster
     def mapRobotId(self, i):
@@ -113,6 +135,12 @@ class ClusterNode(Node):
     #Publishes velocity commands to robots
     def publish_velocities(self):
         rd = self.cluster.getVelocityCommand(self.r , self.rd)
+        for i in range(self.n_rover):
+            if self.broadcast:
+                en_state.data = True
+                self.pubsub.publish(f'{self.block}/{self.robot_id_list[i]}/cmd_vel', val)
+                self.pubsub.publish(f'{self.block}/{self.robot_id_list[i]}/enable', en_state)
+
 
     #Lat1 Lon1 are world frame coordinates
     def gps_to_xy(lat1, lon1, lat2, lon2):
