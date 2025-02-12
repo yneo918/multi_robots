@@ -4,14 +4,13 @@ import numpy as np
 from rclpy.node import Node
 from std_msgs.msg import String
 from std_msgs.msg import Float32MultiArray
-from custom_msg.msg import Imu
-from .clustercontroller import Cluster
+from .Cluster import Cluster
 from std_msgs.msg import Bool, Int16
 from std_msgs.msg import String
 from sensor_msgs.msg import NavSatFix
 from geometry_msgs.msg import Twist
 
-from .my_ros_module import PubSubManager
+from teleop_core.my_ros_module import PubSubManager
 #manage active robot IDs 
 #map robot IDs to robot state space variables
 class ClusterNode(Node):
@@ -61,8 +60,6 @@ class ClusterNode(Node):
         self.r = None #stores latest robot state space variables
         self.rd = None #stores latest robot velocities commands
         
-        timer_period = 0.1  # set frequency to publish velocity commands
-        self.timer = self.create_timer(timer_period, self.publish_velocities)
         
         self.pubsub = PubSubManager(self)
         
@@ -80,31 +77,35 @@ class ClusterNode(Node):
         self.listeningForRobots = True
         self.create_timer(2.0, self.assignRobots)
 
-        for i in range(self.n_rover):
-            self.pubsub.create_publisher(Twist, f'{self.block}/{self.robot_id_list[i]}/cmd_vel', 5)
-            self.pubsub.create_publisher(Bool, f'{self.block}/{self.robot_id_list[i]}/enable', 5)
+        #timer_period = 0.1  # set frequency to publish velocity commands
+        #self.timer = self.create_timer(timer_period, self.publish_velocities)
+        #for i in range(self.n_rover):
+        #    self.pubsub.create_publisher(Twist, f'{self.block}/{self.robot_id_list[i]}/cmd_vel', 5)
+        #    self.pubsub.create_publisher(Bool, f'{self.block}/{self.robot_id_list[i]}/enable', 5)
         
-    def listenForRobots(self):
+    def assignRobots(self):
         self.listeningForRobots = False #done listening for robots
         self.cluster_robots.sort()
-        self.robots = self.cluster_robots.length()
+        self.robots = len(self.cluster_robots)
         self.get_logger().info(f"Formed cluster with robots: {self.cluster_robots} from list of possible: {self.robot_id_list}")
         #average all read gps values to assign rough world frame
         for coord in self.gpsStartup:
             self.world_frame.latitude += coord.latitude
             self.world_frame.longitude += coord.longitude
-        self.world_frame.latitude /= self.gpsStartup.len()
-        self.world_frame.longitude /= self.gpsStartup.len()
+        if(len(self.gpsStartup) > 0):
+            self.world_frame.latitude /= len(self.gpsStartup)
+            self.world_frame.longitude /= len(self.gpsStartup)
 
     #checks if given robot id is in cluster and if not adds it to cluster
     def checkRobotId(self, id):
+        #self.get_logger().info(f"Recieved message from: {id}")
         for robot in self.cluster_robots:
             if robot == id:
                 return
-        self.cluster_robots.append(i)
+        self.cluster_robots.append(id)
 
     def angular_callback(self, msg, i):
-        self.get_logger().info(f"{self.robot_id_list[i]}/ Received angular vel: {msg.angular.z}") 
+        #self.get_logger().info(f"{self.robot_id_list[i]}/ Received angular vel: {msg.data[-1]}") 
         if self.listeningForRobots:
             self.checkRobotId(i)
         else:
@@ -114,7 +115,7 @@ class ClusterNode(Node):
             self.r[cluster_index*3+2, 0] = msg.angular.z #update robot heading in array
 
     def gps_callback(self, msg, i):
-        self.get_logger().info(f"{self.robot_id_list[i]}/ Received gps coords: {msg.latitude}, {msg.longitude} ") 
+        #self.get_logger().info(f"{self.robot_id_list[i]}/ Received gps coords: {msg.latitude}, {msg.longitude} ") 
         if self.listeningForRobots:
             self.checkRobotId(i)
             self.gpsStartup.append(msg)

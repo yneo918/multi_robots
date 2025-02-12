@@ -22,18 +22,27 @@ def generate_launch_description():
     parent_dir = os.path.dirname(launch_file_dir)
     # Construct paths to the parameter files relative to the launch file directory
     cluster_file = os.path.join(parent_dir, 'config', 'cluster_multi.yaml')
+    cluster_feedback = os.path.join(parent_dir, 'config', '3cluster.yaml')
 
     # Check if parameter files exist
+    if not os.path.isfile(cluster_file):
+        raise FileNotFoundError(f"Parameter file not found: {cluster_file}")
     if not os.path.isfile(cluster_file):
         raise FileNotFoundError(f"Parameter file not found: {cluster_file}")
 
     # Nodes
     run_cluster_node = Node(
         package="cluster_node",
-        executable="cluster_node",
+        executable="cluster_controller",
         parameters=[cluster_file],
     )
 
+    run_cluster_feedback = Node(
+        package="cluster_node",
+        executable="cluster_feedback",
+        parameters=[cluster_feedback],
+    )
     ld.add_action(run_cluster_node)
+    ld.add_action(run_cluster_feedback)
 
     return ld
