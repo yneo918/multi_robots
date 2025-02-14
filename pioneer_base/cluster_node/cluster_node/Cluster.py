@@ -18,7 +18,7 @@ class Cluster():
     #Create a cluster with a set number of robots in a specific configuration with initial parameters
     def __init__(self, numRobots=3, clusterType=ClusterConfig.TRIANGLE, clusterParams=[3, 3, math.pi/3], KPgains=None, KVgains=None):
         #cluster control variables DOF which is assumed 3
-        self.cdes = np.zeros((numRobots*3, 1))  
+        self.cdes = np.ones((numRobots*3, 1))
         self.cdes[(numRobots-1)*3:(numRobots)*3] = np.reshape(clusterParams, (numRobots, 1))
         self.cddes = np.zeros((numRobots*3, 1)) 
         self.cdddes = np.zeros((numRobots*3, 1)) 
