@@ -92,6 +92,8 @@ class ClusterNode(Node):
         if(len(self.gpsStartup) > 0):
             self.world_frame.latitude /= len(self.gpsStartup)
             self.world_frame.longitude /= len(self.gpsStartup)
+        self.world_frame.latitude = 37.774932  # Example reference latitude
+        self.world_frame.longitude = -122.419467 
         self.get_logger().info(f"World frame coords: { self.world_frame.latitude}, { self.world_frame.longitude}")
         self.timer_once.cancel()
         timer_period = 1  # set frequency to publish velocity commands
@@ -126,8 +128,9 @@ class ClusterNode(Node):
             cluster_index = self.mapRobotId(i)
             if cluster_index is None:
                 return
-            x, y = self.gps_to_xy(msg.latitude, msg.longitude, self.world_frame.latitude, self.world_frame.longitude)
+            x, y = self.gps_to_xy(self.world_frame.latitude, self.world_frame.longitude, msg.latitude, msg.longitude)
             self.r[cluster_index*3:(cluster_index*3+2), 0] = [x, y] #update robot position in array
+            self.get_logger().info(f"{self.robot_id_list[i]}/ Updated robot position: {self.r[cluster_index*3:(cluster_index*3+2), 0]}")
 
     #Maps Id of robot to its index in the cluster
     def mapRobotId(self, i):

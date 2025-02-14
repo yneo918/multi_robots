@@ -20,15 +20,15 @@ class ClusterFeedbackNode(Node):
             namespace='',
             parameters=[
                 ('robot_id_list', ["p0"]),
-                ('reference_lat', 37.7749),  # Example reference latitude
-                ('reference_lon', -122.4194)  # Example reference longitude
+                ('reference_lat', 37.774932),  # Example reference latitude
+                ('reference_lon', -122.419467)  # Example reference longitude
             ]
         )
         self.robot_id_list = self.get_parameter('robot_id_list').value
         self.reference_lat = self.get_parameter('reference_lat').value
         self.reference_lon = self.get_parameter('reference_lon').value
         self.pubsub = PubSubManager(self)
-        self.gps_positions = self.calculate_gps_positions()
+        self.gps_positions = [[self.reference_lat, self.reference_lon],[self.reference_lat+math.pow(10, -4), self.reference_lon+math.pow(10, -4)],[self.reference_lat+math.pow(10, -4), self.reference_lon-math.pow(10, -4)]]  # Initialize GPS positions
         self.xy_positions = self.calculate_xy_positions()
         self.velocities = {robot_id: (0.0, 0.0) for robot_id in self.robot_id_list}  # Initialize velocities
 
@@ -37,7 +37,7 @@ class ClusterFeedbackNode(Node):
             self.pubsub.create_publisher(NavSatFix, f'/{robot_id}/gps1', 10)
             self.pubsub.create_subscription(Twist, f'/{robot_id}/cmd_vel', lambda msg, robot_id=robot_id: self.cmd_vel_callback(msg, robot_id), 10)
         
-        self.timer = self.create_timer(0.1, self.publish_feedback)  # 10 Hz
+        self.timer = self.create_timer(1, self.publish_feedback)  # 10 Hz
 
     def calculate_gps_positions(self):
         positions = []
@@ -61,33 +61,19 @@ class ClusterFeedbackNode(Node):
         for lat, lon in self.gps_positions:
             x, y = self.gps_to_xy(self.reference_lat, self.reference_lon, lat, lon)
             xy_positions.append([x, y])
+            self.get_logger().info(f"Calculated XY position: {x}, {y}")
         return xy_positions
 
     def gps_to_xy(self, lat1, lon1, lat2, lon2):
-        """
-        Convert GPS coordinates to x, y coordinates relative to a reference point.
-        
-        Parameters:
-        lat1, lon1: Latitude and longitude of the reference point (in degrees)
-        lat2, lon2: Latitude and longitude of the target point (in degrees)
-        
-        Returns:
-        x, y: Coordinates of the target point relative to the reference point
-        """
-        # Earth radius in meters
-        R = 6371000
-
+        R = 6371000   # Earth radius in meters
         # Convert degrees to radians
         lat1_rad = math.radians(lat1)
         lon1_rad = math.radians(lon1)
         lat2_rad = math.radians(lat2)
         lon2_rad = math.radians(lon2)
 
-        # Calculate differences
         dlat = lat2_rad - lat1_rad
         dlon = lon2_rad - lon1_rad
-
-        # Haversine formula to calculate the distance
         a = math.sin(dlat / 2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon / 2)**2
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
         distance = R * c
@@ -96,8 +82,6 @@ class ClusterFeedbackNode(Node):
         y = math.sin(dlon) * math.cos(lat2_rad)
         x = math.cos(lat1_rad) * math.sin(lat2_rad) - math.sin(lat1_rad) * math.cos(lat2_rad) * math.cos(dlon)
         bearing = math.atan2(y, x)
-
-        # Convert bearing to x, y coordinates
         x = distance * math.sin(bearing)
         y = distance * math.cos(bearing)
 
@@ -106,17 +90,22 @@ class ClusterFeedbackNode(Node):
     def cmd_vel_callback(self, msg, robot_id):
         # Update the velocity for the given robot
         self.velocities[robot_id] = (msg.linear.x, msg.linear.y)
-        self.get_logger().info(f"Updated velocities for {robot_id}: Linear X: {msg.linear.x}, Linear Y: {msg.linear.y}")
+        #self.get_logger().info(f"Updated velocities for {robot_id}: Linear X: {msg.linear.x}, Linear Y: {msg.linear.y}")
 
     def publish_feedback(self):
+        #self.get_logger().info(f"Updated XY position for {self.robot_id_list[0]}: {self.xy_positions[0]}")
         for i, robot_id in enumerate(self.robot_id_list):
+            #self.xy_positions[i] = self.gps_to_xy(self.reference_lat, self.reference_lon, self.gps_positions[i][0], self.gps_positions[i][1])
+            temp = [self.xy_positions[i][0], self.xy_positions[i][1]]
+            
             # Simulate movement based on velocity
             linear_vel_x, linear_vel_y = self.velocities[robot_id]
-            self.gps_positions[i][0] += linear_vel_x * 0.1 / 111320  # Approximate conversion from meters to degrees latitude
-            self.gps_positions[i][1] += linear_vel_y * 0.1 / (111320 * math.cos(math.radians(self.gps_positions[i][0])))  # Approximate conversion from meters to degrees longitude
-
+            self.gps_positions[i][0] += linear_vel_y * 0.1 / 111320  # Approximate conversion from meters to degrees latitude
+            self.gps_positions[i][1] += linear_vel_x * 0.1 / (111320 * math.cos(math.radians(self.gps_positions[i][0])))  # Approximate conversion from meters to degrees longitude
+            
             # Update xy positions
             self.xy_positions[i] = self.gps_to_xy(self.reference_lat, self.reference_lon, self.gps_positions[i][0], self.gps_positions[i][1])
+            #self.get_logger().info(f"Actual position change for {robot_id}: {self.xy_positions[i][0]- temp[0]}, {self.xy_positions[i][1] - temp[1]} expected: {linear_vel_x * 0.1}, {linear_vel_y * 0.1 }")
 
             # Create and publish IMU data
             imu_msg = Float32MultiArray()
