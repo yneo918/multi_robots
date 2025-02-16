@@ -16,7 +16,7 @@ class ClusterConfig(Enum):
 
 class Cluster():
     #Create a cluster with a set number of robots in a specific configuration with initial parameters
-    def __init__(self, numRobots=3, clusterType=ClusterConfig.TRIANGLE, clusterParams=[10, 10, math.pi/3], KPgains=None, KVgains=None):
+    def __init__(self, numRobots=3, clusterType=ClusterConfig.TRIANGLE, clusterParams=[20, 20, math.pi/2], KPgains=None, KVgains=None):
         #cluster control variables DOF which is assumed 3
         self.cdes = np.zeros((numRobots*3, 1))
         #self.cdes[0:2] = np.array([10, 10]).reshape(2, 1)

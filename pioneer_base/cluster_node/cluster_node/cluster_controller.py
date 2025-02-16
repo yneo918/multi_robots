@@ -96,10 +96,15 @@ class ClusterNode(Node):
         self.world_frame.longitude = -122.419467 
         self.get_logger().info(f"World frame coords: { self.world_frame.latitude}, { self.world_frame.longitude}")
         self.timer_once.cancel()
-        timer_period = 1  # set frequency to publish velocity commands
+        self.wait_once = self.create_timer(2.0, self.waitForData)
+        
+    def waitForData(self):    
+        self.wait_once.cancel()
+        timer_period = 0.1  # set frequency to publish velocity commands
         for i in range(self.n_rover):
             self.pubsub.create_publisher(Twist, f'{self.robot_id_list[i]}/cmd_vel', 5)
         self.timer = self.create_timer(timer_period, self.publish_velocities)
+        
 
     #checks if given robot id is in cluster and if not adds it to cluster
     def checkRobotId(self, id):
@@ -130,7 +135,7 @@ class ClusterNode(Node):
                 return
             x, y = self.gps_to_xy(self.world_frame.latitude, self.world_frame.longitude, msg.latitude, msg.longitude)
             self.r[cluster_index*3:(cluster_index*3+2), 0] = [x, y] #update robot position in array
-            self.get_logger().info(f"{self.robot_id_list[i]}/ Updated robot position: {self.r[cluster_index*3:(cluster_index*3+2), 0]}")
+            #self.get_logger().info(f"{self.robot_id_list[i]}/ Updated robot position: {self.r[cluster_index*3:(cluster_index*3+2), 0]}")
 
     #Maps Id of robot to its index in the cluster
     def mapRobotId(self, i):

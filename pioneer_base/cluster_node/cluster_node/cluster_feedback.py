@@ -27,6 +27,7 @@ class ClusterFeedbackNode(Node):
         self.robot_id_list = self.get_parameter('robot_id_list').value
         self.reference_lat = self.get_parameter('reference_lat').value
         self.reference_lon = self.get_parameter('reference_lon').value
+        self.plotSize = 10.0
         self.pubsub = PubSubManager(self)
         self.gps_positions = [[self.reference_lat, self.reference_lon],[self.reference_lat+math.pow(10, -4), self.reference_lon+math.pow(10, -4)],[self.reference_lat+math.pow(10, -4), self.reference_lon-math.pow(10, -4)]]  # Initialize GPS positions
         self.xy_positions = self.calculate_xy_positions()
@@ -37,7 +38,7 @@ class ClusterFeedbackNode(Node):
             self.pubsub.create_publisher(NavSatFix, f'/{robot_id}/gps1', 10)
             self.pubsub.create_subscription(Twist, f'/{robot_id}/cmd_vel', lambda msg, robot_id=robot_id: self.cmd_vel_callback(msg, robot_id), 10)
         
-        self.timer = self.create_timer(1, self.publish_feedback)  # 10 Hz
+        self.timer = self.create_timer(0.1, self.publish_feedback)  # 10 Hz
 
     def calculate_gps_positions(self):
         positions = []
@@ -90,7 +91,7 @@ class ClusterFeedbackNode(Node):
     def cmd_vel_callback(self, msg, robot_id):
         # Update the velocity for the given robot
         self.velocities[robot_id] = (msg.linear.x, msg.linear.y)
-        #self.get_logger().info(f"Updated velocities for {robot_id}: Linear X: {msg.linear.x}, Linear Y: {msg.linear.y}")
+        self.get_logger().info(f"Updated velocities for {robot_id}: Linear X: {msg.linear.x}, Linear Y: {msg.linear.y}")
 
     def publish_feedback(self):
         #self.get_logger().info(f"Updated XY position for {self.robot_id_list[0]}: {self.xy_positions[0]}")
@@ -122,11 +123,19 @@ class ClusterFeedbackNode(Node):
     def update_plot(self, scatter, ax):
         xs = [pos[0] for pos in self.xy_positions]
         ys = [pos[1] for pos in self.xy_positions]
-        self.get_logger().info(f"Publishing XY positions: {xs}, {ys}")
+        #self.get_logger().info(f"Publishing XY positions: {xs}, {ys}")
         scatter.set_offsets(list(zip(xs, ys)))
-        # Manually set the limits
-        ax.set_xlim(min(xs) - 1, max(xs) + 1)
-        ax.set_ylim(min(ys) - 1, max(ys) + 1)
+        
+        # Calculate the center and size of the plot
+        x_center = (max(xs) + min(xs)) / 2
+        y_center = (max(ys) + min(ys)) / 2
+        plot_size = max(max(xs) - min(xs), max(ys) - min(ys)) * 1.1  # Add some padding
+
+        # Set the limits to ensure the plot is square
+        ax.set_xlim(x_center - plot_size / 2, x_center + plot_size / 2)
+        ax.set_ylim(y_center - plot_size / 2, y_center + plot_size / 2)
+
+
 
 def run_ros_node():
     global node_instance
