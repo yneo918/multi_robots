@@ -29,10 +29,10 @@ class ClusterFeedbackNode(Node):
         self.reference_lon = self.get_parameter('reference_lon').value
         self.plotSize = 10.0
         self.pubsub = PubSubManager(self)
-        self.gps_positions = [[self.reference_lat, self.reference_lon],[self.reference_lat+math.pow(10, -4), self.reference_lon+math.pow(10, -4)],[self.reference_lat+math.pow(10, -4), self.reference_lon-math.pow(10, -4)]]  # Initialize GPS positions
+        self.gps_positions = [[self.reference_lat, self.reference_lon],[self.reference_lat+math.pow(10, -4), self.reference_lon-math.pow(10, -4)],[self.reference_lat+math.pow(10, -4), self.reference_lon+math.pow(10, -4)]]  # Initialize GPS positions
         self.xy_positions = self.calculate_xy_positions()
         self.velocities = {robot_id: (0.0, 0.0) for robot_id in self.robot_id_list}  # Initialize velocities
-
+        
         for robot_id in self.robot_id_list:
             self.pubsub.create_publisher(Float32MultiArray, f'/{robot_id}/imu/eulerAngle', 10)
             self.pubsub.create_publisher(NavSatFix, f'/{robot_id}/gps1', 10)
@@ -40,6 +40,8 @@ class ClusterFeedbackNode(Node):
         
         self.timer = self.create_timer(0.1, self.publish_feedback)  # 10 Hz
 
+    def startCluster(self):
+        self.pubsub.create_publisher(String, '/joy/mode', 5)
     def calculate_gps_positions(self):
         positions = []
         distance = 20  # Distance in meters
