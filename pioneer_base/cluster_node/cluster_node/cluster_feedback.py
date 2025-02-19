@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray
+from std_msgs.msg import String
 from sensor_msgs.msg import NavSatFix
 from geometry_msgs.msg import Twist
 import random
@@ -39,9 +40,14 @@ class ClusterFeedbackNode(Node):
             self.pubsub.create_subscription(Twist, f'/{robot_id}/cmd_vel', lambda msg, robot_id=robot_id: self.cmd_vel_callback(msg, robot_id), 10)
         
         self.timer = self.create_timer(0.1, self.publish_feedback)  # 10 Hz
+        self.start = self.create_timer(2, self.startCluster)
 
     def startCluster(self):
         self.pubsub.create_publisher(String, '/joy/mode', 5)
+        start = String()
+        start.data = "cluster"
+        self.pubsub.publish('/joy/mode', start)
+        self.start.cancel()
     def calculate_gps_positions(self):
         positions = []
         distance = 20  # Distance in meters
@@ -112,7 +118,7 @@ class ClusterFeedbackNode(Node):
 
             # Create and publish IMU data
             imu_msg = Float32MultiArray()
-            imu_msg.data = [0, 0, 0]
+            imu_msg.data = [0.0, 0.0, 0.0]
             self.pubsub.publish(f'/{robot_id}/imu/eulerAngle', imu_msg)
 
             # Create and publish GPS data
