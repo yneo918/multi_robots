@@ -16,16 +16,15 @@ class Demux(Node):
             namespace='',
             parameters=[
                 ('robot_id_list', ["p0"]),
-                ('mode', "Joy"),
                 ('heading_controller', False)
             ]
         )
         params = self._parameters
         for name, param in params.items():
             self.get_logger().info(f"PARAMS/ {name}: {param.value}")
-        self.mode = self.get_parameter('mode').value
-        self.block = '' if self.mode == "Joy" else '/joy'
+        self.block = '' 
         self.select = 0
+        self.mode = "NEU_M"
         
         robot_id_list = self.get_parameter('robot_id_list').value
         self.get_logger().info(f"robot_id_list: {robot_id_list}")
@@ -58,6 +57,8 @@ class Demux(Node):
 
         self.broadcast = False
 
+        self.hardware = True
+
         self.pubsub = PubSubManager(self)
         self.pubsub.create_subscription(
             Twist,
@@ -79,9 +80,20 @@ class Demux(Node):
             '/joy/broadcast',
             self.broadcast_callback,
             1)
+        self.pubsub.create_subscription(
+            Bool,
+            '/joy/hardware',
+            self.hw_sim_callback,
+            1)
+        self.pubsub.create_subscription(
+            String,
+            '/modeC',
+            self.mode_callback,
+            1)
+        
         for i in range(self.n_rover):
             self.pubsub.create_publisher(Twist, f'{self.block}/{self.robot_id_list[i]}/cmd_vel', 5)
-            self.pubsub.create_publisher(Bool, f'{self.block}/{self.robot_id_list[i]}/enable', 5)
+            self.pubsub.create_publisher(Twist, f'/sim/{self.robot_id_list[i]}/cmd_vel', 5)
             if self.heading_controller:
                 self.pubsub.create_subscription(
                     Twist,
@@ -104,40 +116,41 @@ class Demux(Node):
 
     def broadcast_callback(self, msg):
         self.broadcast = msg.data
+
+    def hw_sim_callback(self, msg):
+        self.hardware = msg.data
     
     def sel_callback(self, msg):
         self.select = msg.data
+    
+    def mode_callback(self, msg):
+        self.mode = msg.data
+        self.get_logger().info(f"MODE: {self.block}")
         
     def joy_en_callback(self,msg):
         _en = msg.data
         val = Twist()           # For selected rover
-        en_state = Bool()       # For selected rover
         empty_twist = Twist()   # For other rovers
-        false_state = Bool()    # For other rovers
         empty_twist.linear.x = 0.0
         empty_twist.angular.z = 0.0
-        false_state.data = False
+
+        val.linear.x = self.lx
+        val.angular.z = self.az
+        namespace = self.block if self.hardware else "/sim"
 
         for i in range(self.n_rover):
-            if self.broadcast:
-                en_state.data = True
-                val.linear.x = self.lx
-                val.angular.z = self.az
+            if self.mode == "NEU_M" or self.mode == "NAV_M":
+                self.pubsub.publish(f'{namespace}/{self.robot_id_list[i]}/cmd_vel', empty_twist)
+            elif self.broadcast:
                 if self.heading_controller:
                     val.angular.z = self.angular_vel[i]
-                self.pubsub.publish(f'{self.block}/{self.robot_id_list[i]}/cmd_vel', val)
-                self.pubsub.publish(f'{self.block}/{self.robot_id_list[i]}/enable', en_state)
+                self.pubsub.publish(f'{namespace}/{self.robot_id_list[i]}/cmd_vel', val)
             elif _en and self.select == i+1:
-                en_state.data = True
-                val.linear.x = self.lx
-                val.angular.z = self.az
                 if self.heading_controller:
                     val.angular.z = self.angular_vel[i]
-                self.pubsub.publish(f'{self.block}/{self.robot_id_list[i]}/cmd_vel', val)
-                self.pubsub.publish(f'{self.block}/{self.robot_id_list[i]}/enable', en_state)
+                self.pubsub.publish(f'{namespace}/{self.robot_id_list[i]}/cmd_vel', val)
             else:
-                self.pubsub.publish(f'{self.block}/{self.robot_id_list[i]}/cmd_vel', empty_twist)
-                self.pubsub.publish(f'{self.block}/{self.robot_id_list[i]}/enable', false_state)  
+                self.pubsub.publish(f'{namespace}/{self.robot_id_list[i]}/cmd_vel', empty_twist)
 
     def angular_callback(self, msg, i):
         self.angular_vel[i] = msg.angular.z
