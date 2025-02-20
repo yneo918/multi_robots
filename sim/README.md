@@ -11,11 +11,11 @@ ros2 launch rover_description pioneer.launch.py [params]
 ```
 params:  
 robot_id : string  
-x, y, theta : double
+x, y, t : double
 
 ex)  
 ```
-ros2 launch rover_description pioneer.launch.py robot_id:="p2" x:=1.0 y:=1.0 theta:=0.0
+ros2 launch rover_description pioneer.launch.py robot_id:="p2" x:=1.0 y:=1.0 t:=0.0
 ```
 Then, you change below:  
 RobotModel>Description Topic to /{robot_id}/robot_description  

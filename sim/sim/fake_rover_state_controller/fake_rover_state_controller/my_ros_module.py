@@ -1,1 +1,0 @@
-../../lib/my_ros_module.py

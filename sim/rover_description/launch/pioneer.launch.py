@@ -1,5 +1,6 @@
 import os
 import launch
+import re
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration, Command
@@ -24,8 +25,9 @@ def check_service_response(context, *args, **kwargs):
     return [service_checker]
 
 def launch_setup(context, *args, **kwargs):
+    color =  int(re.search(r'\d+', LaunchConfiguration("robot_id").perform(context)).group())%6 + 1
     pkg_share = launch_ros.substitutions.FindPackageShare(package='rover_description').find('rover_description')
-    xacro_file = os.path.join(pkg_share, 'src/description/pioneer_robot.xacro')
+    xacro_file = os.path.join(pkg_share, f'src/description/pioneer_robot{color}.xacro')
     robot_id = LaunchConfiguration("robot_id").perform(context)
 
     main_nodes = [
