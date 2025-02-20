@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 import os
 from glob import glob
 
-package_name = 'teleop_core'
+package_name = 'teleop_core_sim'
 
 setup(
     name=package_name,
@@ -23,7 +23,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'rover2_joy = teleop_core.run_joy:main',
+            'rover2_joy = teleop_core_sim.run_joy:main',
         ],
     },
 )
