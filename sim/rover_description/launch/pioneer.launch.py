@@ -24,11 +24,20 @@ def check_service_response(context, *args, **kwargs):
 
     return [service_checker]
 
+COLORS = {
+    'p1': [1.0, 0.0, 0.0],
+    'p2': [0.0, 1.0, 0.0],
+    'p3': [0.0, 0.0, 1.0],
+    'p4': [1.0, 1.0, 0.0],
+    'p5': [1.0, 0.0, 1.0],
+    'p6': [0.0, 1.0, 1.0],
+}
+
 def launch_setup(context, *args, **kwargs):
-    color =  int(re.search(r'\d+', LaunchConfiguration("robot_id").perform(context)).group())%6 + 1
     pkg_share = launch_ros.substitutions.FindPackageShare(package='rover_description').find('rover_description')
-    xacro_file = os.path.join(pkg_share, f'src/description/pioneer_robot{color}.xacro')
+    xacro_file = os.path.join(pkg_share, f'src/description/pioneer_robot.xacro')
     robot_id = LaunchConfiguration("robot_id").perform(context)
+    hw = LaunchConfiguration("hw").perform(context)
 
     main_nodes = [
         Node(
@@ -46,7 +55,8 @@ def launch_setup(context, *args, **kwargs):
                     " y:=", 
                     LaunchConfiguration("y"),
                     " t:=", 
-                    LaunchConfiguration("t")
+                    LaunchConfiguration("t"),
+                    f" r:={COLORS[robot_id][0]} g:={COLORS[robot_id][1]} b:={COLORS[robot_id][2]} a:=1.0"
                 ]),
                 "use_sim_time": LaunchConfiguration("use_sim_time"),
                 "frame_prefix": f"{robot_id}/",
@@ -67,6 +77,39 @@ def launch_setup(context, *args, **kwargs):
             arguments=["0", "0", "0", "0", "0", "0", "world", f"{robot_id}/world"],
         ),
     ]
+    if hw == 'hw':
+        main_nodes.append(
+            Node(
+                package="robot_state_publisher",
+                executable="robot_state_publisher",
+                name="state_publisher",
+                namespace=f"{robot_id}hw",
+                output="screen",
+                parameters=[{
+                    "robot_description": Command([
+                        "xacro ", 
+                        xacro_file, 
+                        " x:=", 
+                        LaunchConfiguration("x"),
+                        " y:=", 
+                        LaunchConfiguration("y"),
+                        " t:=", 
+                        LaunchConfiguration("t"),
+                        f" r:={COLORS[robot_id][0]} g:={COLORS[robot_id][1]} b:={COLORS[robot_id][2]} a:=",
+                        LaunchConfiguration("a")                    
+                    ]),
+                    "use_sim_time": LaunchConfiguration("use_sim_time"),
+                    "frame_prefix": f"{robot_id}hw/",
+                }]
+            )
+        )
+        main_nodes.append(
+            Node(
+                package="tf2_ros",
+                executable="static_transform_publisher",
+                arguments=["0", "0", "0", "0", "0", "0", "world", f"{robot_id}hw/world"],
+            ),
+        )
     return main_nodes
 
 def generate_launch_description():
@@ -75,6 +118,8 @@ def generate_launch_description():
         DeclareLaunchArgument("x", default_value="0.0", description="X position"),
         DeclareLaunchArgument("y", default_value="0.0", description="Y position"),
         DeclareLaunchArgument("t", default_value="0.0", description="Theta"),
+        DeclareLaunchArgument("a", default_value="1.0", description="Transparency"),
+        DeclareLaunchArgument("hw", default_value="", description="Transparency"),
         DeclareLaunchArgument("use_sim_time", default_value="True", description="Flag to enable use_sim_time"),
 
         OpaqueFunction(function=check_service_response),

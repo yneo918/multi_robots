@@ -9,8 +9,7 @@ def generate_launch_description():
     # パッケージ名と呼び出すLaunchファイルのパスを取得
     pkg_name = 'rover_description'
     display_launch_file = os.path.join(get_package_share_directory(pkg_name), 'launch', 'display_with_sim.launch.py')
-    pioneer_launch_file = os.path.join(get_package_share_directory(pkg_name), 'launch', 'pioneer.launch.py')
-    teleop_launch_file = os.path.join(get_package_share_directory("teleop_core"), 'teleop_node_multi.launch.py')
+    teleop_launch_file = os.path.join(get_package_share_directory("teleop_core"), 'gui.launch.py')
     
     return LaunchDescription([
         # 別のLaunchファイルを含める

@@ -27,6 +27,7 @@ setup(
             'multirover2_joy = teleop_core.run_joy_multi:main',
             'joy2cmd = teleop_core.run_joy_cmd:main',
             'cmd_demux = teleop_core.demux:main',
+            'joywithgui = teleop_core.run_joy_with_gui:main',
         ],
     },
 )

@@ -28,6 +28,7 @@ class JointStates(Node):
         #self.pubsub.create_publisher(JointState, 'joint_states', 10)
 
         self.positions = {}
+        self.positions_hw = {}
         self.vels = {}
         self.joint_names = ['w_to_x', 'x_to_y', 'y_to_t']
         
@@ -70,8 +71,19 @@ class JointStates(Node):
             pose_msg.theta = self.positions[key]['theta']
             self.pubsub.publish(f'/{key}/pose2D', pose_msg)
 
+            jointstates_msg.name = [f'{joint_name}' for joint_name in self.joint_names]
+            jointstates_msg.position = [
+                self.positions_hw[key]['x'], self.positions_hw[key]['y'], self.positions_hw[key]['theta']
+            ]
+            self.pubsub.publish(f'/{key}hw/joint_states', jointstates_msg)
+
     def teleop_callback(self, msg, robot_name):
         self.update_vel(robot_name, msg.linear.x, msg.angular.z)
+
+    def ghost_callback(self, msg, robot_name):
+        self.positions_hw[robot_name]['x'] = msg.x
+        self.positions_hw[robot_name]['y'] = msg.y
+        self.positions_hw[robot_name]['theta'] = msg.theta
     
     def robot_register_callback(self, msg):
         self.positions.update({msg.robot_id: {'x': msg.pose.x, 'y': msg.pose.y, 'theta': msg.pose.theta}})
@@ -80,6 +92,9 @@ class JointStates(Node):
         self.pubsub.create_subscription(Twist, f'/sim/{msg.robot_id}/cmd_vel', lambda msg, name=msg.robot_id: self.teleop_callback(msg, name), 10)
         self.pubsub.create_publisher(JointState, f'/{msg.robot_id}/joint_states', 10)
         self.pubsub.create_publisher(Pose2D, f'/{msg.robot_id}/pose2D', 10)
+        self.positions_hw.update({msg.robot_id: {'x': msg.pose.x, 'y': msg.pose.y, 'theta': msg.pose.theta}})
+        self.pubsub.create_subscription(Pose2D, f'/{msg.robot_id}/pose2d', lambda msg, name=msg.robot_id: self.ghost_callback(msg, name), 10)
+        self.pubsub.create_publisher(JointState, f'/{msg.robot_id}hw/joint_states', 10)
     
     def robot_remove_callback(self, msg):
         self.positions.pop(msg.robot_id)
