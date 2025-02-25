@@ -125,7 +125,7 @@ class Demux(Node):
     
     def mode_callback(self, msg):
         self.mode = msg.data
-        self.get_logger().info(f"MODE: {self.block}")
+        #self.get_logger().info(f"MODE: {self.block}")
         
     def joy_en_callback(self,msg):
         _en = msg.data
