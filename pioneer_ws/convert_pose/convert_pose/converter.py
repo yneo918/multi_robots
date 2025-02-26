@@ -9,6 +9,7 @@ from std_msgs.msg import Int16
 
 import datetime
 import os
+from math import sin, cos, asin, atan2, sqrt, degrees, pi, radians
 
 
 class PoseConverter(Node):
@@ -27,7 +28,7 @@ class PoseConverter(Node):
         self.create_subscription(
             Quaternion,
             f"/{self.robot_id}/imu/quaternion",
-            self.quaternion_callback
+            self.quaternion_callback,
             1)
         self.create_subscription(
             Float32MultiArray,
@@ -56,11 +57,23 @@ class PoseConverter(Node):
     
     def timer_callback(self):
         msg = Pose2D()
-        msg.x = self.lat
-        msg.y = self.lon
+        msg.x, msg.y = self.convert_gps_to_pose(self.lat, self.lon, self.ref_lat, self.ref_lon)
         msg.theta = self.euler_x
         self.pose_publisher.publish(msg)
         self.get_logger().info(f"Published: {msg.x}, {msg.y}, {msg.theta}")
+    
+    def convert_gps_to_pose(self, cur_lat, cur_lon, ref_lat, ref_lon):
+        R = 6371000
+        
+        delta_lat = radians(cur_lat - ref_lat)
+        delta_lon = radians(cur_lon - ref_lon)
+        
+        ref_lat_rad = radians(ref_lat)
+        
+        x = R * delta_lon * cos(ref_lat_rad)
+        y = R * delta_lat
+        
+        return x, y
 
 def main(args=None):
     rclpy.init(args=args)
