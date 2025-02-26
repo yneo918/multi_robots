@@ -19,6 +19,12 @@ class PoseConverter(Node):
         # Temporary values / Garage
         self.ref_lat = -121.94158
         self.ref_lon = 37.35232
+        self.lat = None
+        self.lon = None
+        self.gps_status = None
+        self.quaternion = None
+        self.euler_x = None
+
 
         self.create_subscription(
             NavSatFix,
@@ -56,6 +62,9 @@ class PoseConverter(Node):
         self.euler_z = msg.data[2]
     
     def timer_callback(self):
+        if self.lat is None or self.lon is None or self.quaternion is None or self.euler_x is None:
+            self.get_logger().info("Not all data available")
+            return
         msg = Pose2D()
         msg.x, msg.y = self.convert_gps_to_pose(self.lat, self.lon, self.ref_lat, self.ref_lon)
         msg.theta = self.euler_x
