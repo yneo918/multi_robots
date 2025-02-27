@@ -90,7 +90,7 @@ class JointStates(Node):
         self.get_logger().info(f'Received request: Register / {msg.robot_id}')
         self.pubsub.create_subscription(Twist, f'/sim/{msg.robot_id}/cmd_vel', lambda msg, name=msg.robot_id: self.teleop_callback(msg, name), 10)
         self.pubsub.create_publisher(JointState, f'/{msg.robot_id}/joint_states', 10)
-        self.pubsub.create_publisher(Pose2D, f'/{msg.robot_id}/pose2D', 10)
+        self.pubsub.create_publisher(Pose2D, f'/sim/{msg.robot_id}/pose2D', 10)
 
         self.positions_hw.update({msg.robot_id: {'x': msg.pose.x, 'y': msg.pose.y, 'theta': msg.pose.theta}})
         self.pubsub.create_subscription(Pose2D, f'/{msg.robot_id}/pose2D', lambda msg, name=msg.robot_id: self.ghost_callback(msg, name), 10)

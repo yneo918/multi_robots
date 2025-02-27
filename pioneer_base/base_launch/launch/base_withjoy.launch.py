@@ -35,7 +35,7 @@ def generate_launch_description():
     auto_nav_p5 = Node(
         package="auto_nav_core",
         executable="auto_nav",
-        name="auto_nav_p5",
+        name="auto_nav_p4",
         parameters=[{"robot_id": "p5"}]
     )
 

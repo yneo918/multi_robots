@@ -44,7 +44,7 @@ class GetMoveCmds(Node):
         az = msg.angular.z
 
         # [EDIT THE TWO LINES BELOW] Calculate control signals based on 'linear_x' and 'angular_z' values 
-        vel_left  = int(self.max_vel*(lx - 2.0*az*0.32)/(0.111*2*pi))
+        vel_left  =  -int(self.max_vel*(lx - 2.0*az*0.32)/(0.111*2*pi))
         vel_right = int(self.max_vel*(lx + 2.0*az*0.32)/(0.111*2*pi))
 
         # construct payload with left & rigth velocities 
