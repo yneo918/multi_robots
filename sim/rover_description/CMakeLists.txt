@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(sim_env)
+project(rover_description)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)

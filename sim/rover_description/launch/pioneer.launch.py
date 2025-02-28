@@ -34,7 +34,7 @@ COLORS = {
 }
 
 def launch_setup(context, *args, **kwargs):
-    pkg_share = launch_ros.substitutions.FindPackageShare(package='sim_env').find('sim_env')
+    pkg_share = launch_ros.substitutions.FindPackageShare(package='rover_description').find('rover_description')
     xacro_file = os.path.join(pkg_share, f'src/description/pioneer_robot.xacro')
     robot_id = LaunchConfiguration("robot_id").perform(context)
     hw = LaunchConfiguration("hw").perform(context)

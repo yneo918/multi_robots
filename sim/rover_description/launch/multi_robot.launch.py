@@ -9,7 +9,7 @@ from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
     # パッケージディレクトリを取得
-    pkg_share = launch_ros.substitutions.FindPackageShare(package='sim_env').find('sim_env')
+    pkg_share = launch_ros.substitutions.FindPackageShare(package='rover_description').find('rover_description')
 
     # Xacroファイルのパス
     xacro_file = os.path.join(pkg_share, 'src/description/pioneer_multi_robot.xacro')

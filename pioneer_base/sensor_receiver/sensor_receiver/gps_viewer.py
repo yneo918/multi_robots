@@ -1,5 +1,5 @@
 import matplotlib
-matplotlib.use('Qt5Agg')  
+matplotlib.use('Qt5Agg')  # Qt用のバックエンドを使用
 
 import rclpy
 from rclpy.node import Node
@@ -20,8 +20,8 @@ class GPSPlotter(Node):
             '/p4': self.create_subscription(NavSatFix, '/p4/gps1', self.listener_callback_factory('/p4'), 10)
         }
         self.proj = pyproj.Proj(proj='utm', zone=54, ellps='WGS84', south=False)
-        self.trackers = {}  
-        self.origin_x, self.origin_y = None, None  
+        self.trackers = {}  # 複数のトピックを個別に管理
+        self.origin_x, self.origin_y = None, None  # 共通の基準点
         self.init_plot()
 
     def listener_callback_factory(self, topic_name):
@@ -32,7 +32,7 @@ class GPSPlotter(Node):
                 return 
             
             if self.origin_x is None or self.origin_y is None:
-                self.origin_x, self.origin_y = x, y
+                self.origin_x, self.origin_y = x, y  # 最初に受信した座標を共通の原点に設定
             
             if topic_name not in self.trackers:
                 self.trackers[topic_name] = {'x_data': [], 'y_data': [], 'plot_line': None}
@@ -40,8 +40,8 @@ class GPSPlotter(Node):
                 self.ax.legend()
             
             tracker = self.trackers[topic_name]
-            rel_x = x - self.origin_x
-            rel_y = y - self.origin_y
+            rel_x = x - self.origin_x  # 東が+ 西が-
+            rel_y = y - self.origin_y  # 北が+ 南が-
             
             tracker['x_data'].append(rel_x)
             tracker['y_data'].append(rel_y)
