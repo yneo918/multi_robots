@@ -54,6 +54,32 @@ class Cluster():
     def calculateLinearControl(self):
         return self.cdddes + np.dot(self.Kv, (self.cddes - self.cd)) + np.dot(self.Kp, (self.cdes - self.c))
 
+    def getDesiredClusterPosition(self):
+        c_sym = sp.symbols('c0:9')
+        subs_dict = {c_sym[i]: self.cdes[i, 0] for i in range(len(c_sym))} #map symbols to values
+        rd = np.array(self.IKine.subs(subs_dict).evalf()).astype(np.float64)
+        return rd
+    
+    def getPositionalError(self):
+        c_err = self.cdes - self.c
+        c_sym = sp.symbols('c0:9')
+        subs_dict = {c_sym[i]: c_err[i, 0] for i in range(len(c_sym))} #map symbols to values
+        rd = np.array(self.IKine.subs(subs_dict).evalf()).astype(np.float64)
+        return rd
+
+    def testTransforms(self, r):
+        r_sym = sp.symbols('r0:9')
+        subs_dict = {r_sym[i]: r[i, 0] for i in range(len(r_sym))} #map symbols to values
+        subs_dict[sp.symbols('0c')] = 0 #pass in dummy
+
+        c = np.array(self.FKine.subs(subs_dict).evalf()).astype(np.float64)
+        
+        c_sym = sp.symbols('c0:9')
+        subs_dict = {c_sym[i]: c[i, 0] for i in range(len(c_sym))} #map symbols to values
+        r = np.array(self.IKine.subs(subs_dict).evalf()).astype(np.float64)
+
+        return c, r
+
     def updateClusterPosition(self, r, rd):
         r_sym = sp.symbols('r0:9')
         subs_dict = {r_sym[i]: r[i, 0] for i in range(len(r_sym))} #map symbols to values

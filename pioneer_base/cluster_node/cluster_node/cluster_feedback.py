@@ -30,7 +30,7 @@ class ClusterFeedbackNode(Node):
         self.reference_lon = self.get_parameter('reference_lon').value
         self.plotSize = 10.0
         self.pubsub = PubSubManager(self)
-        self.gps_positions = [[self.reference_lat, self.reference_lon],[self.reference_lat+math.pow(10, -4), self.reference_lon-math.pow(10, -4)],[self.reference_lat+math.pow(10, -4), self.reference_lon+math.pow(10, -4)]]  # Initialize GPS positions
+        self.gps_positions = [[self.reference_lat, self.reference_lon],[self.reference_lat-math.pow(10, -4), self.reference_lon-math.pow(10, -4)],[self.reference_lat-math.pow(10, -4), self.reference_lon+math.pow(10, -4)]]  # Initialize GPS positions
         self.xy_positions = self.calculate_xy_positions()
         self.velocities = {robot_id: (0.0, 0.0) for robot_id in self.robot_id_list}  # Initialize velocities
         
@@ -99,7 +99,7 @@ class ClusterFeedbackNode(Node):
     def cmd_vel_callback(self, msg, robot_id):
         # Update the velocity for the given robot
         self.velocities[robot_id] = (msg.linear.x, msg.linear.y)
-        self.get_logger().info(f"Updated velocities for {robot_id}: Linear X: {msg.linear.x}, Linear Y: {msg.linear.y}")
+        #self.get_logger().info(f"Updated velocities for {robot_id}: Linear X: {msg.linear.x}, Linear Y: {msg.linear.y}")
 
     def publish_feedback(self):
         #self.get_logger().info(f"Updated XY position for {self.robot_id_list[0]}: {self.xy_positions[0]}")
