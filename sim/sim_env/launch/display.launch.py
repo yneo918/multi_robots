@@ -9,10 +9,10 @@ from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
     # パッケージディレクトリを取得
-    pkg_share = launch_ros.substitutions.FindPackageShare(package='rover_description').find('rover_description')
+    pkg_share = launch_ros.substitutions.FindPackageShare(package='sim_env').find('sim_env')
 
     # RViz設定ファイルのパス
-    default_rviz_config_path = os.path.join(pkg_share, 'rviz/cluster3.rviz')
+    default_rviz_config_path = os.path.join(pkg_share, 'rviz/urdf_config.rviz')
 
     return LaunchDescription([
         # RVizの設定ファイルパスを指定
@@ -28,17 +28,5 @@ def generate_launch_description():
             name="rviz2",
             output="screen",
             arguments=['-d', LaunchConfiguration('rvizconfig')],
-        ),
-        Node(
-            package="register_service",
-            executable="register_service",
-            name="robot_register_server",
-            output="screen",
-        ),
-        Node(
-            package="fake_rover_state_controller",
-            executable="rover_sim",
-            name="rover_sim",
-            output="screen",
         ),
     ])

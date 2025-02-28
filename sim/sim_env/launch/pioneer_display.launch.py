@@ -4,7 +4,7 @@ import launch_ros
 import os
 
 def generate_launch_description():
-    pkg_share = launch_ros.substitutions.FindPackageShare(package='rover_description').find('rover_description')
+    pkg_share = launch_ros.substitutions.FindPackageShare(package='sim_env').find('sim_env')
     default_model_path = os.path.join(pkg_share, 'src/description/pioneer_base.urdf')
     default_rviz_config_path = os.path.join(pkg_share, 'rviz/urdf_config.rviz')
     
