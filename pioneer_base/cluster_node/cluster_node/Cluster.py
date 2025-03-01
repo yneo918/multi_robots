@@ -16,11 +16,13 @@ class ClusterConfig(Enum):
 
 class Cluster():
     #Create a cluster with a set number of robots in a specific configuration with initial parameters
-    def __init__(self, numRobots=3, clusterType=ClusterConfig.TRIANGLE, clusterParams=[20, 20, math.pi/2], KPgains=None, KVgains=None):
+    def __init__(self, numRobots=3, clusterType=ClusterConfig.TRIANGLE, clusterParams=[10, 10, math.pi/3], KPgains=None, KVgains=None):
         #cluster control variables DOF which is assumed 3
         self.cdes = np.zeros((numRobots*3, 1))
         #self.cdes[0:2] = np.array([10, 10]).reshape(2, 1)
         self.cdes[(numRobots-1)*3:(numRobots)*3] = np.reshape(clusterParams, (numRobots, 1))
+        self.cdes[0] = 20
+        self.cdes[1] = 20
         self.cddes = np.zeros((numRobots*3, 1)) 
         self.cdddes = np.zeros((numRobots*3, 1)) 
 
@@ -52,18 +54,12 @@ class Cluster():
         return rd
 
     def calculateLinearControl(self):
-        return self.cdddes + np.dot(self.Kv, (self.cddes - self.cd)) + np.dot(self.Kp, (self.cdes - self.c))
+        #return self.cdddes + np.dot(self.Kv, (self.cddes - self.cd)) + np.dot(self.Kp, (self.cdes - self.c))
+        return np.dot(self.Kp, (self.cdes - self.c))
 
     def getDesiredClusterPosition(self):
         c_sym = sp.symbols('c0:9')
         subs_dict = {c_sym[i]: self.cdes[i, 0] for i in range(len(c_sym))} #map symbols to values
-        rd = np.array(self.IKine.subs(subs_dict).evalf()).astype(np.float64)
-        return rd
-    
-    def getPositionalError(self):
-        c_err = self.cdes - self.c
-        c_sym = sp.symbols('c0:9')
-        subs_dict = {c_sym[i]: c_err[i, 0] for i in range(len(c_sym))} #map symbols to values
         rd = np.array(self.IKine.subs(subs_dict).evalf()).astype(np.float64)
         return rd
 
@@ -101,7 +97,7 @@ class Cluster():
             #Derived FKine equations for cluster space configuration
             x_c = (r_sym[0] + r_sym[3] + r_sym[6]) / 3
             y_c = (r_sym[1] + r_sym[4] + r_sym[7]) / 3
-            theta_c = sp.atan2(2 / 3 * r_sym[0] - 1 / 3 * (r_sym[3] - r_sym[6]), 2 / 3 * r_sym[1] - 1 / 3 * (r_sym[4] + r_sym[7]))
+            theta_c = sp.atan2(2 / 3 * r_sym[0] - 1 / 3 * (r_sym[3] + r_sym[6]), 2 / 3 * r_sym[1] - 1 / 3 * (r_sym[4] + r_sym[7]))
             phi1 = r_sym[2] + theta_C
             phi2 = r_sym[5] + theta_C
             phi3 = r_sym[8] + theta_C
@@ -117,13 +113,13 @@ class Cluster():
             r = sp.sqrt((c_sym[7]+c_sym[6]*sp.cos(c_sym[8]))**2 + (c_sym[6]*sp.sin(c_sym[8]))**2)
             #Derived IKine equations for cluster space configuration
             x_1 = c_sym[0] + 1/3 * r * sp.sin(c_sym[2])
-            y_1 = c_sym[1] - 1/3 * r * sp.cos(c_sym[2])
+            y_1 = c_sym[1] + 1/3 * r * sp.cos(c_sym[2])
             theta_1 = c_sym[3] - c_sym[2]
             x_2 = c_sym[0] + 1/3 * r * sp.sin(c_sym[2]) - c_sym[6] * sp.sin(c_sym[8]/2 + c_sym[2])
-            y_2 = c_sym[1] - 1/3 * r * sp.cos(c_sym[2]) - c_sym[6] * sp.cos(c_sym[8]/2 + c_sym[2])
+            y_2 = c_sym[1] + 1/3 * r * sp.cos(c_sym[2]) - c_sym[6] * sp.cos(c_sym[8]/2 + c_sym[2])
             theta_2 = c_sym[4] - c_sym[2]
-            x_3 = c_sym[0] + 1/3 * r * sp.sin(c_sym[2]) + c_sym[7] * sp.sin(c_sym[8]/2 + c_sym[2])
-            y_3 = c_sym[1] - 1/3 * r * sp.cos(c_sym[2]) - c_sym[7] * sp.cos(c_sym[8]/2 + c_sym[2])
+            x_3 = c_sym[0] + 1/3 * r * sp.sin(c_sym[2]) + c_sym[7] * sp.sin(c_sym[8]/2 - c_sym[2])
+            y_3 = c_sym[1] + 1/3 * r * sp.cos(c_sym[2]) - c_sym[7] * sp.cos(c_sym[8]/2 - c_sym[2])
             theta_3 = c_sym[5] - c_sym[2]
             self.IKine = sp.Matrix([[x_1], [y_1], [theta_1], [x_2], [y_2], [theta_2], [x_3], [y_3], [theta_3]])
             #print("Inverse Kinematics Equations:")

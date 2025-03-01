@@ -178,10 +178,8 @@ class ClusterNode(Node):
             x, y = self.gps_to_xy(self.world_frame.latitude, self.world_frame.longitude, msg.latitude, msg.longitude)
             self.r[cluster_index*3:(cluster_index*3+2), 0] = [x, y] #update robot position in array
             #self.get_logger().info(f"Actual robot positions {self.r} Desired cluster position: {self.cluster.getDesiredClusterPosition()}")
-            #self.get_logger().info(f"Velocity cmd from cluster: {self.cluster.getVelocityCommand(self.r , self.rd)}")
-            #self.get_logger().info(f"Positional error: {self.cluster.getPositionalError()}")
-            temp_c, temp_r = self.cluster.testTransforms(self.r)
-            self.get_logger().info(f"Test transforms before: {self.r} cluster: {temp_c} robot: {temp_r}")
+            #temp_c, temp_r = self.cluster.testTransforms(self.r)
+            #self.get_logger().info(f"Test transforms before: {self.r} cluster: {temp_c} robot: {temp_r}")
     def sim_callback(self, msg, i):
         if self.listeningForRobots:
             self.checkRobotId(i, "sim")
@@ -205,10 +203,15 @@ class ClusterNode(Node):
     def publish_velocities(self):
         if self.output == "actual":
             rd = self.cluster.getVelocityCommand(self.r , self.rd)
+            self.get_logger().info(f"Velocity cmd from cluster: {rd}")
+            self.get_logger().info(f"Actual robot positions {self.r} Desired cluster position: {self.cluster.getDesiredClusterPosition()}")
+            self.get_logger().info(f"Calculated error {self.cluster.getDesiredClusterPosition() - self.r}")
+            #self.get_logger().info(f"Velocity command {rd}")
             for i in range(len(self.cluster_robots)):
                 vel = Twist()
                 vel.linear.x = float(rd[i*3+0, 0])
                 vel.linear.y = float(rd[i*3+1, 0])
+                #self.get_logger().info(f"Velocity vector {vel} for robot {i}")
                 self.pubsub.publish(f'{self.robot_id_list[self.cluster_robots[i]]}/cmd_vel', vel)
         elif self.output == "sim":
             rd = self.sim_cluster.getVelocityCommand(self.sim_r , self.sim_rd)
