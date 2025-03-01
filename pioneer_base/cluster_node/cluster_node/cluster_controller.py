@@ -192,20 +192,26 @@ class ClusterNode(Node):
 
     #Velocity command from the joystick to be sent to the cluster
     def joycmd_callback(self, msg):
-        vel = [msg.linear.x, msg.linear.y, msg.angular.z]
         if not self.listeningForRobots:
             if self.output == "actual":
-                self.cluster.cdes[0:3]+= vel        
+                clusterAngle = self.cluster.c[2]
+                vel = [msg.linear.x*math.cos(clusterAngle), msg.linear.x*math.sin(clusterAngle), msg.angular.z*0.25] #scale turning to slow it
+                self.cluster.cdes[0:3, 0]+= vel 
+                #self.cluster.cdes[2] = self.cluster.cdes[2]%math.pi    
+                self.get_logger().info(f"Updated cluster desired position to {self.cluster.cdes[0:3, 0]} actual: {self.cluster.c[0:3, 0]}")   
             elif self.output == "sim":
-                self.sim_cluster.cdes[0:3] += vel
+                clusterAngle = self.sim_cluster.c[2]
+                vel = [msg.linear.x*math.cos(clusterAngle), msg.linear.x*math.sin(clusterAngle), msg.angular.z*0.25] #scale turning to slow it
+                self.sim_cluster.cdes[0:3, 0] += vel
+                #self.sim_cluster.cdes[2] = self.sim_cluster.cdes[2]%math.pi  
 
     #Publishes velocity commands to robots
     def publish_velocities(self):
         if self.output == "actual":
             rd = self.cluster.getVelocityCommand(self.r , self.rd)
-            self.get_logger().info(f"Velocity cmd from cluster: {rd}")
-            self.get_logger().info(f"Actual robot positions {self.r} Desired cluster position: {self.cluster.getDesiredClusterPosition()}")
-            self.get_logger().info(f"Calculated error {self.cluster.getDesiredClusterPosition() - self.r}")
+            #self.get_logger().info(f"Velocity cmd from cluster: {rd}")
+            #self.get_logger().info(f"Actual robot positions {self.r} Desired cluster position: {self.cluster.getDesiredClusterPosition()}")
+            #self.get_logger().info(f"Calculated error {self.cluster.getDesiredClusterPosition() - self.r}")
             #self.get_logger().info(f"Velocity command {rd}")
             for i in range(len(self.cluster_robots)):
                 vel = Twist()
