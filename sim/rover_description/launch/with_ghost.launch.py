@@ -44,4 +44,10 @@ def generate_launch_description():
                 'a': '0.2'
             }.items()  # 引数を渡す場合
         ),
+        Node(
+            package='reference_srv',
+            executable='gps_reference_server',
+            name='gps_reference_server',
+            output='screen',
+        )
     ])
