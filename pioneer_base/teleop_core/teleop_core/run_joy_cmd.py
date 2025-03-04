@@ -123,7 +123,7 @@ class JoyCmd(JoyBase):
 
         if msg.buttons[self.en_buttonN] == 1:
             en_state.data = True
-            val.linear.x = j_lx
+            val.linear.x = 0.5*j_lx
             val.angular.z = 0.4*j_az
             self.pubsub.publish('/joy/cmd_vel', val)
             self.pubsub.publish('/joy/enable', en_state)
