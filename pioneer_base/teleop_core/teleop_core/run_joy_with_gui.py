@@ -84,6 +84,7 @@ class JoyCmd(JoyBase):
         _toggle = self.joy_toggle(msg)
         j_lx = msg.axes[self.lx_axisN]
         j_az = msg.axes[self.az_axisN]
+        self.get_logger().info(f"lx: {j_lx}, az: {j_az}, stick: {msg.axes[0]}, {msg.axes[1]}, {msg.axes[2]}, {msg.axes[3]}")
 
         val = Twist()         # 選択されたローバーへ送信するTwistメッセージ
         en_state = Bool()     # 選択されたローバーの有効状態

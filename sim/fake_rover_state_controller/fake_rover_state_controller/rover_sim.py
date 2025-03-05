@@ -68,7 +68,7 @@ class JointStates(Node):
             pose_msg.x = self.positions[key]['x']
             pose_msg.y = self.positions[key]['y']
             pose_msg.theta = self.positions[key]['theta']
-            self.pubsub.publish(f'/{key}/pose2D', pose_msg)
+            self.pubsub.publish(f'/sim/{key}/pose2D', pose_msg)
 
             jointstates_msg.name = [f'{joint_name}' for joint_name in self.joint_names]
             jointstates_msg.position = [
