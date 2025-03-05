@@ -139,8 +139,10 @@ class Demux(Node):
         namespace = self.block if self.hardware else "/sim"
 
         for i in range(self.n_rover):
-            if self.mode == "NEU_M" or self.mode == "NAV_M":
+            if self.mode == "NEU_M":
                 self.pubsub.publish(f'{namespace}/{self.robot_id_list[i]}/cmd_vel', empty_twist)
+            elif self.mode == "NAV_M":
+                pass
             elif self.broadcast:
                 if self.heading_controller:
                     val.angular.z = self.angular_vel[i]

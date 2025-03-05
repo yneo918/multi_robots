@@ -1,9 +1,14 @@
 # Simulator
 ## How to use
-### Display
+### Display and simulation
 ```
-ros2 launch rover_description display_with_sim.launch.py
+ros2 launch rover_description sim.launch.py
 ```
+### 3 Rover with HW
+```
+ros2 launch rover_description with_ghost.launch.py [params]
+```
+
 ### Rover
 One per unit to be activated.
 ```

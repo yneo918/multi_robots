@@ -57,12 +57,15 @@ class PoseConverter(Node):
         
         self.req = RefGPS.Request()
         self.req.robot_id = self.robot_id
-        self.future = self.cli.call_async(self.req)
-        self.future.add_done_callback(self.srv_callback)
-        self.get_logger().info(f'[{self.req.robot_id}]Sent request for reference GPS')
+        self.request_reference_gps()
 
         timer_period = 1.0  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
+    
+    def request_reference_gps(self):
+        self.future = self.cli.call_async(self.req)
+        self.future.add_done_callback(self.srv_callback)
+        self.get_logger().info(f'[{self.req.robot_id}]Sent request for reference GPS')
     
     def srv_callback(self, future):
         self.ref_lat = future.result().gps.latitude
@@ -85,6 +88,7 @@ class PoseConverter(Node):
     def timer_callback(self):
         if self.ref_lat is None or self.ref_lon is None:
             self.get_logger().info("Reference GPS not set")
+            self.request_reference_gps()
             return
         if self.lat is None or self.lon is None or self.quaternion is None or self.euler_x is None:
             self.get_logger().info("Not all data available")

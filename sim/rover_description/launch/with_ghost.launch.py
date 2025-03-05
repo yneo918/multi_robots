@@ -6,7 +6,6 @@ import os
 from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
-    # パッケージ名と呼び出すLaunchファイルのパスを取得
     pkg_name = 'rover_description'
     pioneer_launch_file = os.path.join(get_package_share_directory(pkg_name), 'launch', 'pioneer.launch.py')
     
@@ -20,7 +19,7 @@ def generate_launch_description():
                 't': '0.0',
                 'hw': 'hw',
                 'a': '0.2'
-            }.items()  # 引数を渡す場合
+            }.items()
         ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(pioneer_launch_file),
@@ -31,7 +30,7 @@ def generate_launch_description():
                 't': '1.0',
                 'hw': 'hw',
                 'a': '0.2'
-            }.items()  # 引数を渡す場合
+            }.items()
         ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(pioneer_launch_file),
@@ -42,6 +41,12 @@ def generate_launch_description():
                 't': '-1.0',
                 'hw': 'hw',
                 'a': '0.2'
-            }.items()  # 引数を渡す場合
+            }.items()
         ),
+        Node(
+            package='reference_srv',
+            executable='gps_reference_server',
+            name='gps_reference_server',
+            output='screen',
+        )
     ])
