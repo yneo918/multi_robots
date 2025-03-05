@@ -19,10 +19,11 @@ $ echo "export ROBOT_ID=p2" >> ~/.bashrc
 ### Install GPS and IMU drivers
 Please install drivers and enable I2C by raspi-config.
 ``` 
+$ cd scripts
 $ sudo chmod +x scripts/install.sh
 $ ./install.sh
 ```
-After running above, please set up start-up service
+After running above, please set up start-up service.Before running it, please read scripts/README.md and set variables.
 ```
 $ ./setup.sh
 ```
