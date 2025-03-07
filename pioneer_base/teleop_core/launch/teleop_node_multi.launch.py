@@ -18,6 +18,9 @@ from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
     ld = LaunchDescription()
+    package_name = "teleop_core"
+    pkg_share = get_package_share_directory(package_name)
+    param_dir = os.path.join(pkg_share, "config")
     
     # Nodes
     run_joy_node = Node(
@@ -28,13 +31,13 @@ def generate_launch_description():
     joy_to_cmd_vel = Node(
         package="teleop_core",
         executable="joy2cmd",
-        parameters=["pioneer_base/teleop_core/config/joy-assign.yaml"],
+        parameters=[os.path.join(param_dir, "joy-assign.yaml")],
     )
 
     demux = Node(
         package="teleop_core",
         executable="cmd_demux",
-        parameters=["pioneer_base/teleop_core/config/demux.yaml"],
+        parameters=[os.path.join(param_dir, "demux.yaml")],
     )
 
     

@@ -8,22 +8,6 @@ import launch_ros
 from launch_ros.actions import Node, PushRosNamespace
 from ament_index_python.packages import get_package_share_directory
 
-def check_service_response(context, *args, **kwargs):
-    service_checker = Node(
-        package='register_service',
-        executable='register_service_req',
-        name='service_checker',
-        output='screen',
-        parameters=[{
-            'robot_id': LaunchConfiguration('robot_id'),
-            'x': LaunchConfiguration('x'),
-            'y': LaunchConfiguration('y'),
-            'theta': LaunchConfiguration('t')
-        }]  
-    )
-
-    return [service_checker]
-
 COLORS = {
     'p1': [1.0, 0.0, 0.0],
     'p2': [0.0, 1.0, 0.0],
@@ -38,6 +22,10 @@ def launch_setup(context, *args, **kwargs):
     xacro_file = os.path.join(pkg_share, f'src/description/pioneer_robot.xacro')
     robot_id = LaunchConfiguration("robot_id").perform(context)
     hw = LaunchConfiguration("hw").perform(context)
+    x = float(LaunchConfiguration("x").perform(context))
+    y = float(LaunchConfiguration("y").perform(context))
+    t = float(LaunchConfiguration("t").perform(context))
+
 
     main_nodes = [
         Node(
@@ -50,12 +38,6 @@ def launch_setup(context, *args, **kwargs):
                 "robot_description": Command([
                     "xacro ", 
                     xacro_file, 
-                    " x:=", 
-                    LaunchConfiguration("x"),
-                    " y:=", 
-                    LaunchConfiguration("y"),
-                    " t:=", 
-                    LaunchConfiguration("t"),
                     f" r:={COLORS[robot_id][0]} g:={COLORS[robot_id][1]} b:={COLORS[robot_id][2]} a:=1.0"
                 ]),
                 "use_sim_time": LaunchConfiguration("use_sim_time"),
@@ -63,18 +45,21 @@ def launch_setup(context, *args, **kwargs):
             }]
         ),
         Node(
-            package='register_service',
-            executable='remove_service_req',
-            name='robot_remove_request',
-            output='screen',
-            parameters=[{
-                'robot_id': LaunchConfiguration('robot_id')
-            }]
-        ),
-        Node(
             package="tf2_ros",
             executable="static_transform_publisher",
             arguments=["0", "0", "0", "0", "0", "0", "world", f"{robot_id}/world"],
+        ),
+        Node(
+            package='fake_rover_state_controller',
+            executable='rover_sim',
+            name='rover_sim',
+            output='screen',
+            parameters=[{
+                'robot_id': robot_id,
+                'x': x,
+                'y': y,
+                't': t,
+            }]
         ),
     ]
     if hw == 'hw':
@@ -89,12 +74,6 @@ def launch_setup(context, *args, **kwargs):
                     "robot_description": Command([
                         "xacro ", 
                         xacro_file, 
-                        " x:=", 
-                        LaunchConfiguration("x"),
-                        " y:=", 
-                        LaunchConfiguration("y"),
-                        " t:=", 
-                        LaunchConfiguration("t"),
                         f" r:={COLORS[robot_id][0]} g:={COLORS[robot_id][1]} b:={COLORS[robot_id][2]} a:=",
                         LaunchConfiguration("a")                    
                     ]),
@@ -122,6 +101,5 @@ def generate_launch_description():
         DeclareLaunchArgument("hw", default_value="", description="Transparency"),
         DeclareLaunchArgument("use_sim_time", default_value="True", description="Flag to enable use_sim_time"),
 
-        OpaqueFunction(function=check_service_response),
         OpaqueFunction(function=launch_setup),
     ])
