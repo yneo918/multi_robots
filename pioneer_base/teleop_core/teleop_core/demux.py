@@ -87,7 +87,7 @@ class Demux(Node):
             1)
         self.pubsub.create_subscription(
             String,
-            '/modeC',
+            '/mode',
             self.mode_callback,
             1)
         

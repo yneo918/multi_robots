@@ -1,7 +1,7 @@
 ## Usage
 ### Run Joypad node for multi pioneers
 ```
-$ ros2 launch teleop_core teleop_node_multi.launch.py
+$ ros2 launch teleop_core gui.launch.py
 ```
 You can set robot id in config/demux.yaml.
 

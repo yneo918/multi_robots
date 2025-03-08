@@ -59,7 +59,7 @@ class PoseConverter(Node):
         self.req.robot_id = self.robot_id
         self.request_reference_gps()
 
-        timer_period = 1.0  # seconds
+        timer_period = 0.1  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
     
     def request_reference_gps(self):
