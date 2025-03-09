@@ -21,8 +21,6 @@ class Cluster():
         self.cdes = np.zeros((numRobots*3, 1))
         #self.cdes[0:2] = np.array([10, 10]).reshape(2, 1)
         self.cdes[(numRobots-1)*3:(numRobots)*3] = np.reshape(clusterParams, (numRobots, 1))
-        self.cdes[0] = 20
-        self.cdes[1] = 20
         self.cddes = np.zeros((numRobots*3, 1)) 
         self.cdddes = np.zeros((numRobots*3, 1)) 
 
@@ -55,13 +53,18 @@ class Cluster():
 
     def calculateLinearControl(self):
         #return self.cdddes + np.dot(self.Kv, (self.cddes - self.cd)) + np.dot(self.Kp, (self.cdes - self.c))
-        return np.dot(self.Kp, (self.cdes - self.c))
+        clusterAngle = self.c[2, 0]
+        #if self.cdes[2, 0] > math.pi:
+        #    clusterAngle += 2*math.pi
+        rd = np.dot(self.Kp, (self.cdes - self.c))
+        #self.c[2, 0] = clusterAngle
+        return rd
 
-    def getDesiredClusterPosition(self):
+    def getDesiredRobotPosition(self):
         c_sym = sp.symbols('c0:9')
         subs_dict = {c_sym[i]: self.cdes[i, 0] for i in range(len(c_sym))} #map symbols to values
-        rd = np.array(self.IKine.subs(subs_dict).evalf()).astype(np.float64)
-        return rd
+        r = np.array(self.IKine.subs(subs_dict).evalf()).astype(np.float64)
+        return r
 
     def testTransforms(self, r):
         r_sym = sp.symbols('r0:9')

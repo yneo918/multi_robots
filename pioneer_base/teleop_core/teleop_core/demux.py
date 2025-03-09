@@ -87,7 +87,7 @@ class Demux(Node):
             1)
         self.pubsub.create_subscription(
             String,
-            '/mode',
+            '/modeC',
             self.mode_callback,
             1)
         
@@ -116,6 +116,7 @@ class Demux(Node):
 
     def broadcast_callback(self, msg):
         self.broadcast = msg.data
+        self.get_logger().info(f"BROADCAST: {self.broadcast}")
 
     def hw_sim_callback(self, msg):
         self.hardware = msg.data

@@ -89,6 +89,13 @@ class JointStates(Node):
         self.pubsub.publish(f'/{self.robot_id}hw/joint_states', jointstates_msg)
 
     def teleop_callback(self, msg):
+        if msg.linear.y != 0:
+            desiredAngle = math.atan2(msg.linear.y, msg.linear.x)
+            msg.angular.z = desiredAngle - self.position['theta'] 
+            if abs(msg.angular.z) < math.pi/2:
+                msg.linear.x = math.sqrt(msg.linear.x**2 + msg.linear.y**2) * math.cos(abs(msg.angular.z))
+            else:
+                msg.linear.x = 0
         self.vel.update({'transform': msg.linear.x, 'rotate': msg.angular.z, 'alive': VEL_ALIVE})
 
     def ghost_callback(self, msg):
