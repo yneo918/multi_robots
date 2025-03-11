@@ -23,7 +23,10 @@ class Cluster():
         self.cdes[(numRobots-1)*3:(numRobots)*3] = np.reshape(clusterParams, (numRobots, 1))
         self.cddes = np.zeros((numRobots*3, 1)) 
         self.cdddes = np.zeros((numRobots*3, 1)) 
-
+        self.rotations = 0
+        self.pass_zero = 0
+        self.flipped = False
+        self.computed_c = 0
         #Symbolic kinematic transform vars
         self.FKine, self.IKine, self.Jacob, self.JacobInv = None, None, None, None
         self.configureCluster(numRobots, clusterType)
@@ -54,10 +57,17 @@ class Cluster():
     def calculateLinearControl(self):
         #return self.cdddes + np.dot(self.Kv, (self.cddes - self.cd)) + np.dot(self.Kp, (self.cdes - self.c))
         clusterAngle = self.c[2, 0]
-        #if self.cdes[2, 0] > math.pi:
-        #    clusterAngle += 2*math.pi
+        tempAngle = None
+        tempAngle = self.c[2, 0]
+        self.c[2, 0] = self.rotations*2*math.pi + self.c[2, 0]
+        if self.cdes[2, 0] > 0 and tempAngle < 0 and self.flipped:
+            self.c[2, 0] += 2*math.pi
+        elif self.cdes[2, 0] < 0 and tempAngle > 0 and self.flipped:
+            self.c[2, 0] -= 2*math.pi
+        self.computed_c = self.c[2,0]
         rd = np.dot(self.Kp, (self.cdes - self.c))
-        #self.c[2, 0] = clusterAngle
+        if tempAngle is not None:
+            self.c[2, 0] = tempAngle
         return rd
 
     def getDesiredRobotPosition(self):
@@ -83,9 +93,37 @@ class Cluster():
         r_sym = sp.symbols('r0:9')
         subs_dict = {r_sym[i]: r[i, 0] for i in range(len(r_sym))} #map symbols to values
         subs_dict[sp.symbols('0c')] = self.cdes[8, 0] #pass in cluster heading
-
+        prev_theta = self.c[2, 0]
         self.c = np.array(self.FKine.subs(subs_dict).evalf()).astype(np.float64)
         self.cd = np.dot(np.array(self.Jacob.subs(subs_dict).evalf()).astype(np.float64), rd)
+
+        #desired_rotations = int(self.cdes[2, 0]/(2*math.pi)) #number of times cluster should fully rotate to reach desired angle
+        if self.c[2, 0] < 0 and prev_theta > 0 and abs(self.c[2, 0]) < math.pi/2:
+            self.pass_zero -= 1
+            if self.pass_zero != -1:
+                self.rotations -= 1
+            if self.cdes[2, 0] > 0:
+                self.flipped = True
+            elif self.cdes[2, 0] < 0:
+                self.flipped = False
+        elif self.c[2, 0] > 0 and prev_theta < 0 and abs(self.c[2, 0]) < math.pi/2:
+            self.pass_zero += 1
+            if self.pass_zero != 0:
+                self.rotations += 1
+            if self.cdes[2, 0] < 0:
+                self.flipped = True
+            elif self.cdes[2, 0] > 0:
+                self.flipped = False
+        elif self.c[2, 0] < 0 and prev_theta > 0 and abs(self.c[2, 0]) > math.pi/2:
+            if self.cdes[2, 0] > 0:
+                self.flipped = True
+            elif self.cdes[2, 0] < 0:
+                self.flipped = False
+        elif self.c[2, 0] > 0 and prev_theta < 0 and abs(self.c[2, 0]) > math.pi/2:
+            if self.cdes[2, 0] < 0:
+                self.flipped = True
+            elif self.cdes[2, 0] > 0:
+                self.flipped = False
 
 
     #Based on the given cluster configuration will set the symbolic kinematic transform equations

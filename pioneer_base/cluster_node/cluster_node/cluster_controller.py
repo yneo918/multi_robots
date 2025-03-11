@@ -209,13 +209,14 @@ class ClusterNode(Node):
         if not self.listeningForRobots:
             if self.output == "actual":
                 clusterAngle = self.cluster.c[2]
-                vel = [msg.linear.x*math.cos(clusterAngle), msg.linear.x*math.sin(clusterAngle), msg.angular.z*0.25] #scale turning to slow it
+                vel = [msg.linear.x*math.cos(clusterAngle), msg.linear.x*math.sin(clusterAngle), msg.angular.z*0.25] #scale turning to reduce joystick sensitivity
                 self.cluster.cdes[0:3, 0]+= vel 
                 #self.cluster.cdes[2] = self.cluster.cdes[2]%math.pi    
                 self.get_logger().info(f"Updated cluster desired position to {self.cluster.cdes[0:3, 0]} actual: {self.cluster.c[0:3, 0]}")   
+                self.get_logger().info(f"Rotations: {self.cluster.rotations} Flipped: {self.cluster.flipped} Computed: {self.cluster.computed_c}")
             elif self.output == "sim":
                 clusterAngle = self.sim_cluster.c[2]
-                vel = [msg.linear.x*math.cos(clusterAngle), msg.linear.x*math.sin(clusterAngle), msg.angular.z*0.25] #scale turning to slow it
+                vel = [msg.linear.x*math.cos(clusterAngle), msg.linear.x*math.sin(clusterAngle), msg.angular.z*0.25] #scale turning to reduce joystick sensitivity
                 self.sim_cluster.cdes[0:3, 0] += vel
                 #self.get_logger().info(f"Updated cluster desired position to {self.sim_cluster.cdes[0:3, 0]} actual: {self.sim_cluster.c[0:3, 0]}")  
                 #self.sim_cluster.cdes[2] = self.sim_cluster.cdes[2]%math.pi  
