@@ -13,7 +13,7 @@ from launch_ros.actions import Node
 from launch_ros.actions import PushRosNamespace
 
 from launch_ros.substitutions import FindPackageShare
-
+#For quick testing with graph
 def generate_launch_description():
     ld = LaunchDescription()
     
@@ -43,20 +43,17 @@ def generate_launch_description():
         parameters=[cluster_feedback],
     )
     run_joy_node = Node(
-        package="joy",
-        executable="joy_node",
+        package="virtual_joy",
+        executable="virtual_joy",
     )
-
     joy_to_cmd_vel = Node(
         package="teleop_core",
-        executable="joy2cmd",
+        executable="joywithgui",
         parameters=["pioneer_base/teleop_core/config/joy-assign.yaml"],
     )
-    ld.add_action(run_joy_node)
-    ld.add_action(joy_to_cmd_vel)
     ld.add_action(run_cluster_node)
     ld.add_action(run_cluster_feedback)
+    ld.add_action(run_joy_node)
+    ld.add_action(joy_to_cmd_vel)
 
     return ld
-
-

@@ -24,11 +24,8 @@ def generate_launch_description():
     pkg_share = get_package_share_directory(package_name)
     # Construct paths to the parameter files relative to the launch file directory
     cluster_file = os.path.join(pkg_share, 'config', 'cluster_multi.yaml')
-    cluster_feedback = os.path.join(pkg_share, 'config', '3cluster.yaml')
 
     # Check if parameter files exist
-    if not os.path.isfile(cluster_file):
-        raise FileNotFoundError(f"Parameter file not found: {cluster_file}")
     if not os.path.isfile(cluster_file):
         raise FileNotFoundError(f"Parameter file not found: {cluster_file}")
 
@@ -38,27 +35,18 @@ def generate_launch_description():
         executable="cluster_controller",
         parameters=[cluster_file],
     )
-    # Nodes
     run_joy_node = Node(
         package="virtual_joy",
         executable="virtual_joy",
     )
-
     joy_to_cmd_vel = Node(
         package="teleop_core",
         executable="joywithgui",
         parameters=["pioneer_base/teleop_core/config/joy-assign.yaml"],
     )
-    demux = Node(
-        package="teleop_core",
-        executable="cmd_demux",
-        parameters=["pioneer_base/teleop_core/config/demux.yaml"],
-    )
-
     ld.add_action(run_joy_node)
     ld.add_action(joy_to_cmd_vel)
     ld.add_action(run_cluster_node)
-    ld.add_action(demux)
 
 
     return ld
