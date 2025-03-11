@@ -227,8 +227,16 @@ class ClusterNode(Node):
             rd = self.cluster.getVelocityCommand(self.r , self.rd)
             for i in range(len(self.cluster_robots)):
                 vel = Twist()
-                vel.linear.x = float(rd[i*3+0, 0])
-                vel.linear.y = float(rd[i*3+1, 0])
+                _x = float(rd[i*3+0, 0])
+                _y = float(rd[i*3+1, 0])
+                if _y != 0:
+                    desiredAngle = math.atan2(_y, _x)
+                    vel.angular.z = desiredAngle - self.position['theta'] 
+                    if abs(vel.angular.z) < math.pi/2:
+                        _x = math.sqrt(_x**2 + _y**2) * math.cos(abs(vel.angular.z))
+                    else:
+                        _x = 0
+                vel.linear.x = _x
                 self.pubsub.publish(f'{self.robot_id_list[self.cluster_robots[i]]}/cmd_vel', vel)
 
         elif self.output == "sim":
@@ -239,8 +247,16 @@ class ClusterNode(Node):
                 angle = math.atan2(rd[i*3+1, 0], rd[i*3+0, 0])
                 #vel.linear.x = float(distance)
                 #vel.angular.z = float(angle)
-                vel.linear.x = float(rd[i*3+0, 0])
-                vel.linear.y = float(rd[i*3+1, 0])
+                _x = float(rd[i*3+0, 0])
+                _y = float(rd[i*3+1, 0])
+                if _y != 0:
+                    desiredAngle = math.atan2(_y, _x)
+                    vel.angular.z = desiredAngle - self.position['theta'] 
+                    if abs(vel.angular.z) < math.pi/2:
+                        _x = math.sqrt(_x**2 + _y**2) * math.cos(abs(vel.angular.z))
+                    else:
+                        _x = 0
+                vel.linear.x = _x
                 self.pubsub.publish(f'/sim/{self.robot_id_list[self.sim_cluster_robots[i]]}/cmd_vel', vel)
 
     #checks if given robot id is in cluster and if not adds it to cluster
