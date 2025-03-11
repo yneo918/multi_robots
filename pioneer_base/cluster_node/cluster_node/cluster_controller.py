@@ -148,7 +148,7 @@ class ClusterNode(Node):
     #gives time to fill robot state space variable arrays
     def waitForData(self):    
         self.wait_once.cancel()
-        timer_period = 0.01  # set frequency to publish velocity commands
+        timer_period = 0.1  # set frequency to publish velocity commands
         for i in range(len(self.cluster_robots)):
             self.pubsub.create_publisher(Twist, f'{self.robot_id_list[self.cluster_robots[i]]}/cmd_vel', 5)
         for i in range(len(self.sim_cluster_robots)):
