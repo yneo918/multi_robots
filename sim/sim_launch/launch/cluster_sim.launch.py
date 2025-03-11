@@ -36,7 +36,6 @@ def generate_launch_description():
             executable="cluster_controller",
             parameters=[cluster_file],
         ),
-        # 別のLaunchファイルを含める
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(display_launch_file)
         ),

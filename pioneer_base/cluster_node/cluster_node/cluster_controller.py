@@ -109,6 +109,10 @@ class ClusterNode(Node):
                 f'/sim/{self.robot_id_list[i]}/pose2D',
                 lambda msg, i=i: self.sim_callback(msg, i),
                 5)
+            self.pubsub.create_publisher(
+                Pose2D,
+                f'/sim/{self.robot_id_list[i]}/desiredPose2D',
+                5)
             
         self.listeningForRobots = True
 
@@ -144,7 +148,7 @@ class ClusterNode(Node):
     #gives time to fill robot state space variable arrays
     def waitForData(self):    
         self.wait_once.cancel()
-        timer_period = 0.1  # set frequency to publish velocity commands
+        timer_period = 0.01  # set frequency to publish velocity commands
         for i in range(len(self.cluster_robots)):
             self.pubsub.create_publisher(Twist, f'{self.robot_id_list[self.cluster_robots[i]]}/cmd_vel', 5)
         for i in range(len(self.sim_cluster_robots)):
@@ -206,8 +210,15 @@ class ClusterNode(Node):
                 return
             robot_pose = [msg.x , msg.y, msg.theta]
             self.sim_r[cluster_index*3:(cluster_index*3+3), 0] = robot_pose #update robot position in array 
-            self.get_logger().info(f"Actual robot positions {self.sim_r} Desired robot position: {self.sim_cluster.getDesiredRobotPosition()}")
-
+            _desired = self.sim_cluster.getDesiredRobotPosition()
+            self.get_logger().info(f"Actual robot positions {self.sim_r} Desired robot position: {_desired}")
+            for j in range(len(self.sim_cluster_robots)):
+                _pose = Pose2D()
+                _pose.x = _desired[j*3+0, 0]
+                _pose.y = _desired[j*3+1, 0]
+                _pose.theta = _desired[j*3+2, 0]
+                self.pubsub.publish(f'/sim/{self.robot_id_list[self.sim_cluster_robots[j]]}/desiredPose2D', _pose)
+                
     #Velocity command from the joystick to be sent to the cluster
     def joycmd_callback(self, msg):
         if not self.listeningForRobots:

@@ -42,6 +42,7 @@ class JointStates(Node):
 
         self.position = {'x': x, 'y': y, 'theta': t}
         self.position_hw = {'x': 0.0, 'y': 0.0, 'theta': 0.0}
+        self.position_desired = {'x': 0.0, 'y': 0.0, 'theta': 0.0}
         self.vel = {'transform': 0.0, 'rotate': 0.0, 'alive': 0}
         self.joint_names = ['w_to_x', 'x_to_y', 'y_to_t']
 
@@ -53,6 +54,9 @@ class JointStates(Node):
 
         self.pubsub.create_subscription(Pose2D, f'/{self.robot_id}/pose2D', self.ghost_callback, 10)
         self.pubsub.create_publisher(JointState, f'/{self.robot_id}hw/joint_states', 10)
+
+        self.pubsub.create_subscription(Pose2D, f'/sim/{self.robot_id}/desiredPose2D', self.desired_callback, 10)
+        self.pubsub.create_publisher(JointState, f'/{self.robot_id}desired/joint_states', 10)
         
         timer_period = UPDATE_RATE
         self.timer = self.create_timer(timer_period, self.publish_joint_states)
@@ -88,11 +92,20 @@ class JointStates(Node):
         ]
         self.pubsub.publish(f'/{self.robot_id}hw/joint_states', jointstates_msg)
 
+        jointstates_msg.name = [f'{joint_name}' for joint_name in self.joint_names]
+        jointstates_msg.position = [
+            self.position_desired['x'], self.position_desired['y'], self.position_desired['theta']
+        ]
+        self.pubsub.publish(f'/{self.robot_id}desired/joint_states', jointstates_msg)
+
     def teleop_callback(self, msg):
         self.vel.update({'transform': msg.linear.x, 'rotate': msg.angular.z, 'alive': VEL_ALIVE})
 
     def ghost_callback(self, msg):
         self.position_hw.update({'x': msg.x, 'y': msg.y, 'theta': msg.theta})
+
+    def desired_callback(self, msg):
+        self.position_desired.update({'x': msg.x, 'y': msg.y, 'theta': msg.theta})
 
 
 def main(args=None):

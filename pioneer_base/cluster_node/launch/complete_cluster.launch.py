@@ -15,14 +15,12 @@ from launch_ros.actions import PushRosNamespace
 from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
-    # パッケージ名と呼び出すLaunchファイルのパスを取得
     pkg_name = 'rover_description'
     display_launch_file = os.path.join(get_package_share_directory(pkg_name), 'launch', 'display.launch.py')
     cluster_launch_file = os.path.join(get_package_share_directory("cluster_node"), 'cluster_virtjoy.launch.py')
     #pioneers_launch_file = os.path.join(get_package_share_directory(pkg_name), 'with_ghost.launch.py')
 
     return LaunchDescription([
-        # 別のLaunchファイルを含める
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(display_launch_file)
         ),
