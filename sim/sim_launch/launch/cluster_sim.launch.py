@@ -14,35 +14,30 @@ from launch_ros.actions import PushRosNamespace
 
 from launch_ros.substitutions import FindPackageShare
 
+
+
 def generate_launch_description():
-    ld = LaunchDescription()
-    
+
     # Get the directory of this launch file
-    launch_file_dir = os.path.dirname(os.path.abspath(__file__))
-    parent_dir = os.path.dirname(launch_file_dir)
+    cluster_package_name = 'cluster_node'
+    cluster_pkg_share = get_package_share_directory(cluster_package_name)
     # Construct paths to the parameter files relative to the launch file directory
-    cluster_file = os.path.join(parent_dir, 'config', 'cluster_multi.yaml')
-    cluster_feedback = os.path.join(parent_dir, 'config', '3cluster.yaml')
+    cluster_file = os.path.join(cluster_pkg_share, 'config', 'cluster_multi.yaml')
 
     # Check if parameter files exist
     if not os.path.isfile(cluster_file):
         raise FileNotFoundError(f"Parameter file not found: {cluster_file}")
-    if not os.path.isfile(cluster_file):
-        raise FileNotFoundError(f"Parameter file not found: {cluster_file}")
 
-    # Nodes
-    run_cluster_node = Node(
-        package="cluster_node",
-        executable="cluster_controller",
-        parameters=[cluster_file],
-    )
+    display_launch_file = os.path.join(get_package_share_directory('rover_description'), 'launch', 'sim.launch.py')
 
-    run_cluster_feedback = Node(
-        package="cluster_node",
-        executable="cluster_feedback",
-        parameters=[cluster_feedback],
-    )
-    ld.add_action(run_cluster_node)
-    ld.add_action(run_cluster_feedback)
+    return LaunchDescription([
+        Node(
+            package="cluster_node",
+            executable="cluster_controller",
+            parameters=[cluster_file],
+        ),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(display_launch_file)
+        ),
+    ])
 
-    return ld

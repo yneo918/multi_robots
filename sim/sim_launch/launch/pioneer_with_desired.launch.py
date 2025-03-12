@@ -18,7 +18,7 @@ def generate_launch_description():
                 'x': '-2.0', 
                 'y': '0.0',
                 't': '0.0',
-                'hw': 'hw',
+                'desired': 'desired',
                 'a': '0.2'
             }.items()
         ),
@@ -29,7 +29,7 @@ def generate_launch_description():
                 'x': '2.0',
                 'y': '0.0', 
                 't': '1.0',
-                'hw': 'hw',
+                'desired': 'desired',
                 'a': '0.2'
             }.items()
         ),
@@ -40,7 +40,7 @@ def generate_launch_description():
                 'x': '0.0', 
                 'y': '3.0',
                 't': '-1.0',
-                'hw': 'hw',
+                'desired': 'desired',
                 'a': '0.2'
             }.items()
         ),

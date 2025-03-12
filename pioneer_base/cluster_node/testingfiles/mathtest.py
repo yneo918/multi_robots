@@ -78,3 +78,17 @@ r = np.array(IKine.subs(subs_dict).evalf()).astype(np.float64)
 print(cdes)
 #print("----------------")
 print(r)
+
+
+x = 10
+y = 5
+distance = math.sqrt(x**2 + y**2)
+angle = math.atan2(y, x)
+x_1 = distance * math.cos(angle)
+y_1 = distance * math.sin(angle)
+print("Difference in x and y") 
+print(x-x_1)
+print(y-y_1)
+print(0.1%(math.pi))
+print((math.pi-0.1)%(math.pi))
+print((-math.pi+0.1)%(math.pi))
