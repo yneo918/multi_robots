@@ -13,6 +13,8 @@ from .my_ros_module import PubSubManager
 
 UPDATE_RATE = 0.01
 VEL_ALIVE = 5
+MAX_TRANS = 1.0
+MAX_ROTATE = 1.0
 
 
 class JointStates(Node):
@@ -99,7 +101,7 @@ class JointStates(Node):
         self.pubsub.publish(f'/{self.robot_id}desired/joint_states', jointstates_msg)
 
     def teleop_callback(self, msg):
-        self.vel.update({'transform': msg.linear.x, 'rotate': msg.angular.z, 'alive': VEL_ALIVE})
+        self.vel.update({'transform': max(-MAX_TRANS, min(msg.linear.x, MAX_TRANS)), 'rotate': max(-MAX_ROTATE, min(msg.angular.z, MAX_ROTATE)), 'alive': VEL_ALIVE})
 
     def ghost_callback(self, msg):
         self.position_hw.update({'x': msg.x, 'y': msg.y, 'theta': msg.theta})
