@@ -1,6 +1,7 @@
 import rclpy
 import math
 import numpy as np
+import time
 from rclpy.node import Node
 from std_msgs.msg import String
 from std_msgs.msg import Float32MultiArray
@@ -75,6 +76,7 @@ class ClusterNode(Node):
             self.gpsStartup.append(navsatfix_msg)
         self.r = None #stores latest robot state space variables
         self.rd = None #stores latest robot velocities 
+        self.time = [None]*self.n_rover
 
         #All data on simulation robots
         self.sim_cluster = None #cluster object to be initialized when cluster is formed
@@ -82,6 +84,7 @@ class ClusterNode(Node):
         self.sim_cluster_robots = [] #list of active robots in cluster
         self.sim_r = None #stores latest robot state space variables
         self.sim_rd = None #stores latest robot velocities 
+        self.sim_time = [None]*self.n_rover
 
         self.output = "actual" #switch between outputing velocity to simulation or actual robots
         self.mode = "manual" #switch between manual or cluster control
@@ -209,6 +212,10 @@ class ClusterNode(Node):
             if cluster_index is None:
                 return
             robot_pose = [msg.x , msg.y, msg.theta]
+            _t = time.time()
+            if self.sim_time[cluster_index] is not None:
+                self.sim_rd[cluster_index*3:(cluster_index*3+3), 0] = (robot_pose - self.sim_r[cluster_index*3:(cluster_index*3+3), 0]) / (_t - self.sim_time[cluster_index])
+            self.sim_time[cluster_index] = _t
             self.sim_r[cluster_index*3:(cluster_index*3+3), 0] = robot_pose #update robot position in array 
             _desired = self.sim_cluster.getDesiredRobotPosition()
             self.get_logger().info(f"Actual robot positions {self.sim_r} Desired robot position: {_desired}")

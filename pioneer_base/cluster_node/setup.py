@@ -1,6 +1,7 @@
 from setuptools import find_packages, setup
 import os
 from glob import glob
+
 package_name = 'cluster_node'
 
 setup(
@@ -24,7 +25,6 @@ setup(
     entry_points={
         'console_scripts': [
             'cluster_controller = cluster_node.cluster_controller:main',
-            'cluster_feedback = cluster_node.cluster_feedback:main'
         ],
     },
 )
