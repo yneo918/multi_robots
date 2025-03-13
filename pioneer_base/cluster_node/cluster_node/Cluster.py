@@ -61,21 +61,27 @@ class Cluster():
 
         return rd
 
+    def wrap_to_pi(self, t):
+        return (t + np.pi) % (2 * np.pi) - np.pi
+
     #Linear control equation 
     def calculateLinearControl(self):
         #return self.cdddes + np.dot(self.Kv, (self.cddes - self.cd)) + np.dot(self.Kp, (self.cdes - self.c))
         #Deal with angle wrapping issues
+        '''
         tempAngle = self.c[2, 0]
         self.c[2, 0] = self.rotations*2*math.pi + self.c[2, 0]
         if self.cdes[2, 0] > 0 and tempAngle < 0 and self.flipped:
             self.c[2, 0] += 2*math.pi
         elif self.cdes[2, 0] < 0 and tempAngle > 0 and self.flipped:
             self.c[2, 0] -= 2*math.pi
-        self.computed_c = self.c[2,0]
+        self.computed_c = self.c[2,0]'
+        '''
+        self.c[2,0] = self.wrap_to_pi(self.c[2,0])
 
         cd = np.dot(self.Kp, (self.cdes - self.c))
 
-        self.c[2, 0] = tempAngle
+        #self.c[2, 0] = tempAngle
         return cd
 
     #Given a the current robot state space variables, update the cluster state space variables
@@ -88,6 +94,7 @@ class Cluster():
         self.c = self.FKine_func(*r.flatten())
         #self.cd = np.dot(np.array(self.Jacob.subs(subs_dict).evalf()).astype(np.float64), rd)
         self.cd = np.dot(np.array(self.Jacobian_func(*r.flatten())).astype(np.float64), rd)
+        return 
 
         #Track rotations hopefully improve in future
         if self.c[2, 0] < 0 and prev_theta > 0 and abs(self.c[2, 0]) < math.pi/2:

@@ -22,7 +22,9 @@ On startup the node will listen for all active robots in robot_id_list. Once the
 if there are enough robots to form a cluster, it initializes a Cluster object and map the robot ids to the cluster.
 """
 
-JOY_FREQ =10
+JOY_FREQ = 10
+KP_GAIN = 1.0
+KV_GAIN = 1.0
 
 class ClusterNode(Node):
     def __init__(self, n_rover=6):
@@ -148,7 +150,7 @@ class ClusterNode(Node):
         self.sim_cluster_robots = self.sim_cluster_robots[0:self.sim_cluster_size] #trim extra robots
         self.sim_r = np.zeros((self.sim_cluster_size*3, 1))
         self.sim_rd = np.zeros((self.sim_cluster_size*3, 1))
-        self.sim_cluster = Cluster(numRobots = self.sim_cluster_size, KPgains=[0.25]*(self.sim_cluster_size*3), KVgains=[0.25]*(self.sim_cluster_size*3))
+        self.sim_cluster = Cluster(numRobots = self.sim_cluster_size, KPgains=[KP_GAIN]*(self.sim_cluster_size*3), KVgains=[KP_GAIN]*(self.sim_cluster_size*3))
         self.wait_once = self.create_timer(2.0, self.waitForData)
         
     #gives time to fill robot state space variable arrays
@@ -250,7 +252,7 @@ class ClusterNode(Node):
                 _y = float(rd[i*3+1, 0])
                 if _y != 0:
                     desiredAngle = math.atan2(_y, _x)
-                    vel.angular.z = desiredAngle - self.r[i*3+2, 0]
+                    vel.angular.z = self.wrap_to_pi(desiredAngle - self.sim_r[i*3+2, 0])
                     if abs(vel.angular.z) < math.pi/2:
                         _x = math.sqrt(_x**2 + _y**2) * math.cos(abs(vel.angular.z))
                     else:
@@ -266,20 +268,21 @@ class ClusterNode(Node):
             self.get_logger().info(f"Time: {time.time() - s}")
             for i in range(len(self.sim_cluster_robots)):
                 vel = Twist()
-                distance = math.sqrt(rd[i*3+0, 0]**2 + rd[i*3+1, 0]**2)
-                angle = math.atan2(rd[i*3+1, 0], rd[i*3+0, 0])
                 _x = float(rd[i*3+0, 0])
                 _y = float(rd[i*3+1, 0])
                 if _y != 0.0:
                     desiredAngle = math.atan2(_y, _x)
-                    vel.angular.z = desiredAngle - self.sim_r[i*3+2, 0]
+                    vel.angular.z = self.wrap_to_pi(desiredAngle - self.sim_r[i*3+2, 0])
                     if abs(vel.angular.z) < math.pi/2:
-                        _x = math.sqrt(_x**2 + _y**2) * math.cos(abs(vel.angular.z))
+                        t = math.sqrt(_x**2 + _y**2) * math.cos(abs(vel.angular.z))
                     else:
-                        _x = 0.0
-                vel.linear.x = _x
+                        t = 0.0
+                vel.linear.x = t
                 #self.get_logger().info(f"Sim Vel: {vel.linear.x}, {vel.angular.z}")
                 self.pubsub.publish(f'/sim/{self.robot_id_list[self.sim_cluster_robots[i]]}/cmd_vel', vel)
+
+    def wrap_to_pi(self, t):
+        return (t + np.pi) % (2 * np.pi) - np.pi
 
     #checks if given robot id is in cluster and if not adds it to cluster
     def checkRobotId(self, id, output):
