@@ -39,6 +39,7 @@ class Cluster():
         self.flipped = False
         #Symbolic kinematic transform vars
         self.FKine, self.IKine, self.Jacob, self.JacobInv = None, None, None, None
+        self.FKine_func, self.IKine_func, self.Jacobian_func, self.JacobianInv_func = None, None, None, None
         self.configureCluster(numRobots, clusterType)
         try:
             assert KPgains is not None and len(KPgains) == numRobots*3, "KPgains must be a list of length numRobots*3"
@@ -54,9 +55,9 @@ class Cluster():
         self.updateClusterPosition(r, rd)
         cd_cmd = self.calculateLinearControl()
     
-        c_sym = sp.symbols('c0:9')
-        subs_dict = {c_sym[i]: self.c[i, 0] for i in range(len(c_sym))} #map symbols to values
-        rd = np.dot(np.array(self.JacobInv.subs(subs_dict)), cd_cmd)
+        #c_sym = sp.symbols('c0:9')
+        #subs_dict = {c_sym[i]: self.c[i, 0] for i in range(len(c_sym))} #map symbols to values
+        rd = np.dot(np.array(self.JacobianInv_func(*self.c.flatten())), cd_cmd)
 
         return rd
 
@@ -84,8 +85,9 @@ class Cluster():
         subs_dict[sp.symbols('0c')] = self.cdes[8, 0] #pass in cluster heading
     
         prev_theta = self.c[2, 0]
-        self.c = np.array(self.FKine.subs(subs_dict).evalf()).astype(np.float64)
-        self.cd = np.dot(np.array(self.Jacob.subs(subs_dict).evalf()).astype(np.float64), rd)
+        self.c = self.FKine_func(*r.flatten())
+        #self.cd = np.dot(np.array(self.Jacob.subs(subs_dict).evalf()).astype(np.float64), rd)
+        self.cd = np.dot(np.array(self.Jacobian_func(*r.flatten())).astype(np.float64), rd)
 
         #Track rotations hopefully improve in future
         if self.c[2, 0] < 0 and prev_theta > 0 and abs(self.c[2, 0]) < math.pi/2:
@@ -123,15 +125,15 @@ class Cluster():
         #Triangle configuration with cluster at centroid
         if(robots==3 and clusterType == ClusterConfig.TRICEN):
             r_sym = sp.symbols('r0:9') #symbols for robot space state variables
-            theta_C = sp.symbols('0c') #symbol for cluster heading
+            #theta_C = sp.symbols('0c') #symbol for cluster heading
 
             #Derived FKine equations for cluster space configuration
             x_c = (r_sym[0] + r_sym[3] + r_sym[6]) / 3
             y_c = (r_sym[1] + r_sym[4] + r_sym[7]) / 3
             theta_c = sp.atan2(2 / 3 * r_sym[0] - 1 / 3 * (r_sym[3] + r_sym[6]), 2 / 3 * r_sym[1] - 1 / 3 * (r_sym[4] + r_sym[7]))
-            phi1 = r_sym[2] + theta_C
-            phi2 = r_sym[5] + theta_C
-            phi3 = r_sym[8] + theta_C
+            phi1 = r_sym[2] + theta_c
+            phi2 = r_sym[5] + theta_c
+            phi3 = r_sym[8] + theta_c
             p = sp.sqrt((r_sym[0]-r_sym[3])**2 + (r_sym[1]-r_sym[4])**2)
             q = sp.sqrt((r_sym[6]-r_sym[0])**2 + (r_sym[1]-r_sym[7])**2)
             B = sp.acos((p**2 + q**2 - (r_sym[6]-r_sym[3])**2 - (r_sym[7]-r_sym[4])**2)/(2*p*q))
@@ -154,6 +156,12 @@ class Cluster():
 
             self.Jacob = self.FKine.jacobian(r_sym)
             self.JacobInv = self.IKine.jacobian(c_sym)
+
+            self.FKine_func = sp.lambdify(r_sym, self.FKine, 'numpy')
+            self.IKine_func = sp.lambdify(c_sym, self.IKine, 'numpy')
+
+            self.Jacobian_func = sp.lambdify(r_sym, self.Jacob, 'numpy')
+            self.JacobianInv_func = sp.lambdify(c_sym, self.JacobInv, 'numpy')
     
 #For testing cluster:
     def getDesiredRobotPosition(self):
