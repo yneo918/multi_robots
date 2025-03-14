@@ -74,7 +74,7 @@ class VirtualXbox(Node, QWidget):
         # 10Hz（100msごと）にメッセージを送信
         self.timer = QTimer()
         self.timer.timeout.connect(self.publish_joy)
-        self.timer.start(100)  # 100ms = 10Hz
+        self.timer.start(10)  # 100ms = 10Hz
 
     def reset_sticks(self):
         """スティックを 0 にリセット"""
