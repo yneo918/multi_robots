@@ -19,7 +19,7 @@ def generate_launch_description():
     
     # Get the directory of this launch file
     package_name = 'cluster_node'
-    pkg_share = launch_ros.substitutions.FindPackageShare(package_name)
+    pkg_share = get_package_share_directory(package_name)
     # Construct paths to the parameter files relative to the launch file directory
     cluster_file = os.path.join(pkg_share, 'config', 'cluster_multi.yaml')
     cluster_feedback = os.path.join(pkg_share, 'config', '3cluster.yaml')

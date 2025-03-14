@@ -92,6 +92,7 @@ class ClusterNode(Node):
         self.pubsub.create_subscription(Bool, '/joy/hardware', self.hw_sim_callback, 1)
         self.pubsub.create_subscription(String, '/modeC', self.mode_callback, 1)
         self.pubsub.create_subscription(Twist, '/joy/cmd_vel', self.joycmd_callback, 5)
+        self.pubsub.create_subscription(Float32MultiArray, '/cluster_params', self.cluster_params_callback, 5)
 
         for i in range(self.n_rover):
             self.pubsub.create_subscription(
@@ -232,6 +233,14 @@ class ClusterNode(Node):
                 vel = [msg.linear.x*math.cos(clusterAngle), msg.linear.x*math.sin(clusterAngle), msg.angular.z*0.25] #scale turning to reduce joystick sensitivity
                 self.sim_cluster.cdes[0:3, 0] += vel 
 
+    #Set cluster parameters from the cluster_params topic
+    def cluster_params_callback(self, msg):
+        if not self.listeningForRobots:
+            self.get_logger().info(f"Received cluster parameters: {msg.data}")
+            if self.output == "actual":
+                self.cluster.cdes[(self.cluster_size-1)*3:(self.cluster_size)*3] = np.reshape(msg.data, (self.cluster_size, 1))
+            elif self.output == "sim":
+                self.cluster.cdes[(self.cluster_size-1)*3:(self.cluster_size)*3] = np.reshape(msg.data, (self.cluster_size, 1))
     #Publishes velocity commands to robots in either sim or actual
     def publish_velocities(self):
         if self.output == "actual":
@@ -240,15 +249,15 @@ class ClusterNode(Node):
                 vel = Twist()
                 _x = float(rd[i*3+0, 0])
                 _y = float(rd[i*3+1, 0])
-                if _y != 0:
+                if _y != 0.0:
                     desiredAngle = math.atan2(_y, _x)
                     vel.angular.z = desiredAngle - self.r[i*3+2, 0]
                     if abs(vel.angular.z) < math.pi/2:
                         _x = math.sqrt(_x**2 + _y**2) * math.cos(abs(vel.angular.z))
                     else:
-                        _x = 0
+                        _x = 0.0 #make sure it is a float
                 vel.linear.x = _x
-                #self.get_logger().info(f"Actual Vel: {vel.linear.x}, {vel.angular.z}")
+                self.get_logger().info(f"Actual Vel: {vel.linear.x}, {vel.angular.z}")
                 self.pubsub.publish(f'{self.robot_id_list[self.cluster_robots[i]]}/cmd_vel', vel)
 
         elif self.output == "sim":
@@ -265,7 +274,7 @@ class ClusterNode(Node):
                     if abs(vel.angular.z) < math.pi/2:
                         _x = math.sqrt(_x**2 + _y**2) * math.cos(abs(vel.angular.z))
                     else:
-                        _x = 0.0
+                        _x = 0.0 #make sure it is a float
                 vel.linear.x = _x
                 #self.get_logger().info(f"Sim Vel: {vel.linear.x}, {vel.angular.z}")
                 self.pubsub.publish(f'/sim/{self.robot_id_list[self.sim_cluster_robots[i]]}/cmd_vel', vel)

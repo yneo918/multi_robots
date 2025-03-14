@@ -1,7 +1,7 @@
 import sys
 import rclpy
 from rclpy.node import Node
-
+import math
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Bool, Int16, String, Float32MultiArray
@@ -11,7 +11,7 @@ from .my_ros_module import JoyBase
 # PyQt6のインポート
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, QWidget,
-    QSpinBox, QComboBox, QCheckBox
+    QSpinBox, QComboBox, QCheckBox, QDoubleSpinBox
 )
 from PyQt6.QtCore import QTimer
 
@@ -46,7 +46,9 @@ class JoyCmd(JoyBase):
         self.hw_sel_button = self.button_dict.get(self.get_parameter('hardware_sim_sel').value)
         self.broadcast_button = self.button_dict.get(self.get_parameter('broadcast').value)
         self.N_ROVER = self.get_parameter('n_rover').value
-
+        self.cluster_b = math.pi / 3
+        self.cluster_p = 10.0
+        self.cluster_q = 10.0
         self.mode_list = ["NEU_M", "JOY_M", "NAV_M"]
         self.mode_dict = {"NEU_M": 0, "JOY_M": 1, "NAV_M": 2}
         self.rover_modeC = self.mode_list[0]
@@ -63,6 +65,7 @@ class JoyCmd(JoyBase):
         self.pubsub.create_publisher(String, '/modeC', 1)
         self.pubsub.create_publisher(Int16, '/joy/angle_sel', 5)
         self.pubsub.create_publisher(Float32MultiArray, '/joy/cross', 5)
+        self.pubsub.create_publisher(Float32MultiArray, '/cluster_params', 5)
 
         timer_period = 0.1
         self.timer = self.create_timer(timer_period, self.timer_callback)
@@ -84,7 +87,7 @@ class JoyCmd(JoyBase):
         _toggle = self.joy_toggle(msg)
         j_lx = msg.axes[self.lx_axisN]
         j_az = msg.axes[self.az_axisN]
-        self.get_logger().info(f"lx: {j_lx}, az: {j_az}, stick: {msg.axes[0]}, {msg.axes[1]}, {msg.axes[2]}, {msg.axes[3]}")
+        #self.get_logger().info(f"lx: {j_lx}, az: {j_az}, stick: {msg.axes[0]}, {msg.axes[1]}, {msg.axes[2]}, {msg.axes[3]}")
 
         val = Twist()         # 選択されたローバーへ送信するTwistメッセージ
         en_state = Bool()     # 選択されたローバーの有効状態
@@ -174,6 +177,9 @@ class StatusWindow(QMainWindow):
             "mode": QLabel("Mode: N/A"),
             "selected_angle": QLabel("Selected Angle: N/A"),
             "hardware": QLabel("Hardware: N/A"),
+            "cluster_p": QLabel(f"Cluster P: {self.node.cluster_p}"),
+            "cluster_q": QLabel(f"Cluster Q: {self.node.cluster_q}"),
+            "cluster_b": QLabel(f"Cluster B: {self.node.cluster_b}"),
         }
         for label in self.status_labels.values():
             left_layout.addWidget(label)
@@ -214,6 +220,31 @@ class StatusWindow(QMainWindow):
         self.hw_checkbox.setChecked(self.node.hw_sel)
         self.hw_checkbox.toggled.connect(self.update_hw)
         left_layout.addWidget(self.hw_checkbox)
+
+        # Add fields for cluster parameters P, Q, and B
+        self.p_spin = QDoubleSpinBox()
+        self.p_spin.setMinimum(0.0)
+        self.p_spin.setMaximum(100.0)
+        self.p_spin.setValue(self.node.cluster_p)
+        self.p_spin.valueChanged.connect(self.update_cluster_p)
+        left_layout.addWidget(QLabel("Cluster P:"))
+        left_layout.addWidget(self.p_spin)
+
+        self.q_spin = QDoubleSpinBox()
+        self.q_spin.setMinimum(0.0)
+        self.q_spin.setMaximum(100.0)
+        self.q_spin.setValue(self.node.cluster_q)
+        self.q_spin.valueChanged.connect(self.update_cluster_q)
+        left_layout.addWidget(QLabel("Cluster Q:"))
+        left_layout.addWidget(self.q_spin)
+
+        self.b_spin = QDoubleSpinBox()
+        self.b_spin.setMinimum(0.0)
+        self.b_spin.setMaximum(2 * math.pi)
+        self.b_spin.setValue(self.node.cluster_b)
+        self.b_spin.valueChanged.connect(self.update_cluster_b)
+        left_layout.addWidget(QLabel("Cluster B:"))
+        left_layout.addWidget(self.b_spin)
 
         # 右側レイアウト：ボタンマッピング表示
         right_layout = QVBoxLayout()
@@ -273,6 +304,22 @@ class StatusWindow(QMainWindow):
     def update_hw(self, checked):
         self.node.hw_sel = checked
 
+    def update_cluster_p(self, value):
+        self.node.cluster_p = value
+        msg = Float32MultiArray()
+        msg.data = [self.node.cluster_p, self.node.cluster_q, self.node.cluster_b]
+        self.node.pubsub.publish('/cluster_params', msg)
+
+    def update_cluster_q(self, value):
+        self.node.cluster_q = value
+        msg = Float32MultiArray()
+        msg.data = [self.node.cluster_p, self.node.cluster_q, self.node.cluster_b]
+        self.node.pubsub.publish('/cluster_params', msg)
+    def update_cluster_b(self, value):
+        self.node.cluster_b = value
+        msg = Float32MultiArray()
+        msg.data = [self.node.cluster_p, self.node.cluster_q, self.node.cluster_b]
+        self.node.pubsub.publish('/cluster_params', msg)
 
 def main(args=None):
     rclpy.init(args=args)
