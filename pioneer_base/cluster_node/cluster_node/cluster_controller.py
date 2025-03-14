@@ -23,8 +23,8 @@ if there are enough robots to form a cluster, it initializes a Cluster object an
 """
 
 JOY_FREQ = 10
-KP_GAIN = 1.0
-KV_GAIN = 1.0
+KP_GAIN = 10.0
+KV_GAIN = 5.0
 
 class ClusterNode(Node):
     def __init__(self, n_rover=6):
@@ -133,7 +133,7 @@ class ClusterNode(Node):
         self.gpsStartup = self.gpsStartup[0:self.cluster_size] 
         self.r = np.zeros((self.cluster_size*3, 1))
         self.rd = np.zeros((self.cluster_size*3, 1))
-        self.cluster = Cluster(numRobots = self.cluster_size, KPgains=[0.25]*(self.cluster_size*3), KVgains=[0.25]*(self.cluster_size*3))
+        self.cluster = Cluster(numRobots = self.cluster_size, KPgains=[KP_GAIN]*(self.cluster_size*3), KVgains=[KV_GAIN]*(self.cluster_size*3))
         self.get_logger().info(f"Cluster status: {self.cluster.cdes}")
         self.get_logger().info(f"Formed cluster with robots: {self.cluster_robots} from list of possible: {self.robot_id_list}")
         #average all read gps values to assign rough world frame
@@ -150,7 +150,7 @@ class ClusterNode(Node):
         self.sim_cluster_robots = self.sim_cluster_robots[0:self.sim_cluster_size] #trim extra robots
         self.sim_r = np.zeros((self.sim_cluster_size*3, 1))
         self.sim_rd = np.zeros((self.sim_cluster_size*3, 1))
-        self.sim_cluster = Cluster(numRobots = self.sim_cluster_size, KPgains=[KP_GAIN]*(self.sim_cluster_size*3), KVgains=[KP_GAIN]*(self.sim_cluster_size*3))
+        self.sim_cluster = Cluster(numRobots = self.sim_cluster_size, KPgains=[KP_GAIN]*(self.sim_cluster_size*3), KVgains=[KV_GAIN]*(self.sim_cluster_size*3))
         self.wait_once = self.create_timer(2.0, self.waitForData)
         
     #gives time to fill robot state space variable arrays
@@ -244,8 +244,8 @@ class ClusterNode(Node):
     def publish_velocities(self):
         if self.output == "actual":
             rd = self.cluster.getVelocityCommand(self.r , self.rd)
-            _max = np.max(np.abs(rd))
-            rd = rd / _max if _max > 1 else rd
+            #_max = np.max(np.abs(rd))
+            #rd = rd / _max if _max > 1 else rd
             for i in range(len(self.cluster_robots)):
                 vel = Twist()
                 _x = float(rd[i*3+0, 0])

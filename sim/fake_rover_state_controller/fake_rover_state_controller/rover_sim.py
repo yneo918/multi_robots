@@ -13,8 +13,8 @@ from .my_ros_module import PubSubManager
 
 UPDATE_RATE = 0.01
 VEL_ALIVE = 5
-MAX_TRANS = 1.0
-MAX_ROTATE = 1.0
+MAX_TRANS = 100.0
+MAX_ROTATE = 100.0
 
 
 class JointStates(Node):
