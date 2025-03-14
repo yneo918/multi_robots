@@ -250,13 +250,13 @@ class ClusterNode(Node):
                 vel = Twist()
                 _x = float(rd[i*3+0, 0])
                 _y = float(rd[i*3+1, 0])
-                if _y != 0:
-                    desiredAngle = math.atan2(_y, _x)
-                    vel.angular.z = self.wrap_to_pi(desiredAngle - self.sim_r[i*3+2, 0])
-                    if abs(vel.angular.z) < math.pi/2:
-                        _x = math.sqrt(_x**2 + _y**2) * math.cos(abs(vel.angular.z))
-                    else:
-                        _x = 0
+                desiredAngle = math.atan2(_y, _x)
+                vel.angular.z = self.wrap_to_pi(desiredAngle - self.sim_r[i*3+2, 0])
+                if abs(vel.angular.z) < math.pi/2:
+                    _x = math.sqrt(_x**2 + _y**2) * math.cos(abs(vel.angular.z))
+                else:
+                    vel.angular.z = self.wrap_to_pi(math.pi - vel.angular.z)
+                    _x = -math.sqrt(_x**2 + _y**2) * math.cos(abs(vel.angular.z))
                 vel.linear.x = _x
                 #self.get_logger().info(f"Actual Vel: {vel.linear.x}, {vel.angular.z}")
                 self.pubsub.publish(f'{self.robot_id_list[self.cluster_robots[i]]}/cmd_vel', vel)
