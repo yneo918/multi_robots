@@ -13,13 +13,13 @@ from launch_ros.actions import Node
 from launch_ros.actions import PushRosNamespace
 
 from launch_ros.substitutions import FindPackageShare
-#For quick testing with graph
+# For quick testing with graph
 def generate_launch_description():
     ld = LaunchDescription()
     
     # Get the directory of this launch file
     package_name = 'cluster_node'
-    pkg_share = get_package_share_directory(package_name)
+    pkg_share = launch_ros.substitutions.FindPackageShare(package_name)
     # Construct paths to the parameter files relative to the launch file directory
     cluster_file = os.path.join(pkg_share, 'config', 'cluster_multi.yaml')
     cluster_feedback = os.path.join(pkg_share, 'config', '3cluster.yaml')
@@ -27,8 +27,8 @@ def generate_launch_description():
     # Check if parameter files exist
     if not os.path.isfile(cluster_file):
         raise FileNotFoundError(f"Parameter file not found: {cluster_file}")
-    if not os.path.isfile(cluster_file):
-        raise FileNotFoundError(f"Parameter file not found: {cluster_file}")
+    if not os.path.isfile(cluster_feedback):
+        raise FileNotFoundError(f"Parameter file not found: {cluster_feedback}")
 
     # Nodes
     run_cluster_node = Node(
@@ -49,7 +49,7 @@ def generate_launch_description():
     joy_to_cmd_vel = Node(
         package="teleop_core",
         executable="joywithgui",
-        parameters=["pioneer_base/teleop_core/config/joy-assign.yaml"],
+        parameters=[os.path.join(get_package_share_directory('teleop_core'), 'config', 'joy-assign.yaml')],
     )
     ld.add_action(run_cluster_node)
     ld.add_action(run_cluster_feedback)
