@@ -26,6 +26,7 @@ JOY_FREQ = 100
 KP_GAIN = 1.0
 KV_GAIN = 1.0
 EPSILON = 0.01
+MAX_VEL = 1.0
 
 class ClusterNode(Node):
     def __init__(self, n_rover=6):
@@ -182,9 +183,7 @@ class ClusterNode(Node):
             _desired = self.cluster.getDesiredRobotPosition()
             self.get_logger().info(f"Actual robot positions {self.r} Desired robot position: {_desired}")
             _pose = Pose2D()
-            _pose.x = _desired[i*3+0, 0]
-            _pose.y = _desired[i*3+1, 0]
-            _pose.theta = _desired[i*3+2, 0]
+            _pose.x, _pose.y, _pose.theta = _desired[i*3+0, 0], _desired[i*3+1, 0], _desired[i*3+2, 0]
             self.pubsub.publish(f'/{self.robot_id_list[self.sim_cluster_robots[i]]}/desiredPose2D', _pose)
 
     def sim_callback(self, msg, i):
@@ -199,9 +198,7 @@ class ClusterNode(Node):
             _desired = self.sim_cluster.getDesiredRobotPosition()
             self.get_logger().info(f"Sim robot positions {self.sim_r} Desired sim robot position: {_desired}")
             _pose = Pose2D()
-            _pose.x = _desired[i*3+0, 0]
-            _pose.y = _desired[i*3+1, 0]
-            _pose.theta = _desired[i*3+2, 0]
+            _pose.x, _pose.y, _pose.theta = _desired[i*3+0, 0], _desired[i*3+1, 0], _desired[i*3+2, 0]
             self.pubsub.publish(f'/sim/{self.robot_id_list[self.sim_cluster_robots[i]]}/desiredPose2D', _pose)
                 
     #Velocity command from the joystick to be sent to the cluster
@@ -222,7 +219,7 @@ class ClusterNode(Node):
         self.get_logger().info(f"Cluster status/cd: {cd.flatten()}")
         self.get_logger().info(f"Cluster status/rd: {rd.flatten()}")
         _max = np.max(np.abs(rd))
-        rd = rd / _max if _max > 1 else rd
+        rd = rd / _max if _max > MAX_VEL else rd
         self.get_logger().info(f"Cluster status/gained_rd: {rd.flatten()}")
         for i in range(len(_cluster_robots)):
             vel = Twist()

@@ -50,7 +50,6 @@ class Cluster():
         self.c = np.zeros((self.num_robots*3, 1))  
         self.cd = np.zeros((self.num_robots*3, 1))  
         #Symbolic kinematic transform vars
-        self.FKine, self.IKine, self.Jacob, self.JacobInv = None, None, None, None
         self.FKine_func, self.IKine_func, self.Jacobian_func, self.JacobianInv_func = None, None, None, None
         self.configureCluster(self.num_robots, self.cluster_type)
 
@@ -70,6 +69,11 @@ class Cluster():
         self.cdes[2, 0] += v_r / freq
         self.cdes[2, 0] = self.wrap_to_pi(self.cdes[2, 0])
         return
+    
+    def update_cluster_shape(self, params):
+        if len(params) != self.num_robots:
+            raise ValueError("params must be a list of length self.num_robots*3")
+        self.cdes[(self.num_robots-1)*3:(self.num_robots)*3] = np.reshape(params, (self.num_robots, 1))
 
     def wrap_to_pi(self, t):
         return (t + np.pi) % (2 * np.pi) - np.pi
@@ -89,45 +93,49 @@ class Cluster():
     #from a set of prederived transforms
     def configureCluster(self, robots, clusterType):
         #Triangle configuration with cluster at centroid
-        if(robots==3 and clusterType == ClusterConfig.TRICEN):
-            r_sym = sp.symbols('r0:9') #symbols for robot space state variables
+        if(robots==3):
+            if (clusterType == ClusterConfig.TRICEN):
+                self.cluster_config_tricen()
 
-            #Derived FKine equations for cluster space configuration
-            x_c = (r_sym[0] + r_sym[3] + r_sym[6]) / 3
-            y_c = (r_sym[1] + r_sym[4] + r_sym[7]) / 3
-            theta_c = sp.atan2(2 / 3 * r_sym[0] - 1 / 3 * (r_sym[3] + r_sym[6]), 2 / 3 * r_sym[1] - 1 / 3 * (r_sym[4] + r_sym[7]))
-            phi1 = r_sym[2] + theta_c
-            phi2 = r_sym[5] + theta_c
-            phi3 = r_sym[8] + theta_c
-            p = sp.sqrt((r_sym[0]-r_sym[3])**2 + (r_sym[1]-r_sym[4])**2)
-            q = sp.sqrt((r_sym[6]-r_sym[0])**2 + (r_sym[1]-r_sym[7])**2)
-            B = sp.acos((p**2 + q**2 - (r_sym[6]-r_sym[3])**2 - (r_sym[7]-r_sym[4])**2)/(2*p*q))
 
-            self.FKine =  sp.Matrix([[x_c], [y_c], [theta_c], [phi1], [phi2], [phi3], [p], [q], [B]])
+    def cluster_config_tricen(self):
+        r_sym = sp.symbols('r0:9') #symbols for robot space state variables
+        c_sym = sp.symbols('c0:9') #symbols for cluster space state variables
 
-            c_sym = sp.symbols('c0:9') #symbols for cluster space state variables
-            r = sp.sqrt((c_sym[7]+c_sym[6]*sp.cos(c_sym[8]))**2 + (c_sym[6]*sp.sin(c_sym[8]))**2)
-            #Derived IKine equations for cluster space configuration
-            x_1 = c_sym[0] + 1/3 * r * sp.sin(c_sym[2])
-            y_1 = c_sym[1] + 1/3 * r * sp.cos(c_sym[2])
-            theta_1 = c_sym[3] - c_sym[2]
-            x_2 = c_sym[0] + 1/3 * r * sp.sin(c_sym[2]) - c_sym[6] * sp.sin(c_sym[8]/2 + c_sym[2])
-            y_2 = c_sym[1] + 1/3 * r * sp.cos(c_sym[2]) - c_sym[6] * sp.cos(c_sym[8]/2 + c_sym[2])
-            theta_2 = c_sym[4] - c_sym[2]
-            x_3 = c_sym[0] + 1/3 * r * sp.sin(c_sym[2]) + c_sym[7] * sp.sin(c_sym[8]/2 - c_sym[2])
-            y_3 = c_sym[1] + 1/3 * r * sp.cos(c_sym[2]) - c_sym[7] * sp.cos(c_sym[8]/2 - c_sym[2])
-            theta_3 = c_sym[5] - c_sym[2]
-            self.IKine = sp.Matrix([[x_1], [y_1], [theta_1], [x_2], [y_2], [theta_2], [x_3], [y_3], [theta_3]])
+        # cluster space configuration by Robot space variables
+        x_c = (r_sym[0] + r_sym[3] + r_sym[6]) / 3
+        y_c = (r_sym[1] + r_sym[4] + r_sym[7]) / 3
+        theta_c = sp.atan2(2 / 3 * r_sym[0] - 1 / 3 * (r_sym[3] + r_sym[6]), 2 / 3 * r_sym[1] - 1 / 3 * (r_sym[4] + r_sym[7]))
+        phi1 = r_sym[2] + theta_c
+        phi2 = r_sym[5] + theta_c
+        phi3 = r_sym[8] + theta_c
+        p = sp.sqrt((r_sym[0]-r_sym[3])**2 + (r_sym[1]-r_sym[4])**2)
+        q = sp.sqrt((r_sym[6]-r_sym[0])**2 + (r_sym[1]-r_sym[7])**2)
+        B = sp.acos((p**2 + q**2 - (r_sym[6]-r_sym[3])**2 - (r_sym[7]-r_sym[4])**2)/(2*p*q))
 
-            self.Jacob = self.FKine.jacobian(r_sym)
-            self.JacobInv = self.IKine.jacobian(c_sym)
+        # robot space configuration by cluster space variables
+        r = sp.sqrt((c_sym[7]+c_sym[6]*sp.cos(c_sym[8]))**2 + (c_sym[6]*sp.sin(c_sym[8]))**2)
+        x_1 = c_sym[0] + 1/3 * r * sp.sin(c_sym[2])
+        y_1 = c_sym[1] + 1/3 * r * sp.cos(c_sym[2])
+        theta_1 = c_sym[3] - c_sym[2]
+        x_2 = c_sym[0] + 1/3 * r * sp.sin(c_sym[2]) - c_sym[6] * sp.sin(c_sym[8]/2 + c_sym[2])
+        y_2 = c_sym[1] + 1/3 * r * sp.cos(c_sym[2]) - c_sym[6] * sp.cos(c_sym[8]/2 + c_sym[2])
+        theta_2 = c_sym[4] - c_sym[2]
+        x_3 = c_sym[0] + 1/3 * r * sp.sin(c_sym[2]) + c_sym[7] * sp.sin(c_sym[8]/2 - c_sym[2])
+        y_3 = c_sym[1] + 1/3 * r * sp.cos(c_sym[2]) - c_sym[7] * sp.cos(c_sym[8]/2 - c_sym[2])
+        theta_3 = c_sym[5] - c_sym[2]
+        
+        FKine =  sp.Matrix([[x_c], [y_c], [theta_c], [phi1], [phi2], [phi3], [p], [q], [B]])
+        IKine = sp.Matrix([[x_1], [y_1], [theta_1], [x_2], [y_2], [theta_2], [x_3], [y_3], [theta_3]])
+        Jacob = FKine.jacobian(r_sym)
+        JacobInv = IKine.jacobian(c_sym)
 
-            self.FKine_func = sp.lambdify(r_sym, self.FKine, 'numpy')
-            self.IKine_func = sp.lambdify(c_sym, self.IKine, 'numpy')
+        self.FKine_func = sp.lambdify(r_sym, FKine, 'numpy')
+        self.IKine_func = sp.lambdify(c_sym, IKine, 'numpy')
+        self.Jacobian_func = sp.lambdify(r_sym, Jacob, 'numpy')
+        self.JacobianInv_func = sp.lambdify(c_sym, JacobInv, 'numpy')
 
-            self.Jacobian_func = sp.lambdify(r_sym, self.Jacob, 'numpy')
-            self.JacobianInv_func = sp.lambdify(c_sym, self.JacobInv, 'numpy')
-    
+
 #For testing cluster:
     def getDesiredRobotPosition(self):
         r = np.array(self.IKine_func(*self.cdes.flatten())).astype(np.float64)
