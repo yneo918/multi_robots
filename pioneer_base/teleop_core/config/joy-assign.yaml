@@ -1,6 +1,7 @@
 joy_cmd:
   ros__parameters:
-    lx: "LY"
+    lx: "LX"
+    ly: "LY"
     az: "RX"
     en: "LB"
     rover_sel: "Y"

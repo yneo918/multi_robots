@@ -22,6 +22,9 @@ parameters at startup but may be able to be dynamically adjusted in future once 
     KPgains: Proportional gains for the cluster control (must be length numRobots*DOF where DOF is 3 for land rovers)
     KVgains: Derivative gains for the cluster control (must be length numRobots*DOF where DOF is 3 for land rovers)
 """
+
+ROVER_DOF = 3
+
 class Cluster():
     #Create a cluster with a set number of robots in a specific configuration with initial parameters
     def __init__(self, numRobots=3, clusterType=ClusterConfig.TRICEN, clusterParams=[10, 10, math.pi/3], KPgains=None, KVgains=None):
@@ -30,11 +33,11 @@ class Cluster():
         self.cluster_params = clusterParams
         try:
             if KPgains is None:
-                KPgains = [1.0] * (self.num_robots*3)
+                KPgains = [1.0] * (self.num_robots*ROVER_DOF)
             if KVgains is None:
-                KVgains = [1.0] * (self.num_robots*3)
-            assert KPgains is not None and len(KPgains) == self.num_robots*3, "KPgains must be a list of length self.num_robots*3"
-            assert KVgains is not None and len(KVgains) == self.num_robots*3, "KVgains must be a list of length self.num_robots*3"
+                KVgains = [1.0] * (self.num_robots*ROVER_DOF)
+            assert KPgains is not None and len(KPgains) == self.num_robots*ROVER_DOF, "KPgains must be a list of length self.num_robots*3"
+            assert KVgains is not None and len(KVgains) == self.num_robots*ROVER_DOF, "KVgains must be a list of length self.num_robots*3"
         except AssertionError as e:
             print(f"AssertionError: {e}")
             return
@@ -44,11 +47,11 @@ class Cluster():
     
     def initialize_cluster(self):
         #Desired cluster state space variables
-        self.cdes = np.zeros((self.num_robots*3, 1))
-        self.cdes[(self.num_robots-1)*3:(self.num_robots)*3] = np.reshape(self.cluster_params, (self.num_robots, 1))
+        self.cdes = np.zeros((self.num_robots*ROVER_DOF, 1))
+        self.cdes[(self.num_robots-1)*ROVER_DOF:(self.num_robots)*ROVER_DOF] = np.reshape(self.cluster_params, (self.num_robots, 1))
         #Actual Cluster state space variables
-        self.c = np.zeros((self.num_robots*3, 1))  
-        self.cd = np.zeros((self.num_robots*3, 1))  
+        self.c = np.zeros((self.num_robots*ROVER_DOF, 1))  
+        self.cd = np.zeros((self.num_robots*ROVER_DOF, 1))  
         #Symbolic kinematic transform vars
         self.FKine_func, self.IKine_func, self.Jacobian_func, self.JacobianInv_func = None, None, None, None
         self.configureCluster(self.num_robots, self.cluster_type)
@@ -59,10 +62,10 @@ class Cluster():
         cd_cmd = self.calculateLinearControl()
         rd = np.dot(np.array(self.JacobianInv_func(*self.c.flatten())), cd_cmd)
         for i in range(self.num_robots):
-            rd[i*3+2, 0] = self.wrap_to_pi(rd[i*3+2, 0])
+            rd[i*ROVER_DOF+2, 0] = self.wrap_to_pi(rd[i*ROVER_DOF+2, 0])
         return cd_cmd, rd
     
-    def update_cdes(self, v_t, v_r, freq):
+    def update_cdes_tr(self, v_t, v_r, freq):
         t = self.c[2, 0]
         self.cdes[0, 0] += v_t*math.sin(t) / freq
         self.cdes[1, 0] += v_t*math.cos(t) / freq
@@ -70,10 +73,18 @@ class Cluster():
         self.cdes[2, 0] = self.wrap_to_pi(self.cdes[2, 0])
         return
     
+    def update_cdes(self, v_x, v_y, v_r, freq):
+        t = self.c[2, 0]
+        self.cdes[0, 0] += v_x / freq
+        self.cdes[1, 0] += v_y / freq
+        self.cdes[2, 0] += v_r / freq
+        self.cdes[2, 0] = self.wrap_to_pi(self.cdes[2, 0])
+        return
+    
     def update_cluster_shape(self, params):
         if len(params) != self.num_robots:
-            raise ValueError("params must be a list of length self.num_robots*3")
-        self.cdes[(self.num_robots-1)*3:(self.num_robots)*3] = np.reshape(params, (self.num_robots, 1))
+            raise ValueError("params must be a list of length self.num_robots*ROVER_DOF")
+        self.cdes[(self.num_robots-1)*ROVER_DOF:(self.num_robots)*ROVER_DOF] = np.reshape(params, (self.num_robots, 1))
 
     def wrap_to_pi(self, t):
         return (t + np.pi) % (2 * np.pi) - np.pi
@@ -96,7 +107,6 @@ class Cluster():
         if(robots==3):
             if (clusterType == ClusterConfig.TRICEN):
                 self.cluster_config_tricen()
-
 
     def cluster_config_tricen(self):
         r_sym = sp.symbols('r0:9') #symbols for robot space state variables

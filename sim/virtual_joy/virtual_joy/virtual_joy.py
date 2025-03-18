@@ -17,7 +17,6 @@ class VirtualXbox(Node, QWidget):
 
         layout = QVBoxLayout()
 
-        # スティック用スライダー
         self.sticks = {
             "Left X": QSlider(Qt.Orientation.Horizontal),
             "Left Y": QSlider(Qt.Orientation.Vertical),
@@ -29,12 +28,11 @@ class VirtualXbox(Node, QWidget):
 
         for key, slider in self.sticks.items():
             slider.setRange(-100, 100)
-            slider.setValue(0)  # 初期値を 0 に設定
+            slider.setValue(0)
             #slider.valueChanged.connect()
             layout.addWidget(QLabel(key))
             layout.addWidget(slider)
 
-        # スティックをリセットするボタン
         reset_button = QPushButton("Reset Sticks")
         reset_button.clicked.connect(self.reset_sticks)
         layout.addWidget(reset_button)
@@ -77,7 +75,6 @@ class VirtualXbox(Node, QWidget):
         self.timer.start(10)  # 100ms = 10Hz
 
     def reset_sticks(self):
-        """スティックを 0 にリセット"""
         for slider in self.sticks.values():
             slider.setValue(0)
 
@@ -93,9 +90,9 @@ class VirtualXbox(Node, QWidget):
     def publish_joy(self):
         self.axes[0] = self.sticks["Left X"].value() / 100.0
         self.axes[1] = self.sticks["Left Y"].value() / 100.0
-        self.axes[2] = self.sticks["Right X"].value() / 100.0
-        self.axes[3] = self.sticks["Right Y"].value() / 100.0
-        self.axes[4] = self.sticks["LT"].value() / 100.0
+        self.axes[2] = self.sticks["LT"].value() / 100.0
+        self.axes[3] = self.sticks["Right X"].value() / 100.0
+        self.axes[4] = self.sticks["Right Y"].value() / 100.0
         self.axes[5] = self.sticks["RT"].value() / 100.0
 
         msg = Joy()

@@ -8,6 +8,8 @@ from std_msgs.msg import String
 
 from .my_ros_module import PubSubManager
 
+MAX_VEL_TRANS = 0.7
+MAX_VEL_ROT = 0.5
 
 class Demux(Node):
     def __init__(self, n_rover=6):
@@ -111,8 +113,8 @@ class Demux(Node):
         
     
     def joy_cmd_callback(self, msg):
-        self.lx = msg.linear.x
-        self.az = msg.angular.z
+        self.lx = msg.linear.y * MAX_VEL_TRANS
+        self.az = msg.angular.z * MAX_VEL_ROT
 
     def broadcast_callback(self, msg):
         self.broadcast = msg.data

@@ -8,7 +8,6 @@ from std_msgs.msg import Bool, Int16, String, Float32MultiArray
 
 from .my_ros_module import JoyBase
 
-# PyQt6のインポート
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, QWidget,
     QSpinBox, QComboBox, QCheckBox, QDoubleSpinBox
@@ -23,7 +22,8 @@ class JoyCmd(JoyBase):
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('lx', "LY"),
+                ('lx', "LX"),
+                ('ly', "LY"),
                 ('az', "RX"),
                 ('en', "LB"),
                 ('rover_sel', "Y"),
@@ -38,6 +38,7 @@ class JoyCmd(JoyBase):
         )
 
         self.lx_axisN = self.axis_dict.get(self.get_parameter('lx').value)
+        self.ly_axisN = self.axis_dict.get(self.get_parameter('ly').value)
         self.az_axisN = self.axis_dict.get(self.get_parameter('az').value)
         self.en_buttonN = self.button_dict.get(self.get_parameter('en').value)
         self.rover_sel_button = self.button_dict.get(self.get_parameter('rover_sel').value)
@@ -86,35 +87,32 @@ class JoyCmd(JoyBase):
     def joy_callback(self, msg):
         _toggle = self.joy_toggle(msg)
         j_lx = msg.axes[self.lx_axisN]
+        j_ly = msg.axes[self.ly_axisN]
         j_az = msg.axes[self.az_axisN]
         #self.get_logger().info(f"lx: {j_lx}, az: {j_az}, stick: {msg.axes[0]}, {msg.axes[1]}, {msg.axes[2]}, {msg.axes[3]}")
 
-        val = Twist()         # 選択されたローバーへ送信するTwistメッセージ
-        en_state = Bool()     # 選択されたローバーの有効状態
-        empty_twist = Twist() # その他のローバー用（ゼロ値）
-        false_state = Bool()  # その他のローバー用（False状態）
+        val = Twist()
+        en_state = Bool()
+        empty_twist = Twist()
+        false_state = Bool() 
         
         empty_twist.linear.x = 0.0
         empty_twist.angular.z = 0.0
         false_state.data = False
 
-        # ローバー選択トグル
         if _toggle[self.rover_sel_button] == 1:
             self.select = self.select % self.N_ROVER + 1
             self.get_logger().info(f"Sel Button Toggled: {self.select}")
 
-        # HW/Simトグル
         if _toggle[self.hw_sel_button] == 1:
             self.hw_sel = not self.hw_sel
             self.get_logger().info(f"HW/Sim Button Toggled: {'HW' if self.hw_sel else 'Sim'}")
 
-        # モード選択トグル
         if _toggle[self.mode_sel_button] == 1:
             new_mode = self.mode_list[(self.mode_dict[self.rover_modeC] + 1) % 3]
             self.get_logger().info(f"Mode Button Toggled: {self.rover_modeC} to {new_mode}")
             self.rover_modeC = new_mode
         
-        # 角度選択トグル
         if _toggle[self.angle_sel_button] == 1:
             new_angle = (self.selected_angle + 90) % 360
             self.get_logger().info(f"Angle Button Toggled: {self.selected_angle} to {new_angle}")
@@ -129,8 +127,9 @@ class JoyCmd(JoyBase):
 
         if msg.buttons[self.en_buttonN] == 1:
             en_state.data = True
-            val.linear.x = 0.7 * j_lx
-            val.angular.z = 0.5 * j_az
+            val.linear.x = j_lx
+            val.linear.y = j_ly
+            val.angular.z = j_az
             self.pubsub.publish('/joy/cmd_vel', val)
             self.pubsub.publish('/joy/enable', en_state)
         else:
@@ -164,12 +163,9 @@ class StatusWindow(QMainWindow):
         self.setWindowTitle("JoyCmd Status")
 
         central_widget = QWidget()
-        # メインレイアウトは左右に分割する（QHBoxLayout）
         main_layout = QHBoxLayout()
 
-        # 左側レイアウト：状態表示と変更ウィジェット
         left_layout = QVBoxLayout()
-        # ステータス表示セクション
         status_header = QLabel("Status")
         left_layout.addWidget(status_header)
         self.status_labels = {
@@ -184,11 +180,9 @@ class StatusWindow(QMainWindow):
         for label in self.status_labels.values():
             left_layout.addWidget(label)
 
-        # ステータス変更用セクション
         modify_header = QLabel("Modify Status")
         left_layout.addWidget(modify_header)
 
-        # 選択ローバーの変更（QSpinBox）
         self.rover_spin = QSpinBox()
         self.rover_spin.setMinimum(1)
         self.rover_spin.setMaximum(self.node.N_ROVER)
@@ -197,7 +191,6 @@ class StatusWindow(QMainWindow):
         left_layout.addWidget(QLabel("Select Rover:"))
         left_layout.addWidget(self.rover_spin)
 
-        # モードの変更（QComboBox）
         self.mode_combo = QComboBox()
         self.mode_combo.addItems(self.node.mode_list)
         current_mode_index = self.node.mode_dict[self.node.rover_modeC]
@@ -206,7 +199,6 @@ class StatusWindow(QMainWindow):
         left_layout.addWidget(QLabel("Mode:"))
         left_layout.addWidget(self.mode_combo)
 
-        # 角度の変更（QComboBox、90度刻み）
         self.angle_combo = QComboBox()
         angles = ["0", "90", "180", "270"]
         self.angle_combo.addItems(angles)
@@ -215,7 +207,6 @@ class StatusWindow(QMainWindow):
         left_layout.addWidget(QLabel("Selected Angle:"))
         left_layout.addWidget(self.angle_combo)
 
-        # HW/Simの変更（QCheckBox）
         self.hw_checkbox = QCheckBox("HW Mode")
         self.hw_checkbox.setChecked(self.node.hw_sel)
         self.hw_checkbox.toggled.connect(self.update_hw)
@@ -227,7 +218,7 @@ class StatusWindow(QMainWindow):
         self.p_spin.setMaximum(100.0)
         self.p_spin.setValue(self.node.cluster_p)
         self.p_spin.valueChanged.connect(self.update_cluster_p)
-        left_layout.addWidget(QLabel("Cluster P:"))
+        left_layout.addWidget(QLabel("Cluster P(m):"))
         left_layout.addWidget(self.p_spin)
 
         self.q_spin = QDoubleSpinBox()
@@ -235,7 +226,7 @@ class StatusWindow(QMainWindow):
         self.q_spin.setMaximum(100.0)
         self.q_spin.setValue(self.node.cluster_q)
         self.q_spin.valueChanged.connect(self.update_cluster_q)
-        left_layout.addWidget(QLabel("Cluster Q:"))
+        left_layout.addWidget(QLabel("Cluster Q(m):"))
         left_layout.addWidget(self.q_spin)
 
         self.b_spin = QDoubleSpinBox()
@@ -243,10 +234,8 @@ class StatusWindow(QMainWindow):
         self.b_spin.setMaximum(2 * math.pi)
         self.b_spin.setValue(self.node.cluster_b)
         self.b_spin.valueChanged.connect(self.update_cluster_b)
-        left_layout.addWidget(QLabel("Cluster B:"))
+        left_layout.addWidget(QLabel("Cluster B(rad):"))
         left_layout.addWidget(self.b_spin)
-
-        # 右側レイアウト：ボタンマッピング表示
         right_layout = QVBoxLayout()
         mapping_header = QLabel("Button Assignments")
         right_layout.addWidget(mapping_header)
@@ -266,14 +255,12 @@ class StatusWindow(QMainWindow):
             self.mapping_labels[key] = label
             right_layout.addWidget(label)
 
-        # メインレイアウトに左側・右側レイアウトを追加
         main_layout.addLayout(left_layout)
         main_layout.addLayout(right_layout)
 
         central_widget.setLayout(main_layout)
         self.setCentralWidget(central_widget)
 
-        # GUI状態更新用タイマー（100msごと）
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self.update_status)
         self.update_timer.start(100)
@@ -284,6 +271,10 @@ class StatusWindow(QMainWindow):
         self.status_labels["selected_angle"].setText(f"Selected Angle: {self.node.selected_angle}")
         hardware_str = "HW" if self.node.hw_sel else "Sim"
         self.status_labels["hardware"].setText(f"Hardware: {hardware_str}")
+        self.status_labels["cluster_p"].setText(f"Cluster P: {self.node.cluster_p}")
+        self.status_labels["cluster_q"].setText(f"Cluster Q: {self.node.cluster_q}")
+        self.status_labels["cluster_b"].setText(f"Cluster B: {self.node.cluster_b}")
+
 
     def update_rover(self, value):
         self.node.select = value
@@ -315,6 +306,7 @@ class StatusWindow(QMainWindow):
         msg = Float32MultiArray()
         msg.data = [self.node.cluster_p, self.node.cluster_q, self.node.cluster_b]
         self.node.pubsub.publish('/cluster_params', msg)
+
     def update_cluster_b(self, value):
         self.node.cluster_b = value
         msg = Float32MultiArray()

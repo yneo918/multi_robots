@@ -23,10 +23,11 @@ if there are enough robots to form a cluster, it initializes a Cluster object an
 """
 
 JOY_FREQ = 100
-KP_GAIN = 1.0
-KV_GAIN = 1.0
+KP_GAIN = 100.0
+KV_GAIN = 100.0
 EPSILON = 0.01
 MAX_VEL = 1.0
+ROVER_DOF = 3 # (x, y, theta)
 
 class ClusterNode(Node):
     def __init__(self, n_rover=6):
@@ -74,7 +75,7 @@ class ClusterNode(Node):
         self.r = None #stores latest robot state space variables
         self.rd = None #stores latest robot velocities 
         self.time = None
-        self.cluster = Cluster(numRobots = self.cluster_size, KPgains=[KP_GAIN]*(self.cluster_size*3), KVgains=[KV_GAIN]*(self.cluster_size*3))
+        self.cluster = Cluster(numRobots = self.cluster_size, KPgains=[KP_GAIN]*(self.cluster_size*ROVER_DOF), KVgains=[KV_GAIN]*(self.cluster_size*ROVER_DOF))
 
         #All data on simulation robots
         self.sim_cluster = None #cluster object to be initialized when cluster is formed
@@ -83,7 +84,7 @@ class ClusterNode(Node):
         self.sim_r = None #stores latest robot state space variables
         self.sim_rd = None #stores latest robot velocities 
         self.sim_time = None
-        self.sim_cluster = Cluster(numRobots = self.sim_cluster_size, KPgains=[KP_GAIN]*(self.sim_cluster_size*3), KVgains=[KV_GAIN]*(self.sim_cluster_size*3))
+        self.sim_cluster = Cluster(numRobots = self.sim_cluster_size, KPgains=[KP_GAIN]*(self.sim_cluster_size*ROVER_DOF), KVgains=[KV_GAIN]*(self.sim_cluster_size*ROVER_DOF))
 
         self.output = "actual" #switch between outputing velocity to simulation or actual robots
         self.mode = "INIT" #switch between manual or cluster control
@@ -118,16 +119,16 @@ class ClusterNode(Node):
         self.listeningForRobots = False #done listening for robots
         #actual robots
         self.cluster_robots = self.cluster_robots[0:self.cluster_size] #trim extra robots
-        self.r = np.zeros((self.cluster_size*3, 1))
-        self.rd = np.zeros((self.cluster_size*3, 1))
+        self.r = np.zeros((self.cluster_size*ROVER_DOF, 1))
+        self.rd = np.zeros((self.cluster_size*ROVER_DOF, 1))
         # change configure of cluster here
         self.get_logger().info(f"Cluster status: {self.cluster.cdes}")
         self.get_logger().info(f"Formed cluster with robots: {self.cluster_robots} from list of possible: {self.robot_id_list}")
         self.get_logger().info(f"Desired robot position: {self.cluster.getDesiredRobotPosition()}")
         #simulation robots
         self.sim_cluster_robots = self.sim_cluster_robots[0:self.sim_cluster_size] #trim extra robots
-        self.sim_r = np.zeros((self.sim_cluster_size*3, 1))
-        self.sim_rd = np.zeros((self.sim_cluster_size*3, 1))
+        self.sim_r = np.zeros((self.sim_cluster_size*ROVER_DOF, 1))
+        self.sim_rd = np.zeros((self.sim_cluster_size*ROVER_DOF, 1))
         # change configure of cluster here
         
         timer_period = 0.01  # set frequency to publish velocity commands
@@ -170,7 +171,7 @@ class ClusterNode(Node):
             cluster_index = self.mapRobotId(i, "actual")
             if cluster_index is None:
                 return
-            self.r[cluster_index*3+2, 0] = msg.data[-1] #update robot heading in array
+            self.r[cluster_index*ROVER_DOF+2, 0] = msg.data[-1] #update robot heading in array
 
     def actual_callback(self, msg, i):
         if self.listeningForRobots:
@@ -180,11 +181,11 @@ class ClusterNode(Node):
             if cluster_index is None:
                 return
             robot_pose = [msg.x , msg.y, msg.theta]
-            self.r[cluster_index*3:(cluster_index*3+3), 0] = robot_pose #update robot position in array 
+            self.r[cluster_index*ROVER_DOF:((cluster_index+1)*ROVER_DOF), 0] = robot_pose #update robot position in array 
             _desired = self.cluster.getDesiredRobotPosition()
             self.get_logger().info(f"Actual robot positions {self.r} Desired robot position: {_desired}")
             _pose = Pose2D()
-            _pose.x, _pose.y, _pose.theta = _desired[i*3+0, 0], _desired[i*3+1, 0], _desired[i*3+2, 0]
+            _pose.x, _pose.y, _pose.theta = _desired[i*ROVER_DOF+0, 0], _desired[i*ROVER_DOF+1, 0], _desired[i*ROVER_DOF+2, 0]
             self.pubsub.publish(f'/{self.robot_id_list[self.sim_cluster_robots[i]]}/desiredPose2D', _pose)
 
     def sim_callback(self, msg, i):
@@ -195,29 +196,27 @@ class ClusterNode(Node):
             if cluster_index is None:
                 return
             robot_pose = [msg.x , msg.y, msg.theta]
-            self.sim_r[cluster_index*3:(cluster_index*3+3), 0] = robot_pose #update robot position in array 
+            self.sim_r[cluster_index*ROVER_DOF:((cluster_index+1)*ROVER_DOF), 0] = robot_pose #update robot position in array 
             _desired = self.sim_cluster.getDesiredRobotPosition()
             self.get_logger().info(f"Sim robot positions {self.sim_r} Desired sim robot position: {_desired}")
             _pose = Pose2D()
-            _pose.x, _pose.y, _pose.theta = _desired[i*3+0, 0], _desired[i*3+1, 0], _desired[i*3+2, 0]
+            _pose.x, _pose.y, _pose.theta = _desired[i*ROVER_DOF+0, 0], _desired[i*ROVER_DOF+1, 0], _desired[i*ROVER_DOF+2, 0]
             self.pubsub.publish(f'/sim/{self.robot_id_list[self.sim_cluster_robots[i]]}/desiredPose2D', _pose)
                 
     #Velocity command from the joystick to be sent to the cluster
     def joycmd_callback(self, msg):
         if not self.listeningForRobots:
             if self.output == "actual":
-                self.cluster.update_cdes(msg.linear.x, msg.angular.z, JOY_FREQ)
+                self.cluster.update_cdes(msg.linear.x, msg.linear.y, msg.angular.z, JOY_FREQ)
             elif self.output == "sim":
-                self.sim_cluster.update_cdes(msg.linear.x, msg.angular.z, JOY_FREQ)
+                self.sim_cluster.update_cdes(msg.linear.x, msg.linear.y, msg.angular.z, JOY_FREQ)
 
     #Set cluster parameters from the cluster_params topic
     def cluster_params_callback(self, msg):
+        self.get_logger().info(f"Received cluster parameters: {msg.data}")
         if not self.listeningForRobots:
-            self.get_logger().info(f"Received cluster parameters: {msg.data}")
-            if self.output == "actual":
-                self.cluster.cdes[(self.cluster_size-1)*3:(self.cluster_size)*3] = np.reshape(msg.data, (self.cluster_size, 1))
-            elif self.output == "sim":
-                self.cluster.cdes[(self.cluster_size-1)*3:(self.cluster_size)*3] = np.reshape(msg.data, (self.cluster_size, 1))
+            _cluster = self.cluster if self.output == "actual" else self.sim_cluster
+            _cluster.update_cluster_shape(msg.data)
    
     #Publishes velocity commands to robots in either sim or actual
     def publish_velocities(self):
@@ -233,8 +232,8 @@ class ClusterNode(Node):
         self.get_logger().info(f"Cluster status/gained_rd: {rd.flatten()}")
         for i in range(len(_cluster_robots)):
             vel = Twist()
-            _x = float(rd[i*3+0, 0])
-            _y = float(rd[i*3+1, 0])
+            _x = float(rd[i*ROVER_DOF+0, 0])
+            _y = float(rd[i*ROVER_DOF+1, 0])
             _trans = math.sqrt(_x**2 + _y**2)
             if _trans < EPSILON:
                 vel.linear.x = 0.0
@@ -242,7 +241,7 @@ class ClusterNode(Node):
                 self.get_logger().info(f"Robot {i} is not moving")
             else:
                 desiredAngle = math.atan2(_y, _x)
-                vel.angular.z = self.wrap_to_pi(desiredAngle - _r[i*3+2, 0])
+                vel.angular.z = self.wrap_to_pi(desiredAngle - _r[i*ROVER_DOF+2, 0])
                 if abs(vel.angular.z) < math.pi/2:
                     t = _trans * math.cos(abs(vel.angular.z))
                 else:
