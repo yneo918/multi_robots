@@ -101,7 +101,7 @@ class JoyCmd(JoyBase):
 
         if _toggle[self.hw_sel_button] == 1:
             self.hw_sel = not self.hw_sel
-            self.get_logger().info(f"HW/Sim Button Toggled: {"HW" if self.hw_sel else "Sim"}")
+            self.get_logger().info(f"HW/Sim Button Toggled: { 'HW' if self.hw_sel else 'Sim' }")
 
         if _toggle[self.mode_sel_button] == 1:
             self.get_logger().info(f"Mode Button Toggled: {self.rover_modeC} to {self.mode_list[(self.mode_dict[self.rover_modeC] + 1) % 3]}")

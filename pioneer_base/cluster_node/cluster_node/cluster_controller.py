@@ -1,6 +1,7 @@
 import rclpy
 import math
 import numpy as np
+import time
 from rclpy.node import Node
 from std_msgs.msg import String
 from std_msgs.msg import Float32MultiArray
@@ -20,6 +21,13 @@ The Cluster Node manages communication between the commanded cluster velocity an
 On startup the node will listen for all active robots in robot_id_list. Once the mode is switched to cluster control, 
 if there are enough robots to form a cluster, it initializes a Cluster object and map the robot ids to the cluster.
 """
+
+JOY_FREQ = 100
+KP_GAIN = 1.0
+KV_GAIN = 1.0
+EPSILON = 0.01
+MAX_VEL = 1.0
+
 class ClusterNode(Node):
     def __init__(self, n_rover=6):
         super().__init__('cluster_controller')
@@ -63,18 +71,10 @@ class ClusterNode(Node):
         self.cluster = None #cluster object to be initialized when cluster is formed
         self.cluster_size = self.get_parameter('cluster_size').value
         self.cluster_robots = [] #list of active robots in cluster
-        self.world_frame = NavSatFix() 
-        self.world_frame.latitude = 0.0
-        self.world_frame.longitude = 0.0
-        self.gpsStartup = []
-        for i in range(self.cluster_size):
-            navsatfix_msg = NavSatFix()
-            navsatfix_msg.latitude = 0.0  
-            navsatfix_msg.longitude = 0.0  
-            navsatfix_msg.altitude = 0.0 
-            self.gpsStartup.append(navsatfix_msg)
         self.r = None #stores latest robot state space variables
         self.rd = None #stores latest robot velocities 
+        self.time = None
+        self.cluster = Cluster(numRobots = self.cluster_size, KPgains=[KP_GAIN]*(self.cluster_size*3), KVgains=[KV_GAIN]*(self.cluster_size*3))
 
         #All data on simulation robots
         self.sim_cluster = None #cluster object to be initialized when cluster is formed
@@ -82,10 +82,11 @@ class ClusterNode(Node):
         self.sim_cluster_robots = [] #list of active robots in cluster
         self.sim_r = None #stores latest robot state space variables
         self.sim_rd = None #stores latest robot velocities 
+        self.sim_time = None
+        self.sim_cluster = Cluster(numRobots = self.sim_cluster_size, KPgains=[KP_GAIN]*(self.sim_cluster_size*3), KVgains=[KV_GAIN]*(self.sim_cluster_size*3))
 
         self.output = "actual" #switch between outputing velocity to simulation or actual robots
-        self.mode = "manual" #switch between manual or cluster control
-        
+        self.mode = "INIT" #switch between manual or cluster control
         
         self.pubsub = PubSubManager(self)
 
@@ -96,14 +97,9 @@ class ClusterNode(Node):
 
         for i in range(self.n_rover):
             self.pubsub.create_subscription(
-                Float32MultiArray,
-                f'/{self.robot_id_list[i]}/imu/eulerAngle',
-                lambda msg, i=i: self.angular_callback(msg, i),
-                5)
-            self.pubsub.create_subscription(
-                NavSatFix,
-                f'/{self.robot_id_list[i]}/gps1',
-                lambda msg, i=i: self.gps_callback(msg, i),
+                Pose2D,
+                f'/{self.robot_id_list[i]}/pose2D',
+                lambda msg, i=i: self.actual_callback(msg, i),
                 5)
             self.pubsub.create_subscription(
                 Pose2D,
@@ -120,43 +116,28 @@ class ClusterNode(Node):
     #after listening for nearby robots assign them to cluster 
     def assignRobots(self):
         self.listeningForRobots = False #done listening for robots
-
         #actual robots
         self.cluster_robots = self.cluster_robots[0:self.cluster_size] #trim extra robots
-        self.gpsStartup = self.gpsStartup[0:self.cluster_size] 
         self.r = np.zeros((self.cluster_size*3, 1))
         self.rd = np.zeros((self.cluster_size*3, 1))
-        self.cluster = Cluster(numRobots = self.cluster_size, KPgains=[0.25]*(self.cluster_size*3), KVgains=[0.25]*(self.cluster_size*3))
+        # change configure of cluster here
         self.get_logger().info(f"Cluster status: {self.cluster.cdes}")
         self.get_logger().info(f"Formed cluster with robots: {self.cluster_robots} from list of possible: {self.robot_id_list}")
-        #average all read gps values to assign rough world frame
-        for coord in self.gpsStartup:
-            self.world_frame.latitude += coord.latitude
-            self.world_frame.longitude += coord.longitude
-        self.world_frame.latitude /= len(self.gpsStartup)
-        self.world_frame.longitude /= len(self.gpsStartup)
-        #self.world_frame.latitude = 37.774932  # Example reference latitude
-        #self.world_frame.longitude = -122.419467 
-        self.get_logger().info(f"World frame coords: { self.world_frame.latitude}, { self.world_frame.longitude}")
         self.get_logger().info(f"Desired robot position: {self.cluster.getDesiredRobotPosition()}")
         #simulation robots
         self.sim_cluster_robots = self.sim_cluster_robots[0:self.sim_cluster_size] #trim extra robots
         self.sim_r = np.zeros((self.sim_cluster_size*3, 1))
         self.sim_rd = np.zeros((self.sim_cluster_size*3, 1))
-        self.sim_cluster = Cluster(numRobots = self.sim_cluster_size, KPgains=[0.25]*(self.sim_cluster_size*3), KVgains=[0.25]*(self.sim_cluster_size*3))
-        self.wait_once = self.create_timer(2.0, self.waitForData)
+        # change configure of cluster here
         
-    #gives time to fill robot state space variable arrays
-    def waitForData(self):    
-        self.wait_once.cancel()
-        timer_period = 0.1  # set frequency to publish velocity commands
+        timer_period = 0.01  # set frequency to publish velocity commands
         for i in range(len(self.cluster_robots)):
             self.pubsub.create_publisher(Twist, f'{self.robot_id_list[self.cluster_robots[i]]}/cmd_vel', 5)
         for i in range(len(self.sim_cluster_robots)):
             self.pubsub.create_publisher(Twist,f'/sim/{self.robot_id_list[self.sim_cluster_robots[i]]}/cmd_vel', 5)
         self.vel_timer = self.create_timer(timer_period, self.publish_velocities)
         
-    #Choose from modes "NEU_M", "JOY_M", "NAV_M"]
+    #Choose from modes ["NEU_M", "JOY_M", "NAV_M"]
     def mode_callback(self, msg):
         if self.mode == msg.data:
             return
@@ -191,16 +172,20 @@ class ClusterNode(Node):
                 return
             self.r[cluster_index*3+2, 0] = msg.data[-1] #update robot heading in array
 
-    def gps_callback(self, msg, i):
+    def actual_callback(self, msg, i):
         if self.listeningForRobots:
             self.checkRobotId(i, "actual")
-            self.gpsStartup[self.mapRobotId(i, "actual")] = msg
         else:
             cluster_index = self.mapRobotId(i, "actual")
             if cluster_index is None:
                 return
-            x, y = self.gps_to_xy(self.world_frame.latitude, self.world_frame.longitude, msg.latitude, msg.longitude)
-            self.r[cluster_index*3:(cluster_index*3+2), 0] = [x, y] #update robot position in array
+            robot_pose = [msg.x , msg.y, msg.theta]
+            self.r[cluster_index*3:(cluster_index*3+3), 0] = robot_pose #update robot position in array 
+            _desired = self.cluster.getDesiredRobotPosition()
+            self.get_logger().info(f"Actual robot positions {self.r} Desired robot position: {_desired}")
+            _pose = Pose2D()
+            _pose.x, _pose.y, _pose.theta = _desired[i*3+0, 0], _desired[i*3+1, 0], _desired[i*3+2, 0]
+            self.pubsub.publish(f'/{self.robot_id_list[self.sim_cluster_robots[i]]}/desiredPose2D', _pose)
 
     def sim_callback(self, msg, i):
         if self.listeningForRobots:
@@ -212,26 +197,18 @@ class ClusterNode(Node):
             robot_pose = [msg.x , msg.y, msg.theta]
             self.sim_r[cluster_index*3:(cluster_index*3+3), 0] = robot_pose #update robot position in array 
             _desired = self.sim_cluster.getDesiredRobotPosition()
-            self.get_logger().info(f"Actual robot positions {self.sim_r} Desired robot position: {_desired}")
-            for j in range(len(self.sim_cluster_robots)):
-                _pose = Pose2D()
-                _pose.x = _desired[j*3+0, 0]
-                _pose.y = _desired[j*3+1, 0]
-                _pose.theta = _desired[j*3+2, 0]
-                self.pubsub.publish(f'/sim/{self.robot_id_list[self.sim_cluster_robots[j]]}/desiredPose2D', _pose)
+            self.get_logger().info(f"Sim robot positions {self.sim_r} Desired sim robot position: {_desired}")
+            _pose = Pose2D()
+            _pose.x, _pose.y, _pose.theta = _desired[i*3+0, 0], _desired[i*3+1, 0], _desired[i*3+2, 0]
+            self.pubsub.publish(f'/sim/{self.robot_id_list[self.sim_cluster_robots[i]]}/desiredPose2D', _pose)
                 
     #Velocity command from the joystick to be sent to the cluster
     def joycmd_callback(self, msg):
         if not self.listeningForRobots:
             if self.output == "actual":
-                clusterAngle = self.cluster.c[2]
-                vel = [msg.linear.x*math.cos(clusterAngle), msg.linear.x*math.sin(clusterAngle), msg.angular.z*0.25] #scale turning to reduce joystick sensitivity
-                self.cluster.cdes[0:3, 0]+= vel 
-                #self.get_logger().info(f"Updated cluster desired position to {self.cluster.cdes[0:3, 0]} actual: {self.cluster.c[0:3, 0]}")   
+                self.cluster.update_cdes(msg.linear.x, msg.angular.z, JOY_FREQ)
             elif self.output == "sim":
-                clusterAngle = self.sim_cluster.c[2]
-                vel = [msg.linear.x*math.cos(clusterAngle), msg.linear.x*math.sin(clusterAngle), msg.angular.z*0.25] #scale turning to reduce joystick sensitivity
-                self.sim_cluster.cdes[0:3, 0] += vel 
+                self.sim_cluster.update_cdes(msg.linear.x, msg.angular.z, JOY_FREQ)
 
     #Set cluster parameters from the cluster_params topic
     def cluster_params_callback(self, msg):
@@ -241,43 +218,41 @@ class ClusterNode(Node):
                 self.cluster.cdes[(self.cluster_size-1)*3:(self.cluster_size)*3] = np.reshape(msg.data, (self.cluster_size, 1))
             elif self.output == "sim":
                 self.cluster.cdes[(self.cluster_size-1)*3:(self.cluster_size)*3] = np.reshape(msg.data, (self.cluster_size, 1))
+   
     #Publishes velocity commands to robots in either sim or actual
     def publish_velocities(self):
-        if self.output == "actual":
-            rd = self.cluster.getVelocityCommand(self.r , self.rd)
-            for i in range(len(self.cluster_robots)):
-                vel = Twist()
-                _x = float(rd[i*3+0, 0])
-                _y = float(rd[i*3+1, 0])
-                if _y != 0.0:
-                    desiredAngle = math.atan2(_y, _x)
-                    vel.angular.z = desiredAngle - self.r[i*3+2, 0]
-                    if abs(vel.angular.z) < math.pi/2:
-                        _x = math.sqrt(_x**2 + _y**2) * math.cos(abs(vel.angular.z))
-                    else:
-                        _x = 0.0 #make sure it is a float
-                vel.linear.x = _x
-                self.get_logger().info(f"Actual Vel: {vel.linear.x}, {vel.angular.z}")
-                self.pubsub.publish(f'{self.robot_id_list[self.cluster_robots[i]]}/cmd_vel', vel)
+        _cluster = self.cluster if self.output == "actual" else self.sim_cluster
+        _r = self.r if self.output == "actual" else self.sim_r
+        _rd = self.rd if self.output == "actual" else self.sim_rd
+        _cluster_robots = self.cluster_robots if self.output == "actual" else self.sim_cluster_robots
+        cd, rd = _cluster.getVelocityCommand(_r , _rd)
+        self.get_logger().info(f"Cluster status/cd: {cd.flatten()}")
+        self.get_logger().info(f"Cluster status/rd: {rd.flatten()}")
+        _max = np.max(np.abs(rd))
+        rd = rd / _max if _max > MAX_VEL else rd
+        self.get_logger().info(f"Cluster status/gained_rd: {rd.flatten()}")
+        for i in range(len(_cluster_robots)):
+            vel = Twist()
+            _x = float(rd[i*3+0, 0])
+            _y = float(rd[i*3+1, 0])
+            _trans = math.sqrt(_x**2 + _y**2)
+            if _trans < EPSILON:
+                vel.linear.x = 0.0
+                vel.angular.z = 0.0
+                self.get_logger().info(f"Robot {i} is not moving")
+            else:
+                desiredAngle = math.atan2(_y, _x)
+                vel.angular.z = self.wrap_to_pi(desiredAngle - _r[i*3+2, 0])
+                if abs(vel.angular.z) < math.pi/2:
+                    t = _trans * math.cos(abs(vel.angular.z))
+                else:
+                    vel.angular.z = self.wrap_to_pi(math.pi - vel.angular.z)
+                    t = -_trans * math.cos(abs(vel.angular.z))
+                vel.linear.x = t
+            self.pubsub.publish(f"{'/' if self.output == 'actual' else '/sim/'}{self.robot_id_list[_cluster_robots[i]]}/cmd_vel", vel)
 
-        elif self.output == "sim":
-            rd = self.sim_cluster.getVelocityCommand(self.sim_r , self.sim_rd)
-            for i in range(len(self.sim_cluster_robots)):
-                vel = Twist()
-                distance = math.sqrt(rd[i*3+0, 0]**2 + rd[i*3+1, 0]**2)
-                angle = math.atan2(rd[i*3+1, 0], rd[i*3+0, 0])
-                _x = float(rd[i*3+0, 0])
-                _y = float(rd[i*3+1, 0])
-                if _y != 0.0:
-                    desiredAngle = math.atan2(_y, _x)
-                    vel.angular.z = desiredAngle - self.sim_r[i*3+2, 0]
-                    if abs(vel.angular.z) < math.pi/2:
-                        _x = math.sqrt(_x**2 + _y**2) * math.cos(abs(vel.angular.z))
-                    else:
-                        _x = 0.0 #make sure it is a float
-                vel.linear.x = _x
-                #self.get_logger().info(f"Sim Vel: {vel.linear.x}, {vel.angular.z}")
-                self.pubsub.publish(f'/sim/{self.robot_id_list[self.sim_cluster_robots[i]]}/cmd_vel', vel)
+    def wrap_to_pi(self, t):
+        return (t + np.pi) % (2 * np.pi) - np.pi
 
     #checks if given robot id is in cluster and if not adds it to cluster
     def checkRobotId(self, id, output):
@@ -304,30 +279,6 @@ class ClusterNode(Node):
                 if self.sim_cluster_robots[j] == i:
                     return j
             return None
-
-    #Lat1 Lon1 are world frame coordinates
-    def gps_to_xy(self, lat1, lon1, lat2, lon2):
-        R = 6371000   # Earth radius in meters
-        # Convert degrees to radians
-        lat1_rad = math.radians(lat1)
-        lon1_rad = math.radians(lon1)
-        lat2_rad = math.radians(lat2)
-        lon2_rad = math.radians(lon2)
-
-        dlat = lat2_rad - lat1_rad
-        dlon = lon2_rad - lon1_rad
-        a = math.sin(dlat / 2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon / 2)**2
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        distance = R * c
-
-        # Calculate bearing
-        y = math.sin(dlon) * math.cos(lat2_rad)
-        x = math.cos(lat1_rad) * math.sin(lat2_rad) - math.sin(lat1_rad) * math.cos(lat2_rad) * math.cos(dlon)
-        bearing = math.atan2(y, x)
-        x = distance * math.sin(bearing)
-        y = distance * math.cos(bearing)
-
-        return x, y
 
 def main(args=None):
     rclpy.init(args=args)

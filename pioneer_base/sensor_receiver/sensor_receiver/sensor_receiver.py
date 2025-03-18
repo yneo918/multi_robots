@@ -89,12 +89,12 @@ class SensorReceiver(Node):
         lon = msg.longitude
         if lat is not None and lon is not None:
             with open(f"{self.log_path}/{self.robot_id_list[i]}_gps.txt", "a") as f:
-                f.write(f"{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}, {lat}, {lon}\n")
+                f.write(f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}, {lat}, {lon}\n")
         self.get_logger().info(f"{self.robot_id_list[i]}/gps: Lat:{lat}, Lon:{lon}")
     
     def quaternion_callback(self, msg, i):
         with open(f"{self.log_path}/{self.robot_id_list[i]}_quaternion.txt", "a") as f:
-            f.write(f"{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}, {msg.x}, {msg.y}, {msg.z}, {msg.w}\n")
+            f.write(f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}, {msg.x}, {msg.y}, {msg.z}, {msg.w}\n")
         self.get_logger().info(f"{self.robot_id_list[i]}/imu/quaternion: {msg.x}, {msg.y}, {msg.z}, {msg.w}")
     
     def euler_callback(self, msg, i):
@@ -102,7 +102,7 @@ class SensorReceiver(Node):
         y = msg.data[1]
         z = msg.data[2]
         with open(f"{self.log_path}/{self.robot_id_list[i]}_euler.txt", "a") as f:
-            f.write(f"{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}, {x}, {y}, {z}\n")
+            f.write(f"{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}, {x}, {y}, {z}\n")
         self.get_logger().info(f"{self.robot_id_list[i]}/imu/euler: {x}, {y}, {z}")
         pub_msg = Int16()
         pub_msg.data = int(x)
