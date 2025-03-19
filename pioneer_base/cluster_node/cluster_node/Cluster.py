@@ -73,12 +73,17 @@ class Cluster():
         self.cdes[2, 0] = self.wrap_to_pi(self.cdes[2, 0])
         return
     
-    def update_cdes(self, v_x, v_y, v_r, freq):
-        t = self.c[2, 0]
+    def update_cdes_vel(self, v_x, v_y, v_r, freq):
         self.cdes[0, 0] += v_x / freq
         self.cdes[1, 0] += v_y / freq
         self.cdes[2, 0] += v_r / freq
         self.cdes[2, 0] = self.wrap_to_pi(self.cdes[2, 0])
+        return
+    
+    def update_cdes_pos(self, x, y, t):
+        self.cdes[0, 0] = x
+        self.cdes[1, 0] = y
+        self.cdes[2, 0] = self.wrap_to_pi(t)
         return
     
     def update_cluster_shape(self, params):

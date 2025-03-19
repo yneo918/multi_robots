@@ -24,8 +24,8 @@ if there are enough robots to form a cluster, it initializes a Cluster object an
 
 FREQ = 10
 JOY_FREQ = FREQ
-KP_GAIN = 5.0
-KV_GAIN = 5.0
+KP_GAIN = 10.0
+KV_GAIN = 10.0
 EPSILON = 0.1
 MAX_VEL = 1.0
 ROVER_DOF = 3 # (x, y, theta)
@@ -97,9 +97,13 @@ class ClusterNode(Node):
         self.pubsub.create_subscription(String, '/modeC', self.mode_callback, 1)
         self.pubsub.create_subscription(Twist, '/joy/cmd_vel', self.joycmd_callback, 5)
         self.pubsub.create_subscription(Float32MultiArray, '/cluster_params', self.cluster_params_callback, 5)
+        self.pubsub.create_subscription(Pose2D, '/cluster_desired', self.cluster_desired_callback, 5)
+        
         self.pubsub.create_publisher(Float32MultiArray, '/cluster_varables', 5)
+        self.pubsub.create_publisher(Float32MultiArray, '/cluster_varables_desired', 5)
         self.pubsub.create_publisher(Float32MultiArray, '/rover_varables', 5)
         self.pubsub.create_publisher(Float32MultiArray, '/sim/cluster_varables', 5)
+        self.pubsub.create_publisher(Float32MultiArray, '/sim/cluster_varables_desired', 5)
         self.pubsub.create_publisher(Float32MultiArray, '/sim/rover_varables', 5)
 
         for i in range(self.n_rover):
@@ -215,9 +219,9 @@ class ClusterNode(Node):
         self.joy_timestamp = time.time()
         if not self.listeningForRobots:
             if self.output == "actual":
-                self.cluster.update_cdes(msg.linear.x, msg.linear.y, msg.angular.z *0.3, freq)
+                self.cluster.update_cdes_vel(msg.linear.x, msg.linear.y, msg.angular.z *0.3, freq)
             elif self.output == "sim":
-                self.sim_cluster.update_cdes(msg.linear.x, msg.linear.y, msg.angular.z *0.3, freq)
+                self.sim_cluster.update_cdes_vel(msg.linear.x, msg.linear.y, msg.angular.z *0.3, freq)
 
     #Set cluster parameters from the cluster_params topic
     def cluster_params_callback(self, msg):
@@ -225,12 +229,19 @@ class ClusterNode(Node):
         if not self.listeningForRobots:
             _cluster = self.cluster if self.output == "actual" else self.sim_cluster
             _cluster.update_cluster_shape(msg.data)
+    
+    def cluster_desired_callback(self, msg):
+        self.get_logger().info(f"Received cluster desired position: {msg.x}, {msg.y}, {msg.theta}")
+        if not self.listeningForRobots:
+            _cluster = self.cluster if self.output == "actual" else self.sim_cluster
+            _cluster.update_cdes_pos(msg.x, msg.y, msg.theta)
    
     #Publishes velocity commands to robots in either sim or actual
     def publish_velocities(self):
         _cluster = self.cluster if self.output == "actual" else self.sim_cluster
         _r = self.r if self.output == "actual" else self.sim_r
         _rd = self.rd if self.output == "actual" else self.sim_rd
+        _cdes = _cluster.cdes
         _cluster_robots = self.cluster_robots if self.output == "actual" else self.sim_cluster_robots
         cd, rd, c_cur= _cluster.getVelocityCommand(_r , _rd)
         #self.get_logger().info(f"Cluster status/cd: {cd.flatten()}")
@@ -259,6 +270,7 @@ class ClusterNode(Node):
                 vel.linear.x = t
             self.pubsub.publish(f"{_msg_prefix}/{self.robot_id_list[_cluster_robots[i]]}/cmd_vel", vel)
         self.pubsub.publish(f"{_msg_prefix}/cluster_varables", Float32MultiArray(data=c_cur.flatten().tolist()))
+        self.pubsub.publish(f"{_msg_prefix}/cluster_varables_desired", Float32MultiArray(data=_cdes.flatten().tolist()))
         self.pubsub.publish(f"{_msg_prefix}/rover_varables", Float32MultiArray(data=_r.flatten().tolist()))
 
     def wrap_to_pi(self, t):
