@@ -22,7 +22,8 @@ On startup the node will listen for all active robots in robot_id_list. Once the
 if there are enough robots to form a cluster, it initializes a Cluster object and map the robot ids to the cluster.
 """
 
-JOY_FREQ = 10
+FREQ = 10
+JOY_FREQ = FREQ
 KP_GAIN = 5.0
 KV_GAIN = 5.0
 EPSILON = 0.1
@@ -96,6 +97,9 @@ class ClusterNode(Node):
         self.pubsub.create_subscription(Twist, '/joy/cmd_vel', self.joycmd_callback, 5)
         self.pubsub.create_subscription(Float32MultiArray, '/cluster_params', self.cluster_params_callback, 5)
         self.pubsub.create_publisher(Float32MultiArray, '/cluster_varables', 5)
+        self.pubsub.create_publisher(Float32MultiArray, '/rover_varables', 5)
+        self.pubsub.create_publisher(Float32MultiArray, '/sim/cluster_varables', 5)
+        self.pubsub.create_publisher(Float32MultiArray, '/sim/rover_varables', 5)
 
         for i in range(self.n_rover):
             self.pubsub.create_subscription(
@@ -113,7 +117,6 @@ class ClusterNode(Node):
                 f'/sim/{self.robot_id_list[i]}/desiredPose2D',
                 5)
                 
-            
         self.listeningForRobots = True
 
     #after listening for nearby robots assign them to cluster 
@@ -133,7 +136,7 @@ class ClusterNode(Node):
         self.sim_rd = np.zeros((self.sim_cluster_size*ROVER_DOF, 1))
         # change configure of cluster here
         
-        timer_period = 0.01  # set frequency to publish velocity commands
+        timer_period = 1/FREQ  # set frequency to publish velocity commands
         for i in range(len(self.cluster_robots)):
             self.pubsub.create_publisher(Twist, f'{self.robot_id_list[self.cluster_robots[i]]}/cmd_vel', 5)
         for i in range(len(self.sim_cluster_robots)):
@@ -203,7 +206,7 @@ class ClusterNode(Node):
             #self.get_logger().info(f"Sim robot positions {self.sim_r} Desired sim robot position: {_desired}")
             _pose = Pose2D()
             _pose.x, _pose.y, _pose.theta = _desired[i*ROVER_DOF+0, 0], _desired[i*ROVER_DOF+1, 0], _desired[i*ROVER_DOF+2, 0]
-            #self.pubsub.publish(f'/sim/{self.robot_id_list[self.sim_cluster_robots[i]]}/desiredPose2D', _pose)
+            self.pubsub.publish(f'/sim/{self.robot_id_list[self.sim_cluster_robots[i]]}/desiredPose2D', _pose)
                 
     #Velocity command from the joystick to be sent to the cluster
     def joycmd_callback(self, msg):
@@ -231,7 +234,8 @@ class ClusterNode(Node):
         #self.get_logger().info(f"Cluster status/rd: {rd.flatten()}")
         _max = np.max(np.abs(rd))
         rd = rd / _max if _max > MAX_VEL else rd
-        self.get_logger().info(f"Cluster status/gained_rd: {rd.flatten()}")
+        #self.get_logger().info(f"Cluster status/gained_rd: {rd.flatten()}")
+        _msg_prefix = '' if self.output == 'actual' else '/sim'
         for i in range(len(_cluster_robots)):
             vel = Twist()
             _x = float(rd[i*ROVER_DOF+0, 0])
@@ -250,8 +254,9 @@ class ClusterNode(Node):
                     vel.angular.z = self.wrap_to_pi(math.pi - vel.angular.z)
                     t = -_trans * math.cos(abs(vel.angular.z))
                 vel.linear.x = t
-            self.pubsub.publish(f"{'/' if self.output == 'actual' else '/sim/'}{self.robot_id_list[_cluster_robots[i]]}/cmd_vel", vel)
-        self.pubsub.publish('/cluster_varables', Float32MultiArray(data=c_cur.flatten().tolist()))
+            self.pubsub.publish(f"{_msg_prefix}/{self.robot_id_list[_cluster_robots[i]]}/cmd_vel", vel)
+        self.pubsub.publish(f"{_msg_prefix}/cluster_varables", Float32MultiArray(data=c_cur.flatten().tolist()))
+        self.pubsub.publish(f"{_msg_prefix}/rover_varables", Float32MultiArray(data=_r.flatten().tolist()))
 
     def wrap_to_pi(self, t):
         return (t + np.pi) % (2 * np.pi) - np.pi
