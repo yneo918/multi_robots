@@ -12,6 +12,8 @@ from sensor_msgs.msg import NavSatFix
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import Pose2D
 
+from pioneer_interfaces.msg import ClusterInfo
+
 from teleop_core.my_ros_module import PubSubManager
 """
 The Cluster Node manages communication between the commanded cluster velocity and the calculated velocities for each robot in the cluster.
@@ -99,12 +101,8 @@ class ClusterNode(Node):
         self.pubsub.create_subscription(Float32MultiArray, '/cluster_params', self.cluster_params_callback, 5)
         self.pubsub.create_subscription(Pose2D, '/cluster_desired', self.cluster_desired_callback, 5)
         
-        self.pubsub.create_publisher(Float32MultiArray, '/cluster_varables', 5)
-        self.pubsub.create_publisher(Float32MultiArray, '/cluster_varables_desired', 5)
-        self.pubsub.create_publisher(Float32MultiArray, '/rover_varables', 5)
-        self.pubsub.create_publisher(Float32MultiArray, '/sim/cluster_varables', 5)
-        self.pubsub.create_publisher(Float32MultiArray, '/sim/cluster_varables_desired', 5)
-        self.pubsub.create_publisher(Float32MultiArray, '/sim/rover_varables', 5)
+        self.pubsub.create_publisher(ClusterInfo, '/cluster_info', 5)
+        self.pubsub.create_publisher(ClusterInfo, '/sim/cluster_info', 5)
 
         for i in range(self.n_rover):
             self.pubsub.create_subscription(
@@ -269,9 +267,11 @@ class ClusterNode(Node):
                     t = -_trans * math.cos(abs(vel.angular.z))
                 vel.linear.x = t
             self.pubsub.publish(f"{_msg_prefix}/{self.robot_id_list[_cluster_robots[i]]}/cmd_vel", vel)
-        self.pubsub.publish(f"{_msg_prefix}/cluster_varables", Float32MultiArray(data=c_cur.flatten().tolist()))
-        self.pubsub.publish(f"{_msg_prefix}/cluster_varables_desired", Float32MultiArray(data=_cdes.flatten().tolist()))
-        self.pubsub.publish(f"{_msg_prefix}/rover_varables", Float32MultiArray(data=_r.flatten().tolist()))
+        msg = ClusterInfo()
+        msg.cluster.data = c_cur.flatten().tolist()
+        msg.cluster_desired.data = _cdes.flatten().tolist()
+        msg.rover.data = _r.flatten().tolist()
+        self.pubsub.publish(f"{_msg_prefix}/cluster_info", msg)
 
     def wrap_to_pi(self, t):
         return (t + np.pi) % (2 * np.pi) - np.pi
