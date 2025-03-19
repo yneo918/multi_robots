@@ -89,6 +89,7 @@ class ClusterNode(Node):
 
         self.output = "actual" #switch between outputing velocity to simulation or actual robots
         self.mode = "INIT" #switch between manual or cluster control
+        self.joy_timestamp = None
         
         self.pubsub = PubSubManager(self)
 
@@ -210,11 +211,13 @@ class ClusterNode(Node):
                 
     #Velocity command from the joystick to be sent to the cluster
     def joycmd_callback(self, msg):
+        freq = 1 / (self.joy_timestamp - time.time()) if self.joy_timestamp is not None else JOY_FREQ
+        self.joy_timestamp = time.time()
         if not self.listeningForRobots:
             if self.output == "actual":
-                self.cluster.update_cdes(msg.linear.x, msg.linear.y, msg.angular.z, JOY_FREQ)
+                self.cluster.update_cdes(msg.linear.x, msg.linear.y, msg.angular.z *0.3, freq)
             elif self.output == "sim":
-                self.sim_cluster.update_cdes(msg.linear.x, msg.linear.y, msg.angular.z, JOY_FREQ)
+                self.sim_cluster.update_cdes(msg.linear.x, msg.linear.y, msg.angular.z *0.3, freq)
 
     #Set cluster parameters from the cluster_params topic
     def cluster_params_callback(self, msg):
