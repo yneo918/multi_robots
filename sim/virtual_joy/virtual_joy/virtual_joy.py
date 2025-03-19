@@ -6,6 +6,8 @@ from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPu
 from PyQt6.QtCore import Qt, QTimer
 
 
+FREQ = 10
+
 class VirtualXbox(Node, QWidget):
     def __init__(self):
         Node.__init__(self, "virtual_xbox")
@@ -37,7 +39,6 @@ class VirtualXbox(Node, QWidget):
         reset_button.clicked.connect(self.reset_sticks)
         layout.addWidget(reset_button)
 
-        # ボタン
         self.buttons = []
         button_names = [
             "A", "B", "X", "Y", "LB", "RB", "Back", "Start", "Xbox", "L Stick", "R Stick"
@@ -66,13 +67,12 @@ class VirtualXbox(Node, QWidget):
         layout.addLayout(dpad_layout)
 
         self.setLayout(layout)
-        self.axes = [0.0] * 8  # スティック & トリガー & D-Pad
+        self.axes = [0.0] * 8
         self.buttons_state = [0] * len(button_names)
 
-        # 10Hz（100msごと）にメッセージを送信
         self.timer = QTimer()
         self.timer.timeout.connect(self.publish_joy)
-        self.timer.start(10)  # 100ms = 10Hz
+        self.timer.start(int(1000//FREQ))
 
     def reset_sticks(self):
         for slider in self.sticks.values():

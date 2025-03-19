@@ -63,7 +63,7 @@ class Cluster():
         rd = np.dot(np.array(self.JacobianInv_func(*self.c.flatten())), cd_cmd)
         for i in range(self.num_robots):
             rd[i*ROVER_DOF+2, 0] = self.wrap_to_pi(rd[i*ROVER_DOF+2, 0])
-        return cd_cmd, rd
+        return cd_cmd, rd, self.c
     
     def update_cdes_tr(self, v_t, v_r, freq):
         t = self.c[2, 0]

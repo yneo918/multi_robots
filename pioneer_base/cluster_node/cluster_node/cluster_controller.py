@@ -22,10 +22,10 @@ On startup the node will listen for all active robots in robot_id_list. Once the
 if there are enough robots to form a cluster, it initializes a Cluster object and map the robot ids to the cluster.
 """
 
-JOY_FREQ = 100
-KP_GAIN = 100.0
-KV_GAIN = 100.0
-EPSILON = 0.01
+JOY_FREQ = 10
+KP_GAIN = 5.0
+KV_GAIN = 5.0
+EPSILON = 0.1
 MAX_VEL = 1.0
 ROVER_DOF = 3 # (x, y, theta)
 
@@ -95,6 +95,7 @@ class ClusterNode(Node):
         self.pubsub.create_subscription(String, '/modeC', self.mode_callback, 1)
         self.pubsub.create_subscription(Twist, '/joy/cmd_vel', self.joycmd_callback, 5)
         self.pubsub.create_subscription(Float32MultiArray, '/cluster_params', self.cluster_params_callback, 5)
+        self.pubsub.create_publisher(Float32MultiArray, '/cluster_varables', 5)
 
         for i in range(self.n_rover):
             self.pubsub.create_subscription(
@@ -111,6 +112,7 @@ class ClusterNode(Node):
                 Pose2D,
                 f'/sim/{self.robot_id_list[i]}/desiredPose2D',
                 5)
+                
             
         self.listeningForRobots = True
 
@@ -198,10 +200,10 @@ class ClusterNode(Node):
             robot_pose = [msg.x , msg.y, msg.theta]
             self.sim_r[cluster_index*ROVER_DOF:((cluster_index+1)*ROVER_DOF), 0] = robot_pose #update robot position in array 
             _desired = self.sim_cluster.getDesiredRobotPosition()
-            self.get_logger().info(f"Sim robot positions {self.sim_r} Desired sim robot position: {_desired}")
+            #self.get_logger().info(f"Sim robot positions {self.sim_r} Desired sim robot position: {_desired}")
             _pose = Pose2D()
             _pose.x, _pose.y, _pose.theta = _desired[i*ROVER_DOF+0, 0], _desired[i*ROVER_DOF+1, 0], _desired[i*ROVER_DOF+2, 0]
-            self.pubsub.publish(f'/sim/{self.robot_id_list[self.sim_cluster_robots[i]]}/desiredPose2D', _pose)
+            #self.pubsub.publish(f'/sim/{self.robot_id_list[self.sim_cluster_robots[i]]}/desiredPose2D', _pose)
                 
     #Velocity command from the joystick to be sent to the cluster
     def joycmd_callback(self, msg):
@@ -224,9 +226,9 @@ class ClusterNode(Node):
         _r = self.r if self.output == "actual" else self.sim_r
         _rd = self.rd if self.output == "actual" else self.sim_rd
         _cluster_robots = self.cluster_robots if self.output == "actual" else self.sim_cluster_robots
-        cd, rd = _cluster.getVelocityCommand(_r , _rd)
-        self.get_logger().info(f"Cluster status/cd: {cd.flatten()}")
-        self.get_logger().info(f"Cluster status/rd: {rd.flatten()}")
+        cd, rd, c_cur= _cluster.getVelocityCommand(_r , _rd)
+        #self.get_logger().info(f"Cluster status/cd: {cd.flatten()}")
+        #self.get_logger().info(f"Cluster status/rd: {rd.flatten()}")
         _max = np.max(np.abs(rd))
         rd = rd / _max if _max > MAX_VEL else rd
         self.get_logger().info(f"Cluster status/gained_rd: {rd.flatten()}")
@@ -238,7 +240,7 @@ class ClusterNode(Node):
             if _trans < EPSILON:
                 vel.linear.x = 0.0
                 vel.angular.z = 0.0
-                self.get_logger().info(f"Robot {i} is not moving")
+                #self.get_logger().info(f"Robot {i} is not moving")
             else:
                 desiredAngle = math.atan2(_y, _x)
                 vel.angular.z = self.wrap_to_pi(desiredAngle - _r[i*ROVER_DOF+2, 0])
@@ -249,6 +251,7 @@ class ClusterNode(Node):
                     t = -_trans * math.cos(abs(vel.angular.z))
                 vel.linear.x = t
             self.pubsub.publish(f"{'/' if self.output == 'actual' else '/sim/'}{self.robot_id_list[_cluster_robots[i]]}/cmd_vel", vel)
+        self.pubsub.publish('/cluster_varables', Float32MultiArray(data=c_cur.flatten().tolist()))
 
     def wrap_to_pi(self, t):
         return (t + np.pi) % (2 * np.pi) - np.pi
