@@ -6,12 +6,19 @@ from rclpy.serialization import deserialize_message
 from rosidl_runtime_py.utilities import get_message
 import matplotlib.pyplot as plt
 
+ros_sqlite3 = ["foxy", "galactic", "humble"]
+
 def read_ros2_bag(bag_path: str):
     reader = rosbag2_py.SequentialReader()
+    ros_distro = os.getenv('ROS_DISTRO')
+    if ros_distro in ros_sqlite3:
+        storage_id='sqlite3'
+    else:
+        storage_id='mcap'
     
     storage_options = rosbag2_py.StorageOptions(
         uri=bag_path,
-        storage_id='mcap'
+        storage_id=storage_id
     )
     
     converter_options = rosbag2_py.ConverterOptions('', '')
