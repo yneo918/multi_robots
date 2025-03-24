@@ -96,13 +96,23 @@ class Cluster():
 
     #Linear control equation 
     def calculateLinearControl(self):
-        self.c[2,0] = self.wrap_to_pi(self.c[2,0])
-        cd = np.dot(self.Kp, (self.cdes - self.c))
+        c_diff = self.cdes - self.c
+        c_diff[2,0] = self.wrap_to_pi(c_diff[2,0])
+        c_diff[3,0] = self.wrap_to_pi(c_diff[3,0])
+        c_diff[4,0] = self.wrap_to_pi(c_diff[4,0])
+        c_diff[5,0] = self.wrap_to_pi(c_diff[5,0])
+        c_diff[8,0] = self.wrap_to_pi(c_diff[8,0])
+        cd = np.dot(self.Kp, c_diff)
         return cd
 
     #Given a the current robot state space variables, update the cluster state space variables
     def updateClusterPosition(self, r, rd):
         self.c = self.FKine_func(*r.flatten())
+        self.c[2, 0] = self.wrap_to_pi(self.c[2, 0])
+        self.c[3, 0] = self.wrap_to_pi(self.c[3, 0])
+        self.c[4, 0] = self.wrap_to_pi(self.c[4, 0])
+        self.c[5, 0] = self.wrap_to_pi(self.c[5, 0])
+        self.c[8, 0] = self.wrap_to_pi(self.c[8, 0])
         self.cd = np.dot(np.array(self.Jacobian_func(*r.flatten())).astype(np.float64), rd)
 
     #Based on the given cluster configuration will set the symbolic kinematic transform equations
