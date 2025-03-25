@@ -80,10 +80,12 @@ class Cluster():
         self.cdes[2, 0] = self.wrap_to_pi(self.cdes[2, 0])
         return
     
-    def update_cdes_pos(self, x, y, t):
-        self.cdes[0, 0] = x
-        self.cdes[1, 0] = y
-        self.cdes[2, 0] = self.wrap_to_pi(t)
+    # data = float list
+    def update_cdes_pos(self, data):
+        for i in range(len(data)):
+            self.cdes[i, 0] = data[i]
+            if i in [2, 3, 4, 5, 8]:
+                self.cdes[i, 0] = self.wrap_to_pi(self.cdes[i, 0])
         return
     
     def update_cluster_shape(self, params):

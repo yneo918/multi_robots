@@ -99,7 +99,7 @@ class ClusterNode(Node):
         self.pubsub.create_subscription(String, '/modeC', self.mode_callback, 1)
         self.pubsub.create_subscription(Twist, '/joy/cmd_vel', self.joycmd_callback, 5)
         self.pubsub.create_subscription(Float32MultiArray, '/cluster_params', self.cluster_params_callback, 5)
-        self.pubsub.create_subscription(Pose2D, '/cluster_desired', self.cluster_desired_callback, 5)
+        self.pubsub.create_subscription(Float32MultiArray, '/cluster_desired', self.cluster_desired_callback, 5)
         
         self.pubsub.create_publisher(ClusterInfo, '/cluster_info', 5)
         self.pubsub.create_publisher(ClusterInfo, '/sim/cluster_info', 5)
@@ -229,10 +229,10 @@ class ClusterNode(Node):
             _cluster.update_cluster_shape(msg.data)
     
     def cluster_desired_callback(self, msg):
-        self.get_logger().info(f"Received cluster desired position: {msg.x}, {msg.y}, {msg.theta}")
+        self.get_logger().info(f"Received cluster desired position: {msg.data}")
         if not self.listeningForRobots:
             _cluster = self.cluster if self.output == "actual" else self.sim_cluster
-            _cluster.update_cdes_pos(msg.x, msg.y, msg.theta)
+            _cluster.update_cdes_pos(msg.data)
    
     #Publishes velocity commands to robots in either sim or actual
     def publish_velocities(self):
@@ -244,6 +244,7 @@ class ClusterNode(Node):
         cd, rd, c_cur= _cluster.getVelocityCommand(_r , _rd)
         #self.get_logger().info(f"Cluster status/cd: {cd.flatten()}")
         #self.get_logger().info(f"Cluster status/rd: {rd.flatten()}")
+        
         _max = np.max(np.abs(rd))
         rd = rd / _max if _max > MAX_VEL else rd
         #self.get_logger().info(f"Cluster status/gained_rd: {rd.flatten()}")

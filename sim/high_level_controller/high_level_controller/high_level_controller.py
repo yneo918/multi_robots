@@ -8,6 +8,7 @@ import numpy as np
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import JointState
 from geometry_msgs.msg import Pose2D
+from std_msgs.msg import Float32MultiArray
 from pioneer_interfaces.msg import PioneerInfo
 
 from .my_ros_module import PubSubManager
@@ -21,7 +22,7 @@ class HighLevelClusterController(Node):
         super().__init__('high_level_cluster_controller')
         self.pubsub = PubSubManager(self)
 
-        self.pubsub.create_publisher(Pose2D, '/cluster_desired', 5)
+        self.pubsub.create_publisher(Float32MultiArray, '/cluster_desired', 5)
 
         self.x = np.linspace(0.0, range, range*30)
         self.head = 0
@@ -33,10 +34,9 @@ class HighLevelClusterController(Node):
         self.timer = self.create_timer(timer_period, self.publish_cluster_pose)
 
     def publish_cluster_pose(self):
-        msg = Pose2D()
-        msg.x = self.x[self.head]
-        msg.y = math.sin(self.x[self.head]/3) * 10
-        msg.theta = 0.0
+        msg = Float32MultiArray()
+        _x = self.x[self.head] / 2
+        msg.data = [_x, math.sin(_x/3) * 10, _x]
         self.head += 1
         self.pubsub.publish('/cluster_desired', msg)
         if self.head == self.range:
