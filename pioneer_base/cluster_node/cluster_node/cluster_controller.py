@@ -92,12 +92,14 @@ class ClusterNode(Node):
         self.output = "actual" #switch between outputing velocity to simulation or actual robots
         self.mode = "INIT" #switch between manual or cluster control
         self.joy_timestamp = None
+        self.enable = False
         
         self.pubsub = PubSubManager(self)
 
         self.pubsub.create_subscription(Bool, '/joy/hardware', self.hw_sim_callback, 1)
         self.pubsub.create_subscription(String, '/modeC', self.mode_callback, 1)
         self.pubsub.create_subscription(Twist, '/joy/cmd_vel', self.joycmd_callback, 5)
+        self.pubsub.create_subscription(Bool, '/joy/enable', self.enable_callback, 5)
         self.pubsub.create_subscription(Float32MultiArray, '/cluster_params', self.cluster_params_callback, 5)
         self.pubsub.create_subscription(Float32MultiArray, '/cluster_desired', self.cluster_desired_callback, 5)
         
@@ -171,6 +173,9 @@ class ClusterNode(Node):
             self.output = "actual"
         if temp != self.output:
             self.get_logger().info(f"Changed output to {self.output}")
+    
+    def enable_callback(self, msg):
+        self.enable = msg.data
 
     def angular_callback(self, msg, i):
         if self.listeningForRobots:
@@ -236,11 +241,19 @@ class ClusterNode(Node):
    
     #Publishes velocity commands to robots in either sim or actual
     def publish_velocities(self):
+        _msg_prefix = '' if self.output == 'actual' else '/sim'
+        _cluster_robots = self.cluster_robots if self.output == "actual" else self.sim_cluster_robots
+        if not self.enable:
+            vel = Twist()
+            vel.linear.x = 0.0
+            vel.angular.z = 0.0
+            for i in range(len(_cluster_robots)):
+                self.pubsub.publish(f"{_msg_prefix}/{self.robot_id_list[_cluster_robots[i]]}/cmd_vel", vel)
+            return
         _cluster = self.cluster if self.output == "actual" else self.sim_cluster
         _r = self.r if self.output == "actual" else self.sim_r
         _rd = self.rd if self.output == "actual" else self.sim_rd
         _cdes = _cluster.cdes
-        _cluster_robots = self.cluster_robots if self.output == "actual" else self.sim_cluster_robots
         cd, rd, c_cur= _cluster.getVelocityCommand(_r , _rd)
         #self.get_logger().info(f"Cluster status/cd: {cd.flatten()}")
         #self.get_logger().info(f"Cluster status/rd: {rd.flatten()}")
@@ -248,7 +261,6 @@ class ClusterNode(Node):
         _max = np.max(np.abs(rd))
         rd = rd / _max if _max > MAX_VEL else rd
         #self.get_logger().info(f"Cluster status/gained_rd: {rd.flatten()}")
-        _msg_prefix = '' if self.output == 'actual' else '/sim'
         for i in range(len(_cluster_robots)):
             vel = Twist()
             _x = float(rd[i*ROVER_DOF+0, 0])

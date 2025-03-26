@@ -28,6 +28,7 @@ class PoseConverter(Node):
         self.gps_status = None
         self.quaternion = None
         self.euler_x = None
+        self.calibration = None
 
 
         self.create_subscription(
@@ -84,18 +85,20 @@ class PoseConverter(Node):
         self.euler_x = msg.data[0]
         self.euler_y = msg.data[1]
         self.euler_z = msg.data[2]
+        if self.calibration is None:
+            self.calibration = self.euler_x
     
     def timer_callback(self):
         if self.ref_lat is None or self.ref_lon is None:
             self.get_logger().info("Reference GPS not set")
             self.request_reference_gps()
             return
-        if self.lat is None or self.lon is None or self.quaternion is None or self.euler_x is None:
+        if self.lat is None or self.lon is None or self.quaternion is None or self.euler_x is None or self.calibration is None:
             self.get_logger().info("Not all data available")
             return
         msg = Pose2D()
         msg.x, msg.y = self.convert_gps_to_pose(self.lat, self.lon, self.ref_lat, self.ref_lon)
-        msg.theta = self.euler_x
+        msg.theta = self.euler_x - self.calibration
         self.pose_publisher.publish(msg)
         self.get_logger().info(f"Published: {msg.x}, {msg.y}, {msg.theta}")
     

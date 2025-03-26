@@ -47,6 +47,9 @@ class JoyCmd(JoyBase):
         self.hw_sel_button = self.button_dict.get(self.get_parameter('hardware_sim_sel').value)
         self.broadcast_button = self.button_dict.get(self.get_parameter('broadcast').value)
         self.N_ROVER = self.get_parameter('n_rover').value
+        self.cluster_x = 0.0
+        self.cluster_y = 0.0
+        self.cluster_t = 0.0
         self.cluster_b = math.pi / 3
         self.cluster_p = 10.0
         self.cluster_q = 10.0
@@ -67,6 +70,9 @@ class JoyCmd(JoyBase):
         self.pubsub.create_publisher(Int16, '/joy/angle_sel', 5)
         self.pubsub.create_publisher(Float32MultiArray, '/joy/cross', 5)
         self.pubsub.create_publisher(Float32MultiArray, '/cluster_params', 5)
+        self.pubsub.create_publisher(Float32MultiArray, '/cluster_desired', 5)
+
+        self.pubsub.create_subscription(Float32MultiArray, '/cluster_desired', self.cluster_desired_callback, 5)
 
         timer_period = 0.1
         self.timer = self.create_timer(timer_period, self.timer_callback)
@@ -141,6 +147,11 @@ class JoyCmd(JoyBase):
         revolution_val = msg.axes[self.axis_dict[self.get_parameter('revolution').value]]
         msg_formation.data = [prismatic_val, revolution_val]
         self.pubsub.publish('/joy/cross', msg_formation)
+    
+    def cluster_desired_callback(self, msg):
+        self.cluster_x = msg.data[0]
+        self.cluster_y = msg.data[1]
+        self.cluster_t = msg.data[2]
 
     def timer_callback(self):
         select_msg = Int16()
@@ -173,6 +184,9 @@ class StatusWindow(QMainWindow):
             "mode": QLabel("Mode: N/A"),
             "selected_angle": QLabel("Selected Angle: N/A"),
             "hardware": QLabel("Hardware: N/A"),
+            "cluster_x": QLabel(f"Cluster Xc: {self.node.cluster_x}"),
+            "cluster_y": QLabel(f"Cluster Yc: {self.node.cluster_y}"),
+            "cluster_t": QLabel(f"Cluster Tc: {self.node.cluster_t}"),
             "cluster_p": QLabel(f"Cluster P: {self.node.cluster_p}"),
             "cluster_q": QLabel(f"Cluster Q: {self.node.cluster_q}"),
             "cluster_b": QLabel(f"Cluster B: {self.node.cluster_b}"),
@@ -213,6 +227,30 @@ class StatusWindow(QMainWindow):
         left_layout.addWidget(self.hw_checkbox)
 
         # Add fields for cluster parameters P, Q, and B
+        self.x_spin = QDoubleSpinBox()
+        self.x_spin.setMinimum(-100.0)
+        self.x_spin.setMaximum(100.0)
+        self.x_spin.setValue(self.node.cluster_x)
+        self.x_spin.valueChanged.connect(self.update_cluster_x)
+        left_layout.addWidget(QLabel("Cluster Xc(m):"))
+        left_layout.addWidget(self.x_spin)
+
+        self.y_spin = QDoubleSpinBox()
+        self.y_spin.setMinimum(-100.0)
+        self.y_spin.setMaximum(100.0)
+        self.y_spin.setValue(self.node.cluster_y)
+        self.y_spin.valueChanged.connect(self.update_cluster_y)
+        left_layout.addWidget(QLabel("Cluster Yc(m):"))
+        left_layout.addWidget(self.y_spin)
+
+        self.t_spin = QDoubleSpinBox()
+        self.t_spin.setMinimum(-10 * math.pi)
+        self.t_spin.setMaximum(10 * math.pi)
+        self.t_spin.setValue(self.node.cluster_t)
+        self.t_spin.valueChanged.connect(self.update_cluster_t)
+        left_layout.addWidget(QLabel("Cluster Tc(rad):"))
+        left_layout.addWidget(self.t_spin)
+
         self.p_spin = QDoubleSpinBox()
         self.p_spin.setMinimum(0.0)
         self.p_spin.setMaximum(100.0)
@@ -271,10 +309,12 @@ class StatusWindow(QMainWindow):
         self.status_labels["selected_angle"].setText(f"Selected Angle: {self.node.selected_angle}")
         hardware_str = "HW" if self.node.hw_sel else "Sim"
         self.status_labels["hardware"].setText(f"Hardware: {hardware_str}")
+        self.status_labels["cluster_x"].setText(f"Cluster Xc: {self.node.cluster_x}")
+        self.status_labels["cluster_y"].setText(f"Cluster Yc: {self.node.cluster_y}")
+        self.status_labels["cluster_t"].setText(f"Cluster Tc: {self.node.cluster_t}")
         self.status_labels["cluster_p"].setText(f"Cluster P: {self.node.cluster_p}")
         self.status_labels["cluster_q"].setText(f"Cluster Q: {self.node.cluster_q}")
         self.status_labels["cluster_b"].setText(f"Cluster B: {self.node.cluster_b}")
-
 
     def update_rover(self, value):
         self.node.select = value
@@ -294,6 +334,24 @@ class StatusWindow(QMainWindow):
 
     def update_hw(self, checked):
         self.node.hw_sel = checked
+
+    def update_cluster_x(self, value):
+        self.node.cluster_x = value
+        msg = Float32MultiArray()
+        msg.data = [self.node.cluster_x, self.node.cluster_y, self.node.cluster_t]
+        self.node.pubsub.publish('/cluster_desired', msg)
+    
+    def update_cluster_y(self, value):
+        self.node.cluster_y = value
+        msg = Float32MultiArray()
+        msg.data = [self.node.cluster_x, self.node.cluster_y, self.node.cluster_t]
+        self.node.pubsub.publish('/cluster_desired', msg)
+    
+    def update_cluster_t(self, value):
+        self.node.cluster_t = value
+        msg = Float32MultiArray()
+        msg.data = [self.node.cluster_x, self.node.cluster_y, self.node.cluster_t]
+        self.node.pubsub.publish('/cluster_desired', msg)
 
     def update_cluster_p(self, value):
         self.node.cluster_p = value
