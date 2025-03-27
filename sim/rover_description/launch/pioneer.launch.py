@@ -76,7 +76,7 @@ def launch_setup(context, *args, **kwargs):
                         "xacro ", 
                         xacro_file, 
                         f" r:={COLORS[robot_id][0]} g:={COLORS[robot_id][1]} b:={COLORS[robot_id][2]} a:=",
-                        LaunchConfiguration("a")                    
+                        LaunchConfiguration("hwa")                    
                     ]),
                     "use_sim_time": LaunchConfiguration("use_sim_time"),
                     "frame_prefix": f"{robot_id}hw/",
@@ -126,6 +126,7 @@ def generate_launch_description():
         DeclareLaunchArgument("y", default_value="0.0", description="Y position"),
         DeclareLaunchArgument("t", default_value="0.0", description="Theta"),
         DeclareLaunchArgument("a", default_value="1.0", description="Transparency"),
+        DeclareLaunchArgument("hwa", default_value="0.5", description="Transparency of hw"),
         DeclareLaunchArgument("hw", default_value="", description="Transparency"),
         DeclareLaunchArgument("desired", default_value="", description="Transparency"),
         DeclareLaunchArgument("use_sim_time", default_value="True", description="Flag to enable use_sim_time"),

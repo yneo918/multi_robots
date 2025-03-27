@@ -119,7 +119,7 @@ class ClusterNode(Node):
                 5)
             self.pubsub.create_publisher(
                 Pose2D,
-                f'/sim/{self.robot_id_list[i]}/desiredPose2D',
+                f'/{self.robot_id_list[i]}/desiredPose2D',
                 5)
                 
         self.listeningForRobots = True
@@ -214,7 +214,7 @@ class ClusterNode(Node):
             #self.get_logger().info(f"Sim robot positions {self.sim_r} Desired sim robot position: {_desired}")
             _pose = Pose2D()
             _pose.x, _pose.y, _pose.theta = _desired[i*ROVER_DOF+0, 0], _desired[i*ROVER_DOF+1, 0], _desired[i*ROVER_DOF+2, 0]
-            self.pubsub.publish(f'/sim/{self.robot_id_list[self.sim_cluster_robots[i]]}/desiredPose2D', _pose)
+            self.pubsub.publish(f'/{self.robot_id_list[self.sim_cluster_robots[i]]}/desiredPose2D', _pose)
                 
     #Velocity command from the joystick to be sent to the cluster
     def joycmd_callback(self, msg):
@@ -257,8 +257,9 @@ class ClusterNode(Node):
         cd, rd, c_cur= _cluster.getVelocityCommand(_r , _rd)
         #self.get_logger().info(f"Cluster status/cd: {cd.flatten()}")
         #self.get_logger().info(f"Cluster status/rd: {rd.flatten()}")
-        
-        _max = np.max(np.abs(rd))
+        _rd = rd
+
+        _max = max(np.abs([rd[0], rd[1], rd[3], rd[4], rd[6], rd[7]]))
         rd = rd / _max if _max > MAX_VEL else rd
         #self.get_logger().info(f"Cluster status/gained_rd: {rd.flatten()}")
         for i in range(len(_cluster_robots)):
@@ -284,6 +285,7 @@ class ClusterNode(Node):
         msg.cluster.data = c_cur.flatten().tolist()
         msg.cluster_desired.data = _cdes.flatten().tolist()
         msg.rover.data = _r.flatten().tolist()
+        msg.rover_desired.data = _rd.flatten().tolist()
         self.pubsub.publish(f"{_msg_prefix}/cluster_info", msg)
 
     def wrap_to_pi(self, t):

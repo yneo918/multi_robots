@@ -3,14 +3,9 @@ Panels:
     Help Height: 138
     Name: Displays
     Property Tree Widget:
-      Expanded:
-        - /Global Options1
-        - /Status1
-        - /RobotModel3
-        - /RobotModel5
-        - /RobotModel6
+      Expanded: ~
       Splitter Ratio: 0.5
-    Tree Height: 1458
+    Tree Height: 812
 Visualization Manager:
   Class: ""
   Displays:
@@ -50,6 +45,31 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
+        base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        rover_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        theta_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        world:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        x_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        y_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
       Mass Properties:
         Inertia: false
         Mass: false
@@ -76,6 +96,31 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
+        base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        rover_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        theta_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        world:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        x_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        y_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
       Mass Properties:
         Inertia: false
         Mass: false
@@ -102,6 +147,31 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
+        base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        rover_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        theta_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        world:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        x_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        y_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
       Mass Properties:
         Inertia: false
         Mass: false
@@ -117,13 +187,186 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
+        p2/base_link:
+          Value: true
+        p2/rover_link:
+          Value: true
+        p2/theta_axis:
+          Value: true
+        p2/world:
+          Value: true
+        p2/x_axis:
+          Value: true
+        p2/y_axis:
+          Value: true
+        p2desired/base_link:
+          Value: true
+        p2desired/rover_link:
+          Value: true
+        p2desired/theta_axis:
+          Value: true
+        p2desired/world:
+          Value: true
+        p2desired/x_axis:
+          Value: true
+        p2desired/y_axis:
+          Value: true
+        p2hw/base_link:
+          Value: true
+        p2hw/rover_link:
+          Value: true
+        p2hw/theta_axis:
+          Value: true
+        p2hw/world:
+          Value: true
+        p2hw/x_axis:
+          Value: true
+        p2hw/y_axis:
+          Value: true
+        p3/base_link:
+          Value: true
+        p3/rover_link:
+          Value: true
+        p3/theta_axis:
+          Value: true
+        p3/world:
+          Value: true
+        p3/x_axis:
+          Value: true
+        p3/y_axis:
+          Value: true
+        p3desired/base_link:
+          Value: true
+        p3desired/rover_link:
+          Value: true
+        p3desired/theta_axis:
+          Value: true
+        p3desired/world:
+          Value: true
+        p3desired/x_axis:
+          Value: true
+        p3desired/y_axis:
+          Value: true
+        p3hw/base_link:
+          Value: true
+        p3hw/rover_link:
+          Value: true
+        p3hw/theta_axis:
+          Value: true
+        p3hw/world:
+          Value: true
+        p3hw/x_axis:
+          Value: true
+        p3hw/y_axis:
+          Value: true
+        p4/base_link:
+          Value: true
+        p4/rover_link:
+          Value: true
+        p4/theta_axis:
+          Value: true
+        p4/world:
+          Value: true
+        p4/x_axis:
+          Value: true
+        p4/y_axis:
+          Value: true
+        p4desired/base_link:
+          Value: true
+        p4desired/rover_link:
+          Value: true
+        p4desired/theta_axis:
+          Value: true
+        p4desired/world:
+          Value: true
+        p4desired/x_axis:
+          Value: true
+        p4desired/y_axis:
+          Value: true
+        p4hw/base_link:
+          Value: true
+        p4hw/rover_link:
+          Value: true
+        p4hw/theta_axis:
+          Value: true
+        p4hw/world:
+          Value: true
+        p4hw/x_axis:
+          Value: true
+        p4hw/y_axis:
+          Value: true
+        world:
+          Value: true
       Marker Scale: 0.30000001192092896
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: true
       Tree:
-        {}
+        world:
+          p2/world:
+            p2/x_axis:
+              p2/y_axis:
+                p2/theta_axis:
+                  p2/base_link:
+                    p2/rover_link:
+                      {}
+          p2desired/world:
+            p2desired/x_axis:
+              p2desired/y_axis:
+                p2desired/theta_axis:
+                  p2desired/base_link:
+                    p2desired/rover_link:
+                      {}
+          p2hw/world:
+            p2hw/x_axis:
+              p2hw/y_axis:
+                p2hw/theta_axis:
+                  p2hw/base_link:
+                    p2hw/rover_link:
+                      {}
+          p3/world:
+            p3/x_axis:
+              p3/y_axis:
+                p3/theta_axis:
+                  p3/base_link:
+                    p3/rover_link:
+                      {}
+          p3desired/world:
+            p3desired/x_axis:
+              p3desired/y_axis:
+                p3desired/theta_axis:
+                  p3desired/base_link:
+                    p3desired/rover_link:
+                      {}
+          p3hw/world:
+            p3hw/x_axis:
+              p3hw/y_axis:
+                p3hw/theta_axis:
+                  p3hw/base_link:
+                    p3hw/rover_link:
+                      {}
+          p4/world:
+            p4/x_axis:
+              p4/y_axis:
+                p4/theta_axis:
+                  p4/base_link:
+                    p4/rover_link:
+                      {}
+          p4desired/world:
+            p4desired/x_axis:
+              p4desired/y_axis:
+                p4desired/theta_axis:
+                  p4desired/base_link:
+                    p4desired/rover_link:
+                      {}
+          p4hw/world:
+            p4hw/x_axis:
+              p4hw/y_axis:
+                p4hw/theta_axis:
+                  p4hw/base_link:
+                    p4hw/rover_link:
+                      {}
       Update Interval: 0
       Value: true
     - Alpha: 0.699999988079071
@@ -159,6 +402,159 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
+        Value: /p2desired/robot_description
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        rover_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        theta_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        world:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        x_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        y_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+      Mass Properties:
+        Inertia: false
+        Mass: false
+      Name: RobotModel
+      TF Prefix: p2desired
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Alpha: 1
+      Class: rviz_default_plugins/RobotModel
+      Collision Enabled: false
+      Description File: ""
+      Description Source: Topic
+      Description Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /p3desired/robot_description
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        rover_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        theta_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        world:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        x_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        y_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+      Mass Properties:
+        Inertia: false
+        Mass: false
+      Name: RobotModel
+      TF Prefix: p3desired
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Alpha: 1
+      Class: rviz_default_plugins/RobotModel
+      Collision Enabled: false
+      Description File: ""
+      Description Source: Topic
+      Description Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /p4desired/robot_description
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        rover_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        theta_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        world:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        x_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        y_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+      Mass Properties:
+        Inertia: false
+        Mass: false
+      Name: RobotModel
+      TF Prefix: p4desired
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Alpha: 1
+      Class: rviz_default_plugins/RobotModel
+      Collision Enabled: false
+      Description File: ""
+      Description Source: Topic
+      Description Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
         Value: /p2hw/robot_description
       Enabled: true
       Links:
@@ -166,7 +562,32 @@ Visualization Manager:
         Expand Joint Details: false
         Expand Link Details: false
         Expand Tree: false
-        Link Tree Style: ""
+        Link Tree Style: Links in Alphabetic Order
+        base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        rover_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        theta_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        world:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        x_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        y_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
       Mass Properties:
         Inertia: false
         Mass: false
@@ -192,7 +613,32 @@ Visualization Manager:
         Expand Joint Details: false
         Expand Link Details: false
         Expand Tree: false
-        Link Tree Style: ""
+        Link Tree Style: Links in Alphabetic Order
+        base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        rover_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        theta_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        world:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        x_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        y_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
       Mass Properties:
         Inertia: false
         Mass: false
@@ -211,14 +657,39 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /p4hw/robot/p3/robo_description
+        Value: /p4hw/robot_description
       Enabled: true
       Links:
         All Links Enabled: true
         Expand Joint Details: false
         Expand Link Details: false
         Expand Tree: false
-        Link Tree Style: ""
+        Link Tree Style: Links in Alphabetic Order
+        base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        rover_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        theta_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        world:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        x_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        y_axis:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
       Mass Properties:
         Inertia: false
         Mass: false
@@ -248,7 +719,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 4.211073875427246
+      Distance: 16.436309814453125
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -271,10 +742,10 @@ Visualization Manager:
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 1862
+  Height: 1095
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd0000000100000000000001f4000006aafc0200000001fb000000100044006900730070006c006100790073010000006e000006aa0000018200ffffff00000934000006aa00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
-  Width: 2868
-  X: 132
-  Y: 64
+  QMainWindow State: 000000ff00000000fd0000000100000000000002b2000003f1fc0200000001fb000000100044006900730070006c006100790073010000003b000003f1000000c700ffffff000004bc000003f100000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  Width: 1908
+  X: 0
+  Y: 0

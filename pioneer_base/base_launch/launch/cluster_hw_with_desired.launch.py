@@ -28,8 +28,8 @@ def generate_launch_description():
     if not os.path.isfile(cluster_file):
         raise FileNotFoundError(f"Parameter file not found: {cluster_file}")
 
-    display_launch_file = os.path.join(get_package_share_directory('rover_description'), 'launch', 'display_with_desired.launch.py')
-    pioneer_launch_file = os.path.join(get_package_share_directory('sim_launch'), 'pioneer_with_desired.launch.py')
+    display_launch_file = os.path.join(get_package_share_directory('rover_description'), 'launch', 'display_with_hw_desired.launch.py')
+    pioneer_launch_file = os.path.join(get_package_share_directory('sim_launch'), 'pioneer_with_hw_desired.launch.py')
     teleop_launch_file = os.path.join(get_package_share_directory("teleop_core"), 'gui.launch.py')
 
     return LaunchDescription([

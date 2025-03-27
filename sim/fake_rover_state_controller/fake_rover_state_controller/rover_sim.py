@@ -48,8 +48,6 @@ class JointStates(Node):
         self.vel = {'transform': 0.0, 'rotate': 0.0, 'alive': 0}
         self.joint_names = ['w_to_x', 'x_to_y', 'y_to_t']
 
-
-
         self.pubsub.create_subscription(Twist, f'/sim/{self.robot_id}/cmd_vel', self.teleop_callback, 10)
         self.pubsub.create_publisher(JointState, f'/{self.robot_id}/joint_states', 10)
         self.pubsub.create_publisher(Pose2D, f'/sim/{self.robot_id}/pose2D', 10)
@@ -57,7 +55,7 @@ class JointStates(Node):
         self.pubsub.create_subscription(Pose2D, f'/{self.robot_id}/pose2D', self.ghost_callback, 10)
         self.pubsub.create_publisher(JointState, f'/{self.robot_id}hw/joint_states', 10)
 
-        self.pubsub.create_subscription(Pose2D, f'/sim/{self.robot_id}/desiredPose2D', self.desired_callback, 10)
+        self.pubsub.create_subscription(Pose2D, f'/{self.robot_id}/desiredPose2D', self.desired_callback, 10)
         self.pubsub.create_publisher(JointState, f'/{self.robot_id}desired/joint_states', 10)
         
         timer_period = UPDATE_RATE
@@ -67,9 +65,13 @@ class JointStates(Node):
         if self.vel['alive'] <= 0:
             return
         self.position['theta'] += UPDATE_RATE  * self.vel['rotate']
+        self.position['theta'] = self.wrap_to_pi(self.position['theta'])
         self.position['x'] += UPDATE_RATE  * self.vel['transform'] * math.cos(self.position['theta'])
         self.position['y'] += UPDATE_RATE  * self.vel['transform'] * math.sin(self.position['theta'])
         self.vel['alive'] -= 1
+    
+    def wrap_to_pi(self, t):
+        return (t + math.pi) % (2 * math.pi) - math.pi
         
     def publish_joint_states(self):
         jointstates_msg = JointState()
