@@ -7,6 +7,8 @@ from std_msgs.msg import Float32MultiArray
 from std_msgs.msg import Int16MultiArray
 from std_msgs.msg import Int16
 
+import math
+
 from pioneer_interfaces.srv import RefGPS
 
 import datetime
@@ -98,9 +100,16 @@ class PoseConverter(Node):
             return
         msg = Pose2D()
         msg.x, msg.y = self.convert_gps_to_pose(self.lat, self.lon, self.ref_lat, self.ref_lon)
-        msg.theta = self.euler_x - self.calibration
+        msg.theta = self.degree_to_radian_pi_range(self.euler_x - self.calibration)
         self.pose_publisher.publish(msg)
         self.get_logger().info(f"Published: {msg.x}, {msg.y}, {msg.theta}")
+        
+    def degree_to_radian_pi_range(self, degree):
+        # Convert degree to radian
+        rad = math.radians(degree)
+        # Normalize to [-π, π)
+        rad = (rad + math.pi) % (2 * math.pi) - math.pi
+        return rad
     
     def convert_gps_to_pose(self, cur_lat, cur_lon, ref_lat, ref_lon):
         R = 6371000
