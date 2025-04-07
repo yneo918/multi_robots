@@ -28,7 +28,7 @@ FREQ = 10
 JOY_FREQ = FREQ
 KP_GAIN = 10.0
 KV_GAIN = 10.0
-EPSILON = 0.1
+EPSILON = 0.5
 MAX_VEL = 1.0
 ROVER_DOF = 3 # (x, y, theta)
 
@@ -282,7 +282,7 @@ class ClusterNode(Node):
                     t = -_trans * math.cos(abs(vel.angular.z))
                 vel.linear.x = t
             try:
-                self.pubsub.publish(f"/{self.robot_id_list[_cluster_robots[i]]}/cmd_vel", vel)
+                self.pubsub.publish(f"{_msg_prefix}/{self.robot_id_list[_cluster_robots[i]]}/cmd_vel", vel)
             except Exception as e:
                 self.get_logger().error(f"Failed to publish velocity command: {e}")
             self.get_logger().info(f"Robot {i} velocity[{_msg_prefix}/{self.robot_id_list[_cluster_robots[i]]}/cmd_vel]: {vel.linear.x}, {vel.angular.z}")
