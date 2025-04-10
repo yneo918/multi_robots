@@ -1,19 +1,26 @@
 services:  
   multi_robots:
-    container_name: multi_robots
+    container_name: multi_robots-dev
     build: 
       context: ..
       dockerfile: Docker/Dockerfile
     network_mode: "host"
     environment:
       - DISPLAY=host.docker.internal:0.0      
+    volumes:
+      - ../:/root/multi_robots_ws #mount project directory to local computer
+      - builds:/root/multi_robots_ws/build #send build files to docker volume
+      - logs:/root/multi_robots_ws/log
+      - installs:/root/multi_robots_ws/install
     stdin_open: true    # Keep stdin open for an interactive shell
     tty: true    
     command: > 
       bash -c "source /opt/ros/jazzy/setup.bash \
         colcon build \
         source /root/multi_robots_ws/install/setup.bash \
-        ros2 launch cluster_node complete_cluster.launch.py & \
-        ros2 launch rover_description pioneer3.launch.py & \
-        wait"
-    
+        exec bash"
+
+volumes:
+  builds:
+  logs:
+  installs:
