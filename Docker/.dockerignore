@@ -1,0 +1,10 @@
+#Files to not include in docker image
+.git
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.vscode/
+build/
+install/
+log/
