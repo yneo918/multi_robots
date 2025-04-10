@@ -1,5 +1,12 @@
 # Simulator
 ## How to use
+
+### 3 Rover with Desiredposition
+Display+simulation+cluster_controller:
+```
+ros2 launch sim_launch pioneer_with_desired.launch.py
+```
+
 ### Display and simulation
 ```
 ros2 launch rover_description sim.launch.py

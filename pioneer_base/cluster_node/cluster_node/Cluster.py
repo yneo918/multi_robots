@@ -152,15 +152,15 @@ class Cluster():
         y_3 = c_sym[1] + 1/3 * r * sp.cos(c_sym[2]) - c_sym[7] * sp.cos(c_sym[8]/2 - c_sym[2])
         theta_3 = c_sym[5] - c_sym[2]
         
-        FKine =  sp.Matrix([[x_c], [y_c], [theta_c], [phi1], [phi2], [phi3], [p], [q], [B]])
-        IKine = sp.Matrix([[x_1], [y_1], [theta_1], [x_2], [y_2], [theta_2], [x_3], [y_3], [theta_3]])
-        Jacob = FKine.jacobian(r_sym)
-        JacobInv = IKine.jacobian(c_sym)
+        self.FKine =  sp.Matrix([[x_c], [y_c], [theta_c], [phi1], [phi2], [phi3], [p], [q], [B]])
+        self.IKine = sp.Matrix([[x_1], [y_1], [theta_1], [x_2], [y_2], [theta_2], [x_3], [y_3], [theta_3]])
+        self.Jacob = self.FKine.jacobian(r_sym)
+        self.JacobInv = self.IKine.jacobian(c_sym)
 
-        self.FKine_func = sp.lambdify(r_sym, FKine, 'numpy')
-        self.IKine_func = sp.lambdify(c_sym, IKine, 'numpy')
-        self.Jacobian_func = sp.lambdify(r_sym, Jacob, 'numpy')
-        self.JacobianInv_func = sp.lambdify(c_sym, JacobInv, 'numpy')
+        self.FKine_func = sp.lambdify(r_sym, self.FKine, 'numpy')
+        self.IKine_func = sp.lambdify(c_sym, self.IKine, 'numpy')
+        self.Jacobian_func = sp.lambdify(r_sym, self.Jacob, 'numpy')
+        self.JacobianInv_func = sp.lambdify(c_sym, self.JacobInv, 'numpy')
 
 
 #For testing cluster:
@@ -172,3 +172,15 @@ class Cluster():
         c = np.array(self.FKine_func(*r.flatten())).astype(np.float64)
         r = np.array(self.IKine_func(*c.flatten())).astype(np.float64)
         return c, r
+
+if __name__ == "__main__":
+    # Example usage
+    cluster = Cluster(numRobots=3, clusterType=ClusterConfig.TRICEN, clusterParams=[10, 10, math.pi/3])
+    with open('cluster_expressions/FKine.txt', 'w') as f:
+        f.write(sp.pretty(cluster.FKine, wrap_line=False))
+    with open('cluster_expressions/IKine.txt', 'w') as f:
+        f.write(sp.pretty(cluster.IKine, wrap_line=False))
+    with open('cluster_expressions/Jacob.txt', 'w') as f:
+        f.write(sp.pretty(cluster.Jacob, wrap_line=False))
+    with open('cluster_expressions/JacobInv.txt', 'w') as f:
+        f.write(sp.pretty(cluster.JacobInv, wrap_line=False))
