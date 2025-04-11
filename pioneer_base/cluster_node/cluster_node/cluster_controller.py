@@ -232,14 +232,22 @@ class ClusterNode(Node):
     def cluster_params_callback(self, msg):
         self.get_logger().info(f"Received cluster parameters: {msg.data}")
         if not self.listeningForRobots:
-            _cluster = self.cluster if self.output == "actual" else self.sim_cluster
-            _cluster.update_cluster_shape(msg.data)
+            if self.both:
+                self.cluster.update_cluster_shape(msg.data)
+                self.sim_cluster.update_cluster_shape(msg.data)
+            else:
+                _cluster = self.cluster if self.output == "actual" else self.sim_cluster
+                _cluster.update_cluster_shape(msg.data)
     
     def cluster_desired_callback(self, msg):
         self.get_logger().info(f"Received cluster desired position: {msg.data}")
         if not self.listeningForRobots:
-            _cluster = self.cluster if self.output == "actual" else self.sim_cluster
-            _cluster.update_cdes_pos(msg.data)
+            if self.both:
+                self.cluster.update_cdes_pos(msg.data)
+                self.sim_cluster.update_cdes_pos(msg.data)
+            else:
+                _cluster = self.cluster if self.output == "actual" else self.sim_cluster
+                _cluster.update_cdes_pos(msg.data)
    
     #Publishes velocity commands to robots in either sim or actual
     def publish_velocities(self, output):
@@ -303,7 +311,6 @@ class ClusterNode(Node):
             self.publish_velocities("actual")
         else:
             self.publish_velocities("sim")
-
 
     def wrap_to_pi(self, t):
         return (t + np.pi) % (2 * np.pi) - np.pi
