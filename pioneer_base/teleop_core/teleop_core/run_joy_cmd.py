@@ -81,6 +81,7 @@ class JoyCmd(JoyBase):
     
     def joy_callback(self, msg):
         _toggle = self.joy_toggle(msg)
+        gain = 0.5
 
         j_lx = msg.axes[self.lx_axisN]
         j_az = msg.axes[self.az_axisN]
@@ -123,8 +124,8 @@ class JoyCmd(JoyBase):
 
         if msg.buttons[self.en_buttonN] == 1:
             en_state.data = True
-            val.linear.x = 0.5*j_lx
-            val.angular.z = 0.4*j_az
+            val.linear.x = 0.5*j_lx*gain
+            val.angular.z = 0.4*j_az*gain
             self.pubsub.publish('/joy/cmd_vel', val)
             self.pubsub.publish('/joy/enable', en_state)
         else:
