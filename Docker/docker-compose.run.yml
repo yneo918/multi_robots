@@ -6,13 +6,13 @@ services:
       dockerfile: Docker/Dockerfile
     network_mode: "host"
     environment:
-      - DISPLAY=host.docker.internal:0.0      
+      - DISPLAY=${DISPLAY}      
     stdin_open: true    # Keep stdin open for an interactive shell
     tty: true    
     command: > 
       bash -c "source /opt/ros/jazzy/setup.bash \
         colcon build \
         source /root/multi_robots_ws/install/setup.bash \
-        ros2 launch sim_launch pioneer_with_desired.launch.py & \
+        ros2 launch cluster_node complete_cluster.launch.py & \ 
         wait"
     
