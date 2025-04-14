@@ -3,14 +3,14 @@ Contains files for running the project in Docker container.
 
 ## Before Using
 Make sure you have Docker Desktop installed and running on your machine. If you want to use dev containers get the dev-containers
-extension for VSCode.
-In order to enable GUI applications like rviz and PyQT you need to set allow display forwarding.
-Windows - downlaod an xserver at https://sourceforge.net/projects/vcxsrv/. Ensure it installs in C:\Program Files\ (should be default location)
-Because Windows is dumb it will not copy the symbolic links by default when you clone the github repo causing issues. In order to fix this 
-enable developer mode in settings app then use the flag when cloning: "git clone -c core.symlinks=true". You may have to delete your local repo 
-and reclone with the flag.
-Linux - your good to go!
-Mac - not working rn :(.
+extension for VSCode.  
+In order to enable GUI applications like rviz and PyQT you need to set allow display forwarding.  
+Windows - downlaod an xserver at https://sourceforge.net/projects/vcxsrv/. Ensure it installs in C:\Program Files\ (should be default location)  
+Because Windows is dumb it will not copy the symbolic links by default when you clone the github repo causing issues. In order to fix this   
+enable developer mode in settings app then use the flag when cloning: "git clone -c core.symlinks=true". You may have to delete your local repo   
+and reclone with the flag.  
+Linux - your good to go!  
+Mac - not working rn :(.  
 
 ## How to Use
 Run the appropriate launch script depending on your system and intention. 
