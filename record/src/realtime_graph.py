@@ -20,7 +20,7 @@ class ROS2Listener(Node):
         self.desired = [0.0] * 6
         self.subscription = self.create_subscription(
             ClusterInfo,
-            '/sim/cluster_info',
+            '/cluster_info',
             self.listener_callback,
             10
         )

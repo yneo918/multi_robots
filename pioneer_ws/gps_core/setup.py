@@ -21,7 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'run_gps1 = gps_core.run_gps:main',
-            'diff_gps_run = gps_core.diff_gps_run:main',
+            'gps_revised = gps_core.gps_revised:main',
         ],
     },
 )
