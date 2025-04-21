@@ -28,8 +28,8 @@ FREQ = 10
 JOY_FREQ = FREQ
 KP_GAIN = 10.0
 KV_GAIN = 10.0
-EPSILON = 0.5
-MAX_VEL = 1.0
+EPSILON = 0.1
+MAX_VEL = 0.25
 ROVER_DOF = 3 # (x, y, theta)
 
 class ClusterNode(Node):
@@ -129,6 +129,8 @@ class ClusterNode(Node):
     #after listening for nearby robots assign them to cluster 
     def assignRobots(self):
         self.listeningForRobots = False #done listening for robots
+        self.cluster_robots.sort() #sort the robot ids
+        self.sim_cluster_robots.sort() 
         #actual robots
         self.cluster_robots = self.cluster_robots[0:self.cluster_size] #trim extra robots
         self.r = np.zeros((self.cluster_size*ROVER_DOF, 1))
@@ -270,27 +272,34 @@ class ClusterNode(Node):
         self.get_logger().info(f"Cluster status/rd: {rd.flatten()}")
         _rd = rd
 
-        _max = max(np.abs([rd[0], rd[1], rd[3], rd[4], rd[6], rd[7]]))
-        rd = rd / _max if _max > MAX_VEL else rd
+        #_max = max(np.abs([rd[0], rd[1], rd[3], rd[4], rd[6], rd[7]]))
+        #rd = rd / _max * MAX_VEL if _max > MAX_VEL else rd
+        rover_vel = []
         self.get_logger().info(f"Cluster status/gained_rd: {rd.flatten()}")
         for i in range(len(_cluster_robots)):
-            vel = Twist()
             _x = float(rd[i*ROVER_DOF+0, 0])
             _y = float(rd[i*ROVER_DOF+1, 0])
             _trans = math.sqrt(_x**2 + _y**2)
+            _rotate = 0.0
             if _trans < EPSILON:
-                vel.linear.x = 0.0
-                vel.angular.z = 0.0
+                rover_vel.append([0.0, 0.0])
                 self.get_logger().info(f"Robot {i} is not moving")
             else:
                 desiredAngle = math.atan2(_y, _x)
-                vel.angular.z = self.wrap_to_pi(desiredAngle - _r[i*ROVER_DOF+2, 0])
-                if abs(vel.angular.z) < math.pi/2:
-                    t = _trans * math.cos(abs(vel.angular.z))
+                _rotate = self.wrap_to_pi(desiredAngle - _r[i*ROVER_DOF+2, 0])
+                if abs(_rotate) < math.pi/2:
+                    _trans = _trans * math.cos(abs(_rotate))
                 else:
-                    vel.angular.z = self.wrap_to_pi(math.pi - vel.angular.z)
-                    t = -_trans * math.cos(abs(vel.angular.z))
-                vel.linear.x = t
+                    _rotate = self.wrap_to_pi(math.pi - _rotate)
+                    _trans = -_trans * math.cos(abs(_rotate))
+                rover_vel.append([_trans, _rotate])
+        # SCALEING
+        rover_vel = np.array(rover_vel)
+        rover_vel = np.clip(rover_vel, -MAX_VEL, MAX_VEL)
+        for i in range(len(_cluster_robots)):
+            vel = Twist()
+            vel.linear.x = rover_vel[i][0]
+            vel.angular.z = rover_vel[i][1]
             try:
                 self.pubsub.publish(f"{_msg_prefix}/{self.robot_id_list[_cluster_robots[i]]}/cmd_vel", vel)
             except Exception as e:
