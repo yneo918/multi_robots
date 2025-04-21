@@ -22,7 +22,7 @@ def generate_launch_description():
     # Nodes
     gps_node = Node(
         package="gps_core",
-        executable="run_gps1",
+        executable="gps_revised",
         )
 
     imu_node = Node(

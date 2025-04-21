@@ -71,7 +71,7 @@ class ClusterNode(Node):
             return
         self.get_logger().info(f"ROVER: {self.robot_id_list} N: {self.n_rover}")
 
-        self.both = True #flag to check if both actual and simulation robots are present
+        self.both = False #flag to check if both actual and simulation robots are present
 
         #All data on actual robots
         self.cluster = None #cluster object to be initialized when cluster is formed
@@ -295,7 +295,10 @@ class ClusterNode(Node):
                 rover_vel.append([_trans, _rotate])
         # SCALEING
         rover_vel = np.array(rover_vel)
-        rover_vel = np.clip(rover_vel, -MAX_VEL, MAX_VEL)
+        for i in range(len(_cluster_robots)):
+            rover_vel[i][1] = max(-MAX_VEL, min(MAX_VEL, rover_vel[i][1]))
+            limit = MAX_VEL - abs(rover_vel[i][1])
+            rover_vel[i][0] = max(-limit, min(limit, rover_vel[i][0]))
         for i in range(len(_cluster_robots)):
             vel = Twist()
             vel.linear.x = rover_vel[i][0]
