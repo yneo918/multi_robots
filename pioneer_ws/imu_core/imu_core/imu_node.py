@@ -34,9 +34,7 @@ class ReadImu(Node):
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('calibrateIMU', 0),
-                ('calibOffsetsRadii', [3, 146, 3, 232, 0, 0, 255, 255, 255, 255, 239, 131, 252, 100, 254, 79, 255, 227, 0, 19, 255, 204]),
-                ('calibFileLoc', f"/home/{self.username}/ros_ws/src/imu_core/config/paramsIMU.yaml")
+                ('calibFileLoc', f"/home/{self.username}/imu_calib/bno055_offsets.json")
             ]
         )
         self.publisher_quaternion = self.create_publisher(Quaternion, f'{self.robot_id}/imu/quaternion', 1)
@@ -53,10 +51,7 @@ class ReadImu(Node):
         self.subscription  
 
         #Set Calibration if calibIMU is True
-        if(self.get_parameter('calibrateIMU').get_parameter_value()):
-            calib_data_param = self.get_parameter('calibOffsetsRadii').get_parameter_value().integer_array_value
-            print(self.get_parameter('calibrateIMU').get_parameter_value())
-            self.set_calibration(calib_data_param)
+        self.set_calibration()
 
         timer_period = 0.1  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
@@ -87,33 +82,52 @@ class ReadImu(Node):
                 yaml.dump(data,yaml_file,default_flow_style=None)
                 yaml_file.close()
              
-    def set_calibration(self, calib_data:list):
+    def set_calibration(self):
         """
-        Set the sensor's calibration data using a list of 22 bytes that
-        represent the sensor offsets and calibration data.  This data should be
-        a value that was previously retrieved with get_calibration (and then
-        perhaps persisted to disk or other location until needed again).
+        Load saved calibration data from JSON file and apply it to the BNO055.
+        Expects a YAML/JSON file with keys:
+          offsets_accelerometer: [x, y, z]
+          radius_accelerometer: r
+          offsets_magnetometer:  [x, y, z]
+          radius_magnetometer:  r
+          offsets_gyroscope:    [x, y, z]
         """
-        # Check that 22 bytes were passed in with calibration data.
-        if calib_data is None or len(calib_data) != 22:
-            print(calib_data)
-            raise ValueError('Expected a list of 22 bytes for calibration data.')
-        
-        # Switch to configuration mode, as mentioned in section 3.10.4 of datasheet.
-        self.sensor._write_register(adafruit_bno055._MODE_REGISTER,adafruit_bno055.CONFIG_MODE)  # Empirically necessary
-        time.sleep(0.02)  # Datasheet table 3.6
+        # 1) Load file path from ROS parameter
+        calib_file = self.get_parameter('calibFileLoc').get_parameter_value().string_value
 
-        # Write 22 bytes of calibration data.
-        register_addr = 0x6A #Start with Magnometer radius MSB register
+        # 2) Read JSON/YAML data
+        try:
+            with open(calib_file, 'r') as f:
+                data = yaml.safe_load(f)
+            accel_offsets = tuple(data['offsets_accelerometer'])
+            accel_radius  = data['radius_accelerometer']
+            mag_offsets   = tuple(data['offsets_magnetometer'])
+            mag_radius    = data['radius_magnetometer']
+            gyro_offsets  = tuple(data['offsets_gyroscope'])
+        except Exception as e:
+            self.get_logger().error(f"Failed to load calibration data: {e}")
+            return
 
-        for i in range(22):
-            self.sensor._write_register(register_addr,calib_data[i])
-            #Update register Address:
-            register_addr-=0x1
+        # 3) Switch to CONFIG_MODE to allow writing registers
+        self.sensor._write_register(adafruit_bno055._MODE_REGISTER,
+                                    adafruit_bno055.CONFIG_MODE)
+        time.sleep(0.02)  # per datasheet
 
-        # Go back to normal operation mode.
-        time.sleep(0.01)  # Table 3.6
-        self.sensor._write_register(adafruit_bno055._MODE_REGISTER,adafruit_bno055.NDOF_MODE)
+        # 4) Apply offsets via high-level properties
+        #    (CircuitPython driver exposes these setters)
+        self.sensor.offsets_accelerometer = accel_offsets
+        self.sensor.radius_accelerometer  = accel_radius
+        self.sensor.offsets_magnetometer  = mag_offsets
+        self.sensor.radius_magnetometer   = mag_radius
+        self.sensor.offsets_gyroscope     = gyro_offsets
+
+        # 5) Return to NDOF_MODE for normal fusion operation
+        time.sleep(0.01)
+        self.sensor._write_register(adafruit_bno055._MODE_REGISTER,
+                                    adafruit_bno055.NDOF_MODE)
+
+        self.get_logger().info("Calibration loaded and applied from file.")
+
 
     def get_calibration(self):
             """

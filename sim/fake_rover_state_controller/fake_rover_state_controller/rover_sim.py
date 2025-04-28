@@ -64,10 +64,10 @@ class JointStates(Node):
     def update_position(self):
         if self.vel['alive'] <= 0:
             return
-        self.position['theta'] += UPDATE_RATE  * self.vel['rotate']
+        self.position['theta'] -= UPDATE_RATE  * self.vel['rotate']
         self.position['theta'] = self.wrap_to_pi(self.position['theta'])
-        self.position['x'] += UPDATE_RATE  * self.vel['transform'] * math.cos(self.position['theta'])
-        self.position['y'] += UPDATE_RATE  * self.vel['transform'] * math.sin(self.position['theta'])
+        self.position['x'] += UPDATE_RATE  * self.vel['transform'] * math.sin(self.position['theta'])
+        self.position['y'] += UPDATE_RATE  * self.vel['transform'] * math.cos(self.position['theta'])
         self.vel['alive'] -= 1
     
     def wrap_to_pi(self, t):
@@ -81,7 +81,7 @@ class JointStates(Node):
         self.update_position()
         jointstates_msg.name = [f'{joint_name}' for joint_name in self.joint_names]
         jointstates_msg.position = [
-            self.position['x'], self.position['y'], self.position['theta']
+            self.position['x'], self.position['y'], -self.position['theta']
         ]
         self.pubsub.publish(f'/{self.robot_id}/joint_states', jointstates_msg)
         pose_msg = Pose2D()
@@ -92,7 +92,7 @@ class JointStates(Node):
 
         jointstates_msg.name = [f'{joint_name}' for joint_name in self.joint_names]
         jointstates_msg.position = [
-            self.position_hw['x'], self.position_hw['y'], self.position_hw['theta']
+            self.position_hw['x'], self.position_hw['y'], -self.position_hw['theta']
         ]
         self.pubsub.publish(f'/{self.robot_id}hw/joint_states', jointstates_msg)
 

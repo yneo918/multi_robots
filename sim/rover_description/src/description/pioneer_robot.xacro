@@ -24,7 +24,7 @@
         </inertial>
         <visual>
           <xacro:if value="$(arg mesh_enabled)">
-            <origin xyz="0.0 0.0 0.0" rpy="1.57 0.0 1.57"/>
+            <origin xyz="0.0 0.0 0.0" rpy="1.57 0.0 0.0"/>
             <geometry>
               <mesh filename="package://rover_description/meshes/pioneer_cad_v2.stl"
                     scale="0.001 0.001 0.001"/>

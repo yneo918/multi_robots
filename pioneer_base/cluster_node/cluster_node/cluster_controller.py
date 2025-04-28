@@ -222,13 +222,13 @@ class ClusterNode(Node):
                 
     #Velocity command from the joystick to be sent to the cluster
     def joycmd_callback(self, msg):
-        freq = 1 / (self.joy_timestamp - time.time()) if self.joy_timestamp is not None else JOY_FREQ
+        freq = 1 / (time.time() - self.joy_timestamp ) if self.joy_timestamp is not None else JOY_FREQ
         self.joy_timestamp = time.time()
-        if not self.listeningForRobots:
+        if self.mode == "NAV_M" and not self.listeningForRobots:
             if self.output == "actual" or self.both:
-                self.cluster.update_cdes_vel(msg.linear.x, msg.linear.y, msg.angular.z *0.3, freq)
+                self.cluster.update_cdes_vel(-msg.linear.x, msg.linear.y, -msg.angular.z *0.3, freq)
             if self.output == "sim" or self.both:
-                self.sim_cluster.update_cdes_vel(msg.linear.x, msg.linear.y, msg.angular.z *0.3, freq)
+                self.sim_cluster.update_cdes_vel(-msg.linear.x, msg.linear.y, -msg.angular.z *0.3, freq)
 
     #Set cluster parameters from the cluster_params topic
     def cluster_params_callback(self, msg):
@@ -285,7 +285,8 @@ class ClusterNode(Node):
                 rover_vel.append([0.0, 0.0])
                 self.get_logger().info(f"Robot {i} is not moving")
             else:
-                desiredAngle = math.atan2(_y, _x)
+                desiredAngle = math.atan2(_x, _y)
+                self.get_logger().info(f"_x={_x}, _y={_y}, cur_theta={_r[i*ROVER_DOF+2, 0]}, atan2={desiredAngle}")
                 _rotate = self.wrap_to_pi(desiredAngle - _r[i*ROVER_DOF+2, 0])
                 if abs(_rotate) < math.pi/2:
                     _trans = _trans * math.cos(abs(_rotate))

@@ -3,9 +3,7 @@ from rclpy.node import Node
 
 from sensor_msgs.msg import NavSatFix
 from geometry_msgs.msg import Quaternion, Pose2D
-from std_msgs.msg import Float32MultiArray
-from std_msgs.msg import Int16MultiArray
-from std_msgs.msg import Int16
+from std_msgs.msg import Float32MultiArray, Int16MultiArray, Int16, Bool
 
 import math
 
@@ -31,6 +29,8 @@ class PoseConverter(Node):
         self.quaternion = None
         self.euler_x = None
         self.calibration = None
+        self.lat_offset = 0.0
+        self.lon_offset = 0.0
 
 
         self.create_subscription(
@@ -47,6 +47,11 @@ class PoseConverter(Node):
             Float32MultiArray,
             f"/{self.robot_id}/imu/eulerAngle",
             self.euler_callback,
+            1)
+        self.create_subscription(
+            Bool,
+            f"/{self.robot_id}/reset_gps",
+            self.reset_gps_callback,
             1)
         self.pose_publisher = self.create_publisher(
             Pose2D,
@@ -69,6 +74,11 @@ class PoseConverter(Node):
         self.future = self.cli.call_async(self.req)
         self.future.add_done_callback(self.srv_callback)
         self.get_logger().info(f'[{self.req.robot_id}]Sent request for reference GPS')
+    
+    def reset_gps_callback(self, msg):
+        self.lat_offset = self.lat - self.ref_lat
+        self.lon_offset = self.lon - self.ref_lon
+        self.get_logger().info(f'[{self.robot_id}]Reset GPS offsets: {self.lat_offset}, {self.lon_offset}')
     
     def srv_callback(self, future):
         self.ref_lat = future.result().gps.latitude
@@ -99,7 +109,7 @@ class PoseConverter(Node):
             self.get_logger().info("Not all data available")
             return
         msg = Pose2D()
-        msg.x, msg.y = self.convert_gps_to_pose(self.lat, self.lon, self.ref_lat, self.ref_lon)
+        msg.x, msg.y = self.convert_gps_to_pose(self.lat - self.lat_offset, self.lon - self.lon_offset, self.ref_lat, self.ref_lon)
         msg.theta = self.degree_to_radian_pi_range(self.euler_x - self.calibration)
         self.pose_publisher.publish(msg)
         self.get_logger().info(f"Published: {msg.x}, {msg.y}, {msg.theta}")
