@@ -1,4 +1,8 @@
 # Simulator
+## Install
+```
+pip install PyQt6
+```
 ## How to use
 
 ### 3 Rover with Desiredposition
