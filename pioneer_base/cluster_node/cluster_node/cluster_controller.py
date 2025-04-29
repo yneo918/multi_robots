@@ -140,7 +140,7 @@ class ClusterNode(Node):
         self.get_logger().info(f"Formed cluster with robots: {self.cluster_robots} from list of possible: {self.robot_id_list}")
         self.get_logger().info(f"Desired robot position: {self.cluster.getDesiredRobotPosition()}")
         #simulation robots
-        self.sim_cluster_robots = self.sim_cluster_robots[0:self.sim_cluster_size] #trim extra robots
+        self.sim_cluster_robots = self.cluster_robots #trim extra robots
         self.sim_r = np.zeros((self.sim_cluster_size*ROVER_DOF, 1))
         self.sim_rd = np.zeros((self.sim_cluster_size*ROVER_DOF, 1))
         # change configure of cluster here
@@ -191,6 +191,8 @@ class ClusterNode(Node):
         if self.listeningForRobots:
             self.checkRobotId(i, "actual")
         else:
+            if not self.mode == "NAV_M":
+                return
             cluster_index = self.mapRobotId(i, "actual")
             if cluster_index is None:
                 return
@@ -201,8 +203,8 @@ class ClusterNode(Node):
                 self.get_logger().info(f"Actual robot positions {self.r} Desired robot position: {_desired}")
 
                 _pose = Pose2D()
-                _pose.x, _pose.y, _pose.theta = _desired[i*ROVER_DOF+0, 0], _desired[i*ROVER_DOF+1, 0], _desired[i*ROVER_DOF+2, 0]
-                self.pubsub.publish(f'/{self.robot_id_list[self.cluster_robots[i]]}/desiredPose2D', _pose)
+                _pose.x, _pose.y, _pose.theta = _desired[cluster_index*ROVER_DOF+0, 0], _desired[cluster_index*ROVER_DOF+1, 0], _desired[cluster_index*ROVER_DOF+2, 0]
+                self.pubsub.publish(f'/{self.robot_id_list[self.cluster_robots[cluster_index]]}/desiredPose2D', _pose)
 
     def sim_callback(self, msg, i):
         if self.listeningForRobots:

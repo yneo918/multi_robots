@@ -12,7 +12,7 @@ def generate_launch_description():
     pkg_share = launch_ros.substitutions.FindPackageShare(package='rover_description').find('rover_description')
 
     # RViz設定ファイルのパス
-    default_rviz_config_path = os.path.join(pkg_share, 'rviz/cluster3withdesired.rviz')
+    default_rviz_config_path = os.path.join(pkg_share, 'rviz/cluster5sdh.rviz')
 
     return LaunchDescription([
         # RVizの設定ファイルパスを指定

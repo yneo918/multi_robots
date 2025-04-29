@@ -11,4 +11,4 @@ joy_cmd:
     broadcast: "RB"
     revolution: "cross_lr"
     prismatic: "cross_ud"
-    n_rover: 3
+    n_rover: 5
