@@ -1,16 +1,46 @@
 #!/usr/bin/env python3
 import argparse
-import rosbag2_py
 import os
-from rclpy.serialization import deserialize_message
-from rosidl_runtime_py.utilities import get_message
 import matplotlib.pyplot as plt
-from Cluster import Cluster
 import numpy as np
-from datetime import datetime
-from zoneinfo import ZoneInfo
+# from datetime import datetime
+# from zoneinfo import ZoneInfo
 
-ros_sqlite3 = ["foxy", "galactic", "humble"]
+from typing import Union, LiteralString
+import pandas as pd
+
+FileName = Union[LiteralString, str]
+
+class ExtractClusterData:
+
+    def __init__(
+                self, 
+                 data: Union[pd.DataFrame, FileName], 
+                 is_offline: bool = True,
+                 perform_smoothen: bool = False
+                 ) -> None:
+        self.is_offline = is_offline
+        
+        # Create Panda Frame
+        self.data = self.create_panda_dataframe(data)
+      
+
+    def smoothen():
+        pass
+
+    @staticmethod
+    def create_panda_dataframe(data):
+        
+        # Get datatype
+        typ = type(data)
+
+        # TODO: Check which type of string
+        if typ == str or typ == LiteralString:
+            return pd.read_csv(data)
+        elif typ == pd.DataFrame:
+            return data
+        
+
 
 def graph(csv_path):
     data = np.loadtxt(csv_path, delimiter=',', skiprows=1)
@@ -121,5 +151,13 @@ def main():
     
     graph(args.datacsv)
 
+def main2():
+    
+    grapher: ExtractClusterData = ExtractClusterData(
+        "TestData_with_Timestamp.csv",
+    )
+
+    print(grapher.data)
+
 if __name__ == "__main__":
-    main()
+    main2()
