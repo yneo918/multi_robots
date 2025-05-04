@@ -6,10 +6,12 @@ import numpy as np
 # from datetime import datetime
 # from zoneinfo import ZoneInfo
 
-from typing import Union, LiteralString
+from typing import Union, LiteralString, List
 import pandas as pd
 
 FileName = Union[LiteralString, str]
+DEBUG: bool = False
+VERBOSE: bool = False
 
 class ExtractClusterData:
 
@@ -20,16 +22,86 @@ class ExtractClusterData:
                  perform_smoothen: bool = False
                  ) -> None:
         self.is_offline = is_offline
-        
+
         # Create Panda Frame
         self.data = self.create_panda_dataframe(data)
-      
 
-    def smoothen():
+        # Start and End indices
+        self.start: int = 0
+        self.end: int = self.data.size
+
+        # Plot indices
+        self.i = 0
+
+        self.define_col_headers()    
+    
+    def define_col_headers(self) -> None:
+        
+        # For each column in the data frame
+        for c in self.data.columns:
+
+            # Create a class attribute and assign the column
+            # NOTE: The .strip() method removes leading and trailing
+            # whitespace.
+            # NOTE: The .replace(' ', '_') replaces inner spaces with
+            # underscores
+            self.__setattr__(c.strip().replace(' ', '_'), self.data[c])
+
+        # Prints all the keys
+        if VERBOSE: print(self.__dict__.keys())  
+
+    def smoothen() -> None:
         pass
+    
+    def _get_time_domain_fig(
+                            self,
+                            i, 
+                            start: int, 
+                            end: int, 
+                            y: pd.DataFrame
+                            ) -> plt.Figure:
+
+        fig = plt.figure(i)
+
+
+        plt.plot(self.timestamp[start:end], y[start:end])
+        return fig
+    
+
+    def get_time_domain_figs(self) -> List[plt.Figure]:
+
+        # Form static data structures
+        # TODO: Can this be more generalizable and
+        # not hardcoded?
+        cluster_vars: dict[int, List[pd.DataFrame]] = \
+            {
+             1: [self.x_c_des, self.x_c],
+             2: [self.y_c_des, self.y_c],
+             3: [self.t_c_des, self.t_c],
+             4: [self.p_des, self.p],
+             5: [self.q_des, self.q],
+             6: [self.B_des, self.B],
+             }
+        
+        # Initialize empty list of 6 length
+        figs: list = [None] * len(cluster_vars.keys())
+        if DEBUG: print(len(figs))
+
+        for k, list_values in cluster_vars.items():
+            if DEBUG: print(k)
+            for v in list_values:
+                figs[k - 1] = \
+                    self._get_time_domain_fig(
+                    k,
+                    self.start,
+                    self.end,
+                    v
+                    )
+        return figs
+           
 
     @staticmethod
-    def create_panda_dataframe(data):
+    def create_panda_dataframe(data) -> pd.DataFrame:
         
         # Get datatype
         typ = type(data)
@@ -154,10 +226,19 @@ def main():
 def main2():
     
     grapher: ExtractClusterData = ExtractClusterData(
-        "TestData_with_Timestamp.csv",
+        "record/TestData_with_Timestamp.csv",
     )
 
-    print(grapher.data)
+    grapher.end = 7200
+
+    figs: List[plt.Figure] = grapher.get_time_domain_figs()
+
+    for f in range(len(figs)):
+        print(f)
+        figs[f].show()
+
+if __name__ == "__main__":
+    main2()
 
 if __name__ == "__main__":
     main2()
