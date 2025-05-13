@@ -1,0 +1,80 @@
+data: "TestData_with_Timestamp.csv"
+
+clusters:
+  - enable: True
+    time:
+      start: 4000
+      end: 5600
+    dirname: frisbee
+    figures:
+        time_history:
+          enable: True
+          filename: frisbee_cluster_params
+          use_subplots: True
+          ylim:
+            - [-5, 3]
+            - [-30, 15]
+            - [-4, 4]
+            - [0, 15]
+            - [0, 25]
+            - [0, 2]
+          figsize: [9, 10]
+        centroid_phase_portrait:
+          enable: False
+          filename: frisbee_centroid_phase
+        cluster_phase_portrait:
+          enable: True
+          include_label: False
+          filename: frisbee_cluster_phase_portrait
+
+  - enable: True
+    time:
+      start: 5102
+      end: 5227
+    dirname: rotation
+    figures:
+        time_history:
+          enable: True
+          filename: rotation_cluster_params
+          use_subplots: True
+          ylim:
+            - [-2, 2]
+            - [-15, -5]
+            - [1, 4]
+            - [8, 12]
+            - [5, 12]
+            - [0.5, 2]
+          figsize: [10, 10]
+        centroid_phase_portrait:
+          enable: False
+          filename: rotation_centroid_phase
+        cluster_phase_portrait:
+          enable: True
+          include_label: False
+          filename: rotation_cluster_phase_portrait
+
+  - enable: True
+    time:
+      start: 3000
+      end: 3250
+    dirname: translation
+    figures:
+        time_history:
+          enable: True
+          filename: translation_cluster_params
+          use_subplots: True
+          ylim:
+            - [-2, 0]
+            - [-30, -10]
+            - [-2, 0]
+            - [5, 15]
+            - [8, 15]
+            - [0, 2]
+          figsize: [10, 10]
+        centroid_phase_portrait:
+          enable: False
+          filename: translation_centroid_phase
+        cluster_phase_portrait:
+          enable: True
+          include_label: False
+          filename: translation_cluster_phase_portrait
