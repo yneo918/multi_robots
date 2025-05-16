@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import QTimer
 
+from pioneer_interfaces.msg import ClusterInfo
 
 class JoyCmd(JoyBase):
     def __init__(self):
@@ -58,7 +59,6 @@ class JoyCmd(JoyBase):
         self.rover_modeC = self.mode_list[0]
 
         self.select = 1
-        self.selected_angle = 0
         self.hw_sel = True
 
         self.pubsub.create_publisher(Twist, '/joy/cmd_vel', 5)
@@ -67,7 +67,6 @@ class JoyCmd(JoyBase):
         self.pubsub.create_publisher(Bool, '/joy/hardware', 1)
         self.pubsub.create_publisher(Int16, '/select_rover', 1)
         self.pubsub.create_publisher(String, '/modeC', 1)
-        self.pubsub.create_publisher(Int16, '/joy/angle_sel', 5)
         self.pubsub.create_publisher(Float32MultiArray, '/joy/cross', 5)
         self.pubsub.create_publisher(Float32MultiArray, '/cluster_params', 5)
         self.pubsub.create_publisher(Float32MultiArray, '/cluster_desired', 5)
@@ -83,12 +82,14 @@ class JoyCmd(JoyBase):
             f"en: {self.get_parameter('en').value},\n"
             f"rover_sel: {self.get_parameter('rover_sel').value},\n"
             f"mode_sel: {self.get_parameter('mode_sel').value},\n"
-            f"angle_sel: {self.get_parameter('angle_sel').value},\n"
             f"hardware_sel: {self.get_parameter('hardware_sim_sel').value},\n"
             f"broadcast: {self.get_parameter('broadcast').value},\n"
             f"revolution: {self.get_parameter('revolution').value},\n"
             f"prismatic: {self.get_parameter('prismatic').value}\n"
         )
+
+        self.pubsub.create_subscription(ClusterInfo, '/cluster_info', self.cluster_info_callback, 5)
+        self.pubsub.create_subscription(ClusterInfo, '/sim/cluster_info', self.cluster_info_callback, 5)
 
     def joy_callback(self, msg):
         _toggle = self.joy_toggle(msg)
@@ -119,13 +120,10 @@ class JoyCmd(JoyBase):
             self.get_logger().info(f"Mode Button Toggled: {self.rover_modeC} to {new_mode}")
             self.rover_modeC = new_mode
         
-        if _toggle[self.angle_sel_button] == 1:
-            new_angle = (self.selected_angle + 90) % 360
-            self.get_logger().info(f"Angle Button Toggled: {self.selected_angle} to {new_angle}")
-            self.selected_angle = new_angle
-            angle_msg = Int16()
-            angle_msg.data = self.selected_angle
-            self.pubsub.publish('/joy/angle_sel', angle_msg)
+        if _toggle[self.button_dict.get("A")] == 1:
+            if msg.axes[self.axis_dict.get("LT")] == 1 and msg.axes[self.axis_dict.get("RT")] == 1: 
+                self.get_logger().info(f"[HIDDEN COMMAND] -RESET CLUSTER PARAMS-")
+                self.pubsub.publish('/cluster_params', Float32MultiArray(data=[-1.0, -1.0, -1.0]))
             
         broadcast_msg = Bool()
         broadcast_msg.data = True if msg.buttons[self.broadcast_button] == 1 else False
@@ -152,6 +150,15 @@ class JoyCmd(JoyBase):
         self.cluster_x = msg.data[0]
         self.cluster_y = msg.data[1]
         self.cluster_t = msg.data[2]
+
+    def cluster_info_callback(self, msg):
+        data = msg.cluster_desired.data
+        self.cluster_x = data[0]
+        self.cluster_y = data[1]
+        self.cluster_t = data[2]
+        self.cluster_p = data[6]
+        self.cluster_q = data[7]
+        self.cluster_b = data[8]
 
     def timer_callback(self):
         select_msg = Int16()
@@ -182,7 +189,6 @@ class StatusWindow(QMainWindow):
         self.status_labels = {
             "selected_rover": QLabel("Selected Rover: N/A"),
             "mode": QLabel("Mode: N/A"),
-            "selected_angle": QLabel("Selected Angle: N/A"),
             "hardware": QLabel("Hardware: N/A"),
             "cluster_x": QLabel(f"Cluster Xc: {self.node.cluster_x}"),
             "cluster_y": QLabel(f"Cluster Yc: {self.node.cluster_y}"),
@@ -212,14 +218,6 @@ class StatusWindow(QMainWindow):
         self.mode_combo.currentTextChanged.connect(self.update_mode)
         left_layout.addWidget(QLabel("Mode:"))
         left_layout.addWidget(self.mode_combo)
-
-        self.angle_combo = QComboBox()
-        angles = ["0", "90", "180", "270"]
-        self.angle_combo.addItems(angles)
-        self.angle_combo.setCurrentIndex(self.node.selected_angle // 90)
-        self.angle_combo.currentTextChanged.connect(self.update_angle)
-        left_layout.addWidget(QLabel("Selected Angle:"))
-        left_layout.addWidget(self.angle_combo)
 
         self.hw_checkbox = QCheckBox("HW Mode")
         self.hw_checkbox.setChecked(self.node.hw_sel)
@@ -306,31 +304,20 @@ class StatusWindow(QMainWindow):
     def update_status(self):
         self.status_labels["selected_rover"].setText(f"Selected Rover: {self.node.select}")
         self.status_labels["mode"].setText(f"Mode: {self.node.rover_modeC}")
-        self.status_labels["selected_angle"].setText(f"Selected Angle: {self.node.selected_angle}")
         hardware_str = "HW" if self.node.hw_sel else "Sim"
         self.status_labels["hardware"].setText(f"Hardware: {hardware_str}")
-        self.status_labels["cluster_x"].setText(f"Cluster Xc: {self.node.cluster_x}")
-        self.status_labels["cluster_y"].setText(f"Cluster Yc: {self.node.cluster_y}")
-        self.status_labels["cluster_t"].setText(f"Cluster Tc: {self.node.cluster_t}")
-        self.status_labels["cluster_p"].setText(f"Cluster P: {self.node.cluster_p}")
-        self.status_labels["cluster_q"].setText(f"Cluster Q: {self.node.cluster_q}")
-        self.status_labels["cluster_b"].setText(f"Cluster B: {self.node.cluster_b}")
+        self.status_labels["cluster_x"].setText(f"Cluster Xc: {self.node.cluster_x:.4f}")
+        self.status_labels["cluster_y"].setText(f"Cluster Yc: {self.node.cluster_y:.4f}")
+        self.status_labels["cluster_t"].setText(f"Cluster Tc: {self.node.cluster_t:.4f}")
+        self.status_labels["cluster_p"].setText(f"Cluster P: {self.node.cluster_p:.4f}")
+        self.status_labels["cluster_q"].setText(f"Cluster Q: {self.node.cluster_q:.4f}")
+        self.status_labels["cluster_b"].setText(f"Cluster B: {self.node.cluster_b:.4f}")
 
     def update_rover(self, value):
         self.node.select = value
 
     def update_mode(self, text):
         self.node.rover_modeC = text
-
-    def update_angle(self, text):
-        try:
-            angle = int(text)
-            self.node.selected_angle = angle
-            angle_msg = Int16()
-            angle_msg.data = angle
-            self.node.pubsub.publish('/joy/angle_sel', angle_msg)
-        except ValueError:
-            pass
 
     def update_hw(self, checked):
         self.node.hw_sel = checked

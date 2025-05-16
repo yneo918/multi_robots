@@ -3,3 +3,4 @@ install/
 log/
 *Zone.Identifier
 __pycache__/
+record/rosbag*

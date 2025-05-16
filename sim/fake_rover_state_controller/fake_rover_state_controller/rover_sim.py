@@ -64,10 +64,11 @@ class JointStates(Node):
     def update_position(self):
         if self.vel['alive'] <= 0:
             return
+        _theta_avg = self.position['theta'] - self.vel['rotate'] * UPDATE_RATE / 2
         self.position['theta'] -= UPDATE_RATE  * self.vel['rotate']
         self.position['theta'] = self.wrap_to_pi(self.position['theta'])
-        self.position['x'] += UPDATE_RATE  * self.vel['transform'] * math.sin(self.position['theta'])
-        self.position['y'] += UPDATE_RATE  * self.vel['transform'] * math.cos(self.position['theta'])
+        self.position['x'] += UPDATE_RATE  * self.vel['transform'] * math.sin(_theta_avg)
+        self.position['y'] += UPDATE_RATE  * self.vel['transform'] * math.cos(_theta_avg)
         self.vel['alive'] -= 1
     
     def wrap_to_pi(self, t):
