@@ -204,16 +204,16 @@ class Cluster():
         y.append(y[0] + c_sym[8] * sp.cos(c_sym[2]))
         theta.append(c_sym[2] + c_sym[4])
 
-        x.append(x[0] + c_sym[9] * sp.sin(c_sym[12] + c_sym[2]))
+        x.append(x[0] + c_sym[9] * -sp.sin(c_sym[12] + c_sym[2]))
         y.append(y[0] + c_sym[9] * -sp.cos(c_sym[12] + c_sym[2]))
         theta.append(c_sym[2] + c_sym[5])
 
         x.append(x[1] + c_sym[10] * sp.cos(c_sym[13] + c_sym[2]))
-        y.append(y[1] + c_sym[10] * sp.sin(c_sym[13] + c_sym[2]))
+        y.append(y[1] + c_sym[10] * -sp.sin(c_sym[13] + c_sym[2]))
         theta.append(c_sym[2] + c_sym[6])
 
         x.append(x[2] + c_sym[11] * sp.cos(c_sym[14] + c_sym[2]))
-        y.append(y[2] + c_sym[11] * sp.sin(c_sym[14] + c_sym[2]))
+        y.append(y[2] + c_sym[11] * -sp.sin(c_sym[14] + c_sym[2]))
         theta.append(c_sym[2] + c_sym[7])
 
         self.FKine = sp.Matrix([x_c, y_c, theta_c] + phi + d[1:] + beta[2:])
