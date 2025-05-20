@@ -5,7 +5,7 @@ import time
 from rclpy.node import Node
 from std_msgs.msg import String
 from std_msgs.msg import Float32MultiArray
-from .Cluster import Cluster
+from .Cluster import Cluster, ClusterConfig
 from std_msgs.msg import Bool, Int16
 from std_msgs.msg import String
 from sensor_msgs.msg import NavSatFix
@@ -84,7 +84,7 @@ class ClusterNode(Node):
         self.r = None #stores latest robot state space variables
         self.rd = None #stores latest robot velocities 
         self.time = None
-        self.cluster = Cluster(numRobots = self.cluster_size, KPgains=[KP_GAIN]*(self.cluster_size*ROVER_DOF), KVgains=[KV_GAIN]*(self.cluster_size*ROVER_DOF))
+        self.cluster = Cluster(numRobots = self.cluster_size, cluster_type=ClusterConfig.TRILEAD, cluster_params=[3,3,3,3,0,0,0], KPgains=[KP_GAIN]*(self.cluster_size*ROVER_DOF), KVgains=[KV_GAIN]*(self.cluster_size*ROVER_DOF))
 
         #All data on simulation robots
         self.sim_cluster = None #cluster object to be initialized when cluster is formed
@@ -94,7 +94,7 @@ class ClusterNode(Node):
         self.sim_r = None #stores latest robot state space variables
         self.sim_rd = None #stores latest robot velocities 
         self.sim_time = None
-        self.sim_cluster = Cluster(numRobots = self.sim_cluster_size, KPgains=[KP_GAIN]*(self.sim_cluster_size*ROVER_DOF), KVgains=[KV_GAIN]*(self.sim_cluster_size*ROVER_DOF))
+        self.sim_cluster = Cluster(numRobots = self.sim_cluster_size, cluster_type=ClusterConfig.TRILEAD, cluster_params=[3,3,3,3,0,0,0], KPgains=[KP_GAIN]*(self.sim_cluster_size*ROVER_DOF), KVgains=[KV_GAIN]*(self.sim_cluster_size*ROVER_DOF))
 
         self.output = "actual" #switch between outputing velocity to simulation or actual robots
         self.mode = "INIT" #switch between manual or cluster control
@@ -213,6 +213,8 @@ class ClusterNode(Node):
             robot_pose = [msg.x , msg.y, msg.theta]
             self.sim_r[cluster_index*ROVER_DOF:((cluster_index+1)*ROVER_DOF), 0] = robot_pose #update robot position in array 
             _desired = self.sim_cluster.get_desired_position()
+            if _desired is None:
+                return
             #self.get_logger().info(f"Sim robot positions {self.sim_r} Desired sim robot position: {_desired}")
             _pose = Pose2D()
             _pose.x, _pose.y, _pose.theta = _desired[cluster_index*ROVER_DOF+0, 0], _desired[cluster_index*ROVER_DOF+1, 0], _desired[cluster_index*ROVER_DOF+2, 0]

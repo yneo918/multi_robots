@@ -51,13 +51,9 @@ class JoyCmd(JoyBase):
         self.cluster_x = 0.0
         self.cluster_y = 0.0
         self.cluster_t = 0.0
-        self.cluster_d2 = 3.0
-        self.cluster_d3 = 3.0
-        self.cluster_d4 = 3.0
-        self.cluster_d5 = 3.0
-        self.cluster_b3 = 0.0
-        self.cluster_b4 = 0.0
-        self.cluster_b5 = 0.0
+        self.cluster_b = math.pi / 3
+        self.cluster_p = 10.0
+        self.cluster_q = 10.0
         self.mode_list = ["NEU_M", "JOY_M", "NAV_M"]
         self.mode_dict = {"NEU_M": 0, "JOY_M": 1, "NAV_M": 2}
         self.rover_modeC = self.mode_list[0]
@@ -160,13 +156,9 @@ class JoyCmd(JoyBase):
         self.cluster_x = data[0]
         self.cluster_y = data[1]
         self.cluster_t = data[2]
-        self.cluster_d2 = data[8]
-        self.cluster_d3 = data[9]
-        self.cluster_d4 = data[10]
-        self.cluster_d5 = data[11]
-        self.cluster_b3 = data[12]
-        self.cluster_b4 = data[13]
-        self.cluster_b5 = data[14]
+        self.cluster_p = data[6]
+        self.cluster_q = data[7]
+        self.cluster_b = data[8]
 
     def timer_callback(self):
         select_msg = Int16()
@@ -201,18 +193,14 @@ class StatusWindow(QMainWindow):
             "cluster_x": QLabel(f"Cluster Xc: {self.node.cluster_x}"),
             "cluster_y": QLabel(f"Cluster Yc: {self.node.cluster_y}"),
             "cluster_t": QLabel(f"Cluster Tc: {self.node.cluster_t}"),
-            "cluster_d2": QLabel(f"Cluster d2: {self.node.cluster_d2}"),
-            "cluster_d3": QLabel(f"Cluster d3: {self.node.cluster_d3}"),
-            "cluster_d4": QLabel(f"Cluster d4: {self.node.cluster_d4}"),
-            "cluster_d5": QLabel(f"Cluster d5: {self.node.cluster_d5}"),
-            "cluster_b3": QLabel(f"Cluster B3: {self.node.cluster_b3}"),
-            "cluster_b4": QLabel(f"Cluster B4: {self.node.cluster_b4}"),
-            "cluster_b5": QLabel(f"Cluster B5: {self.node.cluster_b5}"),
+            "cluster_p": QLabel(f"Cluster P: {self.node.cluster_p}"),
+            "cluster_q": QLabel(f"Cluster Q: {self.node.cluster_q}"),
+            "cluster_b": QLabel(f"Cluster B: {self.node.cluster_b}"),
         }
         for label in self.status_labels.values():
             left_layout.addWidget(label)
-
-            
+        
+        
         center_layout = QVBoxLayout()
 
         modify_header = QLabel("Modify Status")
@@ -264,62 +252,29 @@ class StatusWindow(QMainWindow):
         center_layout.addWidget(QLabel("Cluster Tc(rad):"))
         center_layout.addWidget(self.t_spin)
 
-        self.d2_spin = QDoubleSpinBox()
-        self.d2_spin.setMinimum(0.0)
-        self.d2_spin.setMaximum(100.0)
-        self.d2_spin.setValue(self.node.cluster_d2)
-        self.d2_spin.valueChanged.connect(self.update_cluster_d2)
-        center_layout.addWidget(QLabel("Cluster d2(m):"))
-        center_layout.addWidget(self.d2_spin)
+        self.p_spin = QDoubleSpinBox()
+        self.p_spin.setMinimum(0.0)
+        self.p_spin.setMaximum(100.0)
+        self.p_spin.setValue(self.node.cluster_p)
+        self.p_spin.valueChanged.connect(self.update_cluster_p)
+        center_layout.addWidget(QLabel("Cluster P(m):"))
+        center_layout.addWidget(self.p_spin)
 
-        self.d3_spin = QDoubleSpinBox()
-        self.d3_spin.setMinimum(0.0)
-        self.d3_spin.setMaximum(100.0)
-        self.d3_spin.setValue(self.node.cluster_d3)
-        self.d3_spin.valueChanged.connect(self.update_cluster_d3)
-        center_layout.addWidget(QLabel("Cluster d3(m):"))
-        center_layout.addWidget(self.d3_spin)
+        self.q_spin = QDoubleSpinBox()
+        self.q_spin.setMinimum(0.0)
+        self.q_spin.setMaximum(100.0)
+        self.q_spin.setValue(self.node.cluster_q)
+        self.q_spin.valueChanged.connect(self.update_cluster_q)
+        center_layout.addWidget(QLabel("Cluster Q(m):"))
+        center_layout.addWidget(self.q_spin)
 
-        self.d4_spin = QDoubleSpinBox()
-        self.d4_spin.setMinimum(0.0)
-        self.d4_spin.setMaximum(100.0)
-        self.d4_spin.setValue(self.node.cluster_d4)
-        self.d4_spin.valueChanged.connect(self.update_cluster_d4)
-        center_layout.addWidget(QLabel("Cluster d4(m):"))
-        center_layout.addWidget(self.d4_spin)
-
-        self.d5_spin = QDoubleSpinBox()
-        self.d5_spin.setMinimum(0.0)
-        self.d5_spin.setMaximum(100.0)
-        self.d5_spin.setValue(self.node.cluster_d5)
-        self.d5_spin.valueChanged.connect(self.update_cluster_d5)
-        center_layout.addWidget(QLabel("Cluster d5(m):"))
-        center_layout.addWidget(self.d5_spin)
-
-        self.b3_spin = QDoubleSpinBox()
-        self.b3_spin.setMinimum(0.0)
-        self.b3_spin.setMaximum(2 * math.pi)
-        self.b3_spin.setValue(self.node.cluster_b3)
-        self.b3_spin.valueChanged.connect(self.update_cluster_b3)
-        center_layout.addWidget(QLabel("Cluster B3(rad):"))
-        center_layout.addWidget(self.b3_spin)
-
-        self.b4_spin = QDoubleSpinBox()
-        self.b4_spin.setMinimum(0.0)
-        self.b4_spin.setMaximum(2 * math.pi)
-        self.b4_spin.setValue(self.node.cluster_b4)
-        self.b4_spin.valueChanged.connect(self.update_cluster_b4)
-        center_layout.addWidget(QLabel("Cluster B4(rad):"))
-        center_layout.addWidget(self.b4_spin)
-
-        self.b5_spin = QDoubleSpinBox()
-        self.b5_spin.setMinimum(0.0)
-        self.b5_spin.setMaximum(2 * math.pi)
-        self.b5_spin.setValue(self.node.cluster_b5)
-        self.b5_spin.valueChanged.connect(self.update_cluster_b5)
-        center_layout.addWidget(QLabel("Cluster B5(rad):"))
-        center_layout.addWidget(self.b5_spin)
-
+        self.b_spin = QDoubleSpinBox()
+        self.b_spin.setMinimum(0.0)
+        self.b_spin.setMaximum(2 * math.pi)
+        self.b_spin.setValue(self.node.cluster_b)
+        self.b_spin.valueChanged.connect(self.update_cluster_b)
+        center_layout.addWidget(QLabel("Cluster B(rad):"))
+        center_layout.addWidget(self.b_spin)
 
         right_layout = QVBoxLayout()
         mapping_header = QLabel("Button Assignments")
@@ -359,13 +314,9 @@ class StatusWindow(QMainWindow):
         self.status_labels["cluster_x"].setText(f"Cluster Xc: {self.node.cluster_x:.4f}")
         self.status_labels["cluster_y"].setText(f"Cluster Yc: {self.node.cluster_y:.4f}")
         self.status_labels["cluster_t"].setText(f"Cluster Tc: {self.node.cluster_t:.4f}")
-        self.status_labels["cluster_d2"].setText(f"Cluster d2: {self.node.cluster_d2:.4f}")
-        self.status_labels["cluster_d3"].setText(f"Cluster d3: {self.node.cluster_d3:.4f}")
-        self.status_labels["cluster_d4"].setText(f"Cluster d4: {self.node.cluster_d4:.4f}")
-        self.status_labels["cluster_d5"].setText(f"Cluster d5: {self.node.cluster_d5:.4f}")
-        self.status_labels["cluster_b3"].setText(f"Cluster B3: {self.node.cluster_b3:.4f}")
-        self.status_labels["cluster_b4"].setText(f"Cluster B4: {self.node.cluster_b4:.4f}")
-        self.status_labels["cluster_b5"].setText(f"Cluster B5: {self.node.cluster_b5:.4f}")
+        self.status_labels["cluster_p"].setText(f"Cluster P: {self.node.cluster_p:.4f}")
+        self.status_labels["cluster_q"].setText(f"Cluster Q: {self.node.cluster_q:.4f}")
+        self.status_labels["cluster_b"].setText(f"Cluster B: {self.node.cluster_b:.4f}")
 
     def update_rover(self, value):
         self.node.select = value
@@ -394,39 +345,23 @@ class StatusWindow(QMainWindow):
         msg.data = [self.node.cluster_x, self.node.cluster_y, self.node.cluster_t]
         self.node.pubsub.publish('/cluster_desired', msg)
 
-    def update_cluster_d2(self, value):
-        self.node.cluster_d2 = value
-        self.publish_data()
-
-    def update_cluster_d3(self, value):
-        self.node.cluster_d3 = value
-        self.publish_data()
-
-    def update_cluster_d4(self, value):
-        self.node.cluster_d4 = value
-        self.publish_data()
-
-    def update_cluster_d5(self, value):
-        self.node.cluster_d5 = value
-        self.publish_data()
-
-    def update_cluster_b3(self, value):
-        self.node.cluster_b3 = value
-        self.publish_data()
-
-    def update_cluster_b4(self, value):
-        self.node.cluster_b4 = value
-        self.publish_data()
-
-    def update_cluster_b5(self, value):
-        self.node.cluster_b5 = value
-        self.publish_data()
-    
-    def publish_data(self):
+    def update_cluster_p(self, value):
+        self.node.cluster_p = value
         msg = Float32MultiArray()
-        msg.data = [self.node.cluster_d2, self.node.cluster_d3, self.node.cluster_d4, self.node.cluster_d5, self.node.cluster_b3, self.node.cluster_b4, self.node.cluster_b5]
+        msg.data = [self.node.cluster_p, self.node.cluster_q, self.node.cluster_b]
         self.node.pubsub.publish('/cluster_params', msg)
 
+    def update_cluster_q(self, value):
+        self.node.cluster_q = value
+        msg = Float32MultiArray()
+        msg.data = [self.node.cluster_p, self.node.cluster_q, self.node.cluster_b]
+        self.node.pubsub.publish('/cluster_params', msg)
+
+    def update_cluster_b(self, value):
+        self.node.cluster_b = value
+        msg = Float32MultiArray()
+        msg.data = [self.node.cluster_p, self.node.cluster_q, self.node.cluster_b]
+        self.node.pubsub.publish('/cluster_params', msg)
 
 def main(args=None):
     rclpy.init(args=args)
