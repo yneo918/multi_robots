@@ -137,7 +137,7 @@ class ClusterNode(Node):
     #after listening for nearby robots assign them to cluster 
     def assign_robots(self, actual_sim):
         if actual_sim == "actual":
-            self.cluster_robots.sort() #sort the robot ids
+            #self.cluster_robots.sort() #sort the robot ids
             #actual robots
             self.registered_robots = self.cluster_robots[0:self.cluster_size] #trim extra robots
             self.r = np.zeros((self.cluster_size*ROVER_DOF, 1))
@@ -149,7 +149,7 @@ class ClusterNode(Node):
             # change configure of cluster here
             self.actual_configured = True
         elif actual_sim == "sim":
-            self.sim_cluster_robots.sort() 
+            #self.sim_cluster_robots.sort() 
             #simulation robots
             self.sim_registered_robots = self.sim_cluster_robots[0:self.cluster_size] #trim extra robots
             self.sim_r = np.zeros((self.sim_cluster_size*ROVER_DOF, 1))
@@ -372,8 +372,8 @@ class ClusterNode(Node):
     #Maps Id of robot to its index in the cluster
     def map_robot_id(self, i, output):
         if output == "actual":
-            for j in range(len(self.cluster_robots)):
-                if self.cluster_robots[j] == i:
+            for j in range(len(self.registered_robots)):
+                if self.registered_robots[j] == i:
                     return j
             return None
         elif output == "sim":
