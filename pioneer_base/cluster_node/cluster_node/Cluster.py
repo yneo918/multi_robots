@@ -182,7 +182,7 @@ class Cluster():
         x_c = r_sym[0]
         y_c = r_sym[1]
         
-        theta_c = sp.atan2(r_sym[0] - r_sym[3], r_sym[4] - r_sym[1])
+        theta_c = sp.atan2(r_sym[1] - r_sym[4], r_sym[3] - r_sym[0])
 
         phi = [r_sym[2] - theta_c, r_sym[5] - theta_c, r_sym[8] - theta_c, r_sym[11] - theta_c, r_sym[14] - theta_c]
         d = [0, 
@@ -191,29 +191,29 @@ class Cluster():
              sp.sqrt((r_sym[3] - r_sym[9])**2 + (r_sym[4] - r_sym[10])**2),
              sp.sqrt((r_sym[6] - r_sym[12])**2 + (r_sym[7] - r_sym[13])**2)]
         beta = [0, 0,
-                sp.atan2(r_sym[0] - r_sym[6], r_sym[7] - r_sym[1]) - theta_c,
-                sp.atan2(r_sym[10] - r_sym[4], r_sym[9] - r_sym[3]) - theta_c,
-                sp.atan2(r_sym[13] - r_sym[7], r_sym[12] - r_sym[6]) - theta_c]
+                sp.atan2(r_sym[7] - r_sym[1], r_sym[0] - r_sym[6]) - theta_c,
+                sp.atan2(r_sym[9] - r_sym[3], r_sym[10] - r_sym[4]) - theta_c,
+                sp.atan2(r_sym[12] - r_sym[6], r_sym[13] - r_sym[7]) - theta_c]
 
         # robot space configuration by cluster space variables
         x = [c_sym[0]]
         y = [c_sym[1]]
         theta = [c_sym[2] + c_sym[3]]
 
-        x.append(x[0] + c_sym[8] * sp.sin(c_sym[2]))
-        y.append(y[0] + c_sym[8] * sp.cos(c_sym[2]))
+        x.append(x[0] + c_sym[8] * sp.cos(c_sym[2]))
+        y.append(y[0] + c_sym[8] * -sp.sin(c_sym[2]))
         theta.append(c_sym[2] + c_sym[4])
 
-        x.append(x[0] + c_sym[9] * -sp.sin(c_sym[12] + c_sym[2]))
-        y.append(y[0] + c_sym[9] * -sp.cos(c_sym[12] + c_sym[2]))
+        x.append(x[0] + c_sym[9] * -sp.cos(c_sym[12] + c_sym[2]))
+        y.append(y[0] + c_sym[9] * sp.sin(c_sym[12] + c_sym[2]))
         theta.append(c_sym[2] + c_sym[5])
 
-        x.append(x[1] + c_sym[10] * sp.cos(c_sym[13] + c_sym[2]))
-        y.append(y[1] + c_sym[10] * -sp.sin(c_sym[13] + c_sym[2]))
+        x.append(x[1] + c_sym[10] * sp.sin(c_sym[13] + c_sym[2]))
+        y.append(y[1] + c_sym[10] * sp.cos(c_sym[13] + c_sym[2]))
         theta.append(c_sym[2] + c_sym[6])
 
-        x.append(x[2] + c_sym[11] * sp.cos(c_sym[14] + c_sym[2]))
-        y.append(y[2] + c_sym[11] * -sp.sin(c_sym[14] + c_sym[2]))
+        x.append(x[2] + c_sym[11] * sp.sin(c_sym[14] + c_sym[2]))
+        y.append(y[2] + c_sym[11] * sp.cos(c_sym[14] + c_sym[2]))
         theta.append(c_sym[2] + c_sym[7])
 
         self.FKine = sp.Matrix([x_c, y_c, theta_c] + phi + d[1:] + beta[2:])

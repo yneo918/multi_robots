@@ -88,10 +88,10 @@ class VirtualXbox(Node, QWidget):
         self.axes[dpad_map[key]] = values[key] if self.dpad[key].isChecked() else 0.0
 
     def publish_joy(self):
-        self.axes[0] = self.sticks["Left X"].value() / 100.0
+        self.axes[0] = -self.sticks["Left X"].value() / 100.0
         self.axes[1] = self.sticks["Left Y"].value() / 100.0
         self.axes[2] = self.sticks["LT"].value() / 100.0
-        self.axes[3] = self.sticks["Right X"].value() / 100.0
+        self.axes[3] = -self.sticks["Right X"].value() / 100.0
         self.axes[4] = self.sticks["Right Y"].value() / 100.0
         self.axes[5] = self.sticks["RT"].value() / 100.0
 

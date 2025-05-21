@@ -2,17 +2,17 @@
 ⎢                                                     ⎥
 ⎢                         r₁                          ⎥
 ⎢                                                     ⎥
-⎢              atan2(r₀ - r₃, -r₁ + r₄)               ⎥
+⎢              atan2(r₁ - r₄, -r₀ + r₃)               ⎥
 ⎢                                                     ⎥
-⎢            r₂ - atan2(r₀ - r₃, -r₁ + r₄)            ⎥
+⎢            r₂ - atan2(r₁ - r₄, -r₀ + r₃)            ⎥
 ⎢                                                     ⎥
-⎢            r₅ - atan2(r₀ - r₃, -r₁ + r₄)            ⎥
+⎢            r₅ - atan2(r₁ - r₄, -r₀ + r₃)            ⎥
 ⎢                                                     ⎥
-⎢            r₈ - atan2(r₀ - r₃, -r₁ + r₄)            ⎥
+⎢            r₈ - atan2(r₁ - r₄, -r₀ + r₃)            ⎥
 ⎢                                                     ⎥
-⎢           r₁₁ - atan2(r₀ - r₃, -r₁ + r₄)            ⎥
+⎢           r₁₁ - atan2(r₁ - r₄, -r₀ + r₃)            ⎥
 ⎢                                                     ⎥
-⎢           r₁₄ - atan2(r₀ - r₃, -r₁ + r₄)            ⎥
+⎢           r₁₄ - atan2(r₁ - r₄, -r₀ + r₃)            ⎥
 ⎢                                                     ⎥
 ⎢               _________________________             ⎥
 ⎢              ╱          2            2              ⎥
@@ -30,8 +30,8 @@
 ⎢            ╱            2              2            ⎥
 ⎢          ╲╱  (-r₁₂ + r₆)  + (-r₁₃ + r₇)             ⎥
 ⎢                                                     ⎥
-⎢-atan2(r₀ - r₃, -r₁ + r₄) + atan2(r₀ - r₆, -r₁ + r₇) ⎥
+⎢ atan2(-r₁ + r₇, r₀ - r₆) - atan2(r₁ - r₄, -r₀ + r₃) ⎥
 ⎢                                                     ⎥
-⎢-atan2(r₀ - r₃, -r₁ + r₄) + atan2(r₁₀ - r₄, -r₃ + r₉)⎥
+⎢-atan2(r₁ - r₄, -r₀ + r₃) + atan2(-r₃ + r₉, r₁₀ - r₄)⎥
 ⎢                                                     ⎥
-⎣-atan2(r₀ - r₃, -r₁ + r₄) + atan2(r₁₃ - r₇, r₁₂ - r₆)⎦
+⎣-atan2(r₁ - r₄, -r₀ + r₃) + atan2(r₁₂ - r₆, r₁₃ - r₇)⎦

@@ -28,7 +28,7 @@ FREQ = 10
 JOY_FREQ = FREQ
 KP_GAIN = 1.0
 KV_GAIN = 1.0
-EPSILON = 1.0
+EPSILON = 0.1
 MAX_VEL = 0.5
 ROVER_DOF = 3 # (x, y, theta)
 
@@ -137,7 +137,7 @@ class ClusterNode(Node):
     #after listening for nearby robots assign them to cluster 
     def assign_robots(self, actual_sim):
         if actual_sim == "actual":
-            #self.cluster_robots.sort() #sort the robot ids
+            self.cluster_robots.sort() #sort the robot ids
             #actual robots
             self.registered_robots = self.cluster_robots[0:self.cluster_size] #trim extra robots
             self.r = np.zeros((self.cluster_size*ROVER_DOF, 1))
@@ -149,7 +149,7 @@ class ClusterNode(Node):
             # change configure of cluster here
             self.actual_configured = True
         elif actual_sim == "sim":
-            #self.sim_cluster_robots.sort() 
+            self.sim_cluster_robots.sort() 
             #simulation robots
             self.sim_registered_robots = self.sim_cluster_robots[0:self.cluster_size] #trim extra robots
             self.sim_r = np.zeros((self.sim_cluster_size*ROVER_DOF, 1))
