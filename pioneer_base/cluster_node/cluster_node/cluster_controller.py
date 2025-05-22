@@ -294,15 +294,13 @@ class ClusterNode(Node):
         #_max = max(np.abs([rd[0], rd[1], rd[3], rd[4], rd[6], rd[7]]))
         #rd = rd / _max * MAX_VEL if _max > MAX_VEL else rd
         rover_vel = []
-        #self.get_logger().info(f"Cluster status/gained_rd: {rd.flatten()}")
         for i in range(len(_cluster_robots)):
             _x = float(rd[i*ROVER_DOF+0, 0])
             _y = float(rd[i*ROVER_DOF+1, 0])
             _trans = math.sqrt(_x**2 + _y**2)
             _rotate = 0.0
-            if _trans < EPSILON:
+            if _trans < EPSILON*KP_GAIN: #Distance tolerance from robots desired position
                 rover_vel.append([0.0, 0.0])
-                #self.get_logger().info(f"Robot {i} is not moving")
             else:
                 desiredAngle = math.atan2(_x, _y)
                 self.get_logger().info(f"_x={_x}, _y={_y}, cur_theta={_r[i*ROVER_DOF+2, 0]}, atan2={desiredAngle}")
@@ -313,7 +311,7 @@ class ClusterNode(Node):
                     _rotate = self.wrap_to_pi(math.pi - _rotate)
                     _trans = -_trans * math.cos(abs(_rotate))
                 rover_vel.append([_trans, _rotate])
-        # SCALEING
+        # Limit commanded velocities to max velocity
         rover_vel = np.array(rover_vel)
         for i in range(len(_cluster_robots)):
             rover_vel[i][1] = max(-MAX_VEL, min(MAX_VEL, rover_vel[i][1]))
