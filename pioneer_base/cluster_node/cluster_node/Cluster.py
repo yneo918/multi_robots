@@ -16,11 +16,11 @@ class ClusterConfig(Enum):
 The Cluster Class node contains all the cluster state space variables and kinematic transforms. The cluster configuration is determined by the
 parameters at startup but may be able to be dynamically adjusted in future once we have defined more configurations.
 @params:
-    numRobots: Number of robots in the cluster
+    num_robots: Number of robots in the cluster
     cluster_type: The geometric shape representing configuration of the cluster (TRICEN is the only one implemented currently)
     cluster_params: array of cluster configuration parameters dependent on configuration (for TRICEN it is [p, q, B] which is the SSA of the triangle)
-    KPgains: Proportional gains for the cluster control (must be length numRobots*DOF where DOF is 3 for land rovers)
-    KVgains: Derivative gains for the cluster control (must be length numRobots*DOF where DOF is 3 for land rovers)
+    KPgains: Proportional gains for the cluster control (must be length num_robots*DOF where DOF is 3 for land rovers)
+    KVgains: Derivative gains for the cluster control (must be length num_robots*DOF where DOF is 3 for land rovers)
     control_mode: The control mode for the cluster (POS or VEL)
 """
 
@@ -28,18 +28,19 @@ ROVER_DOF = 3
 
 class Cluster():
     #Create a cluster with a set number of robots in a specific configuration with initial parameters
-    def __init__(self, numRobots=3, cluster_type=ClusterConfig.TRICEN, cluster_params=[10, 10, math.pi/3], KPgains=None, KVgains=None, control_mode="POS"):
-        self.num_robots = numRobots
+    def __init__(self, num_robots=3, cluster_type=ClusterConfig.TRICEN, KPgains=None, KVgains=None, control_mode="POS"):
+        self.num_robots = num_robots
         self.cluster_type = cluster_type
-        self.cluster_params = cluster_params
+        if control_mode not in ["POS", "VEL"]:
+            raise ValueError("control_mode must be either 'POS' or 'VEL'")
         self.control_mode = control_mode
         try:
             if KPgains is None:
                 KPgains = [1.0] * (self.num_robots*ROVER_DOF)
             if KVgains is None:
                 KVgains = [1.0] * (self.num_robots*ROVER_DOF)
-            assert KPgains is not None and len(KPgains) == self.num_robots*ROVER_DOF, "KPgains must be a list of length self.num_robots*3"
-            assert KVgains is not None and len(KVgains) == self.num_robots*ROVER_DOF, "KVgains must be a list of length self.num_robots*3"
+            assert KPgains is not None and len(KPgains) == self.num_robots*ROVER_DOF, "KPgains must be a list of length self.num_robots*ROVER_DOF"
+            assert KVgains is not None and len(KVgains) == self.num_robots*ROVER_DOF, "KVgains must be a list of length self.num_robots*ROVER_DOF"
         except AssertionError as e:
             print(f"AssertionError: {e}")
             return
@@ -49,84 +50,41 @@ class Cluster():
         self.initialize_cluster()
     
     def initialize_cluster(self):
-        #Desired cluster state space variables
-        self.c_des = np.zeros((self.num_robots*ROVER_DOF, 1))
-        self.c_des[self.num_robots*ROVER_DOF - len(self.cluster_params):self.num_robots*ROVER_DOF]= np.reshape(self.cluster_params, (len(self.cluster_params), 1))
-        self.cd_des = np.zeros((self.num_robots*ROVER_DOF, 1))
-        #Actual Cluster state space variables
-        self.c = np.zeros((self.num_robots*ROVER_DOF, 1))  
-        self.cd = np.zeros((self.num_robots*ROVER_DOF, 1))  
-        #Symbolic kinematic transform vars
-        self.FKine_func, self.IKine_func, self.Jacobian_func, self.JacobianInv_func = None, None, None, None
-        self.configureCluster(self.num_robots, self.cluster_type)
+        self.configure_cluster(self.num_robots, self.cluster_type)
 
     #Given the current robot state space variables and desired cluster state space variables, calculate robot velocity vector
-    def get_velocity_command(self, r, rd):
-        self.update_cluster_position(r, rd)
+    def get_velocity_command(self, r, rdot, c_des, cdot_des):
+        c, cdot = self.calculate_cluster_position(r, rdot)
+        cdot_cmd = self.calculate_linear_control(c, cdot, c_des, cdot_des)
+        _rdot = np.dot(np.array(self.JacobianInv_func(*c.flatten())), cdot_cmd)
+        return cdot_cmd, _rdot, c
+
+    #Given a the current robot state space variables, update the cluster state space variables
+    def calculate_cluster_position(self, r, rdot):
+        c = self.FKine_func(*r.flatten())
+        for i in self.cluster_angle_index:
+            c[i, 0] = self.wrap_to_pi(c[i, 0])
+        cdot = np.dot(np.array(self.Jacobian_func(*r.flatten())).astype(np.float64), rdot)
+        return c, cdot
+
+    #Linear control equation 
+    def calculate_linear_control(self, c, cdot, c_des, cdot_des):
+        if self.control_mode == "VEL":
+            return cdot_des
         if self.control_mode == "POS":
-            cd_cmd = self.calculate_linear_control()
-        elif self.control_mode == "VEL":
-            cd_cmd = self.cd_des
-        _rd = np.dot(np.array(self.JacobianInv_func(*self.c.flatten())), cd_cmd)
-        for i in range(self.num_robots):
-            _rd[i*ROVER_DOF+2, 0] = self.wrap_to_pi(rd[i*ROVER_DOF+2, 0])
-        return cd_cmd, _rd, self.c
-
-    def set_cdes(self, cdes_params):
-        for i in range(self.num_robots*ROVER_DOF):
-            self.c_des[i,0] = cdes_params[i]
-        print("CDES",self.c_des)
-    
-    def update_cdes_tr(self, v_t, v_r, freq):
-        t = self.c[2, 0]
-        self.c_des[0, 0] += v_t*math.sin(t) / freq
-        self.c_des[1, 0] += v_t*math.cos(t) / freq
-        self.c_des[2, 0] += v_r / freq
-        self.c_des[2, 0] = self.wrap_to_pi(self.c_des[2, 0])
-        return
-    
-    def update_cdes_vel(self, v_x, v_y, v_r, freq):
-        self.c_des[0, 0] += v_x / freq
-        self.c_des[1, 0] += v_y / freq
-        self.c_des[2, 0] += v_r / freq
-        self.c_des[2, 0] = self.wrap_to_pi(self.c_des[2, 0])
-        return
-    
-    # data = float list
-    def update_cdes_pos(self, data):
-        for i in range(len(data)):
-            self.c_des[i, 0] = data[i]
-            if i in self.cluster_angle_index:
-                self.c_des[i, 0] = self.wrap_to_pi(self.c_des[i, 0])
-        return
-    
-    def update_cluster_shape(self, params):
-        if len(params) != self.num_robots*(ROVER_DOF-1) - 3:
-            raise ValueError("params must be a list of length self.num_robots*ROVER_DOF")
-        self.c_des[self.num_robots*ROVER_DOF - len(self.cluster_params):self.num_robots*ROVER_DOF]= np.reshape(params, (len(params), 1))
-
+            c_diff = c_des - c
+            for i in self.cluster_angle_index:
+                c_diff[i, 0] = self.wrap_to_pi(c_diff[i, 0])
+            cdot_cmd = np.dot(self.Kp, c_diff)
+            return cdot_cmd
+        else:
+            raise ValueError("control_mode must be either 'POS' or 'VEL'")
     def wrap_to_pi(self, t):
         return (t + np.pi) % (2 * np.pi) - np.pi
 
-    #Linear control equation 
-    def calculate_linear_control(self):
-        c_diff = self.c_des - self.c
-        for i in self.cluster_angle_index:
-            c_diff[i, 0] = self.wrap_to_pi(c_diff[i, 0])
-        cd = np.dot(self.Kp, c_diff)
-        return cd
-
-    #Given a the current robot state space variables, update the cluster state space variables
-    def update_cluster_position(self, r, rd):
-        self.c = self.FKine_func(*r.flatten())
-        for i in self.cluster_angle_index:
-            self.c[i, 0] = self.wrap_to_pi(self.c[i, 0])
-        self.cd = np.dot(np.array(self.Jacobian_func(*r.flatten())).astype(np.float64), rd)
-
     #Based on the given cluster configuration will set the symbolic kinematic transform equations
     #from a set of prederived transforms
-    def configureCluster(self, robots, cluster_type):
-        #Triangle configuration with cluster at centroid
+    def configure_cluster(self, robots, cluster_type):
         if robots == 3:
             if cluster_type == ClusterConfig.TRICEN:
                 self.cluster_config_tricen()
@@ -228,10 +186,10 @@ class Cluster():
         self.cluster_angle_index = [2, 3, 4, 5, 6, 7, 12, 13, 14]
 
     #For testing cluster:
-    def get_desired_position(self):
+    def get_desired_position(self, c_des):
         if self.IKine_func is None:
             return None
-        r = np.array(self.IKine_func(*self.c_des.flatten())).astype(np.float64)
+        r = np.array(self.IKine_func(*c_des.flatten())).astype(np.float64)
         return r
 
     def test_transforms(self, r):
@@ -242,9 +200,9 @@ class Cluster():
 
 if __name__ == "__main__":
     # Example usage
-    cluster = Cluster(numRobots=5, cluster_type=ClusterConfig.TRILEAD, cluster_params=[3,3,3,3,0,0,0])
-    cluster.set_cdes([0,0,0,0,0,0,0,0,2,3,4,5,0,0.5,0])
-    print("R",cluster.get_desired_position())
+    cluster = Cluster(num_robots=5, cluster_type=ClusterConfig.TRILEAD)
+    cluster.set_c_des([0,0,0,0,0,0,0,0,2,3,4,5,0,0.5,0])
+    print("R",cluster.get_desired_position([0,0,0,0,0,0,0,0,2,3,4,5,0,0.5,0]))
     with open('cluster_expressions/FKine.txt', 'w') as f:
         f.write(sp.pretty(cluster.FKine, wrap_line=False))
     with open('cluster_expressions/IKine.txt', 'w') as f:

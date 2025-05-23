@@ -49,9 +49,24 @@ class ClusterNode(Node):
         #Parse robot ID list
         robot_id_list = self.get_parameter('robot_id_list').value
         self.get_logger().info(f"robot_id_list: {robot_id_list}")
+        self.set_robot_id_list(robot_id_list, n_rover)
+        self.get_logger().info(f"ROVER: {self.robot_id_list} N: {self.n_rover}")
+
+        self.cluster_params = [3,3,3,3,0,0,0] #cluster parameters
+
+        self.initialize_cluster()
+        
+        self.pubsub = PubSubManager(self)
+        self.set_pubsub()
+
+        self.cluster_enable = False
+        timer_period = 1 / FREQ  # set frequency to publish velocity commands
+        self.vel_timer = self.create_timer(timer_period, self.publish_velocities_manager)
+    
+    def set_robot_id_list(self, robot_id_list, n_rover=6):
+        self.robot_id_list = []
         if len(robot_id_list) == 1 and robot_id_list[0] == "p0":
             robot_id_list = None
-        self.robot_id_list = []
         if robot_id_list is None:
             self.n_rover = n_rover
             for i in range(self.n_rover):
@@ -68,10 +83,11 @@ class ClusterNode(Node):
             else:
                 self.robot_id_list = robot_id_list
         else:
-            print("ROBOT_ID_LIST ERROR")
+            self.get_logger().error(f"Invalid robot_id_list: {robot_id_list}")
+            self.n_rover = 0
             return
-        self.get_logger().info(f"ROVER: {self.robot_id_list} N: {self.n_rover}")
-
+    
+    def initialize_cluster(self):
         self.both = False #flag to check if both actual and simulation robots are present
         self.actual_configured = False
         self.sim_configured = False
@@ -81,28 +97,34 @@ class ClusterNode(Node):
         self.cluster_size = self.get_parameter('cluster_size').value
         self.cluster_robots = [] #list of active robots in cluster
         self.registered_robots = [] #list of active robots in cluster
-        self.r = None #stores latest robot state space variables
-        self.rd = None #stores latest robot velocities 
+        self.c_des = np.zeros((self.cluster_size*ROVER_DOF, 1))
+        self.c_des[self.n_rover*ROVER_DOF - len(self.cluster_params):self.n_rover*ROVER_DOF]= np.reshape(self.cluster_params, (len(self.cluster_params), 1))
+        self.cdot_des = np.zeros((self.cluster_size*ROVER_DOF, 1))
+        self.r = np.zeros((self.cluster_size*ROVER_DOF, 1))
+        self.rdot = np.zeros((self.cluster_size*ROVER_DOF, 1))
         self.time = None
-        self.cluster = Cluster(numRobots = self.cluster_size, cluster_type=ClusterConfig.TRILEAD, cluster_params=[3,3,3,3,0,0,0], KPgains=[KP_GAIN]*(self.cluster_size*ROVER_DOF), KVgains=[KV_GAIN]*(self.cluster_size*ROVER_DOF))
+        self.cluster = Cluster(num_robots = self.cluster_size, cluster_type=ClusterConfig.TRILEAD, KPgains=[KP_GAIN]*(self.cluster_size*ROVER_DOF), KVgains=[KV_GAIN]*(self.cluster_size*ROVER_DOF))
 
         #All data on simulation robots
         self.sim_cluster = None #cluster object to be initialized when cluster is formed
         self.sim_cluster_size = self.get_parameter('cluster_size').value
         self.sim_cluster_robots = [] #list of active robots in cluster
         self.sim_registered_robots = [] #list of active robots in cluster
-        self.sim_r = None #stores latest robot state space variables
-        self.sim_rd = None #stores latest robot velocities 
+        self.sim_c_des = np.zeros((self.sim_cluster_size*ROVER_DOF, 1))
+        self.sim_c_des[self.n_rover*ROVER_DOF - len(self.cluster_params):self.n_rover*ROVER_DOF]= np.reshape(self.cluster_params, (len(self.cluster_params), 1))
+        self.sim_cdot_des = np.zeros((self.sim_cluster_size*ROVER_DOF, 1))
+        self.sim_r = np.zeros((self.sim_cluster_size*ROVER_DOF, 1))
+        self.sim_rdot = np.zeros((self.sim_cluster_size*ROVER_DOF, 1))
         self.sim_time = None
-        self.sim_cluster = Cluster(numRobots = self.sim_cluster_size, cluster_type=ClusterConfig.TRILEAD, cluster_params=[3,3,3,3,0,0,0], KPgains=[KP_GAIN]*(self.sim_cluster_size*ROVER_DOF), KVgains=[KV_GAIN]*(self.sim_cluster_size*ROVER_DOF))
+        self.sim_cluster = Cluster(num_robots = self.sim_cluster_size, cluster_type=ClusterConfig.TRILEAD, KPgains=[KP_GAIN]*(self.sim_cluster_size*ROVER_DOF), KVgains=[KV_GAIN]*(self.sim_cluster_size*ROVER_DOF))
 
         self.output = "actual" #switch between outputing velocity to simulation or actual robots
         self.mode = "INIT" #switch between manual or cluster control
         self.joy_timestamp = None
         self.enable = False
-        
-        self.pubsub = PubSubManager(self)
-
+        self.get_logger().info(f"Cluster initialized with size: {self.cluster_size} and sim size: {self.sim_cluster_size}")
+    
+    def set_pubsub(self):
         self.pubsub.create_subscription(Bool, '/joy/hardware', self.hw_sim_callback, 1)
         self.pubsub.create_subscription(String, '/modeC', self.mode_callback, 1)
         self.pubsub.create_subscription(Twist, '/joy/cmd_vel', self.joycmd_callback, 5)
@@ -130,30 +152,22 @@ class ClusterNode(Node):
                 5)
         self.get_logger().info(f"Listening for robots: {self.robot_id_list}")
 
-        self.cluster_enable = False
-        timer_period = 1 / FREQ  # set frequency to publish velocity commands
-        self.vel_timer = self.create_timer(timer_period, self.publish_velocities_manager)
-
     #after listening for nearby robots assign them to cluster 
     def assign_robots(self, actual_sim):
         if actual_sim == "actual":
             self.cluster_robots.sort() #sort the robot ids
             #actual robots
             self.registered_robots = self.cluster_robots[0:self.cluster_size] #trim extra robots
-            self.r = np.zeros((self.cluster_size*ROVER_DOF, 1))
-            self.rd = np.zeros((self.cluster_size*ROVER_DOF, 1))
             # change configure of cluster here
             self.get_logger().info(f"Cluster status: {self.cluster.c_des}")
             self.get_logger().info(f"Formed cluster with robots: {self.registered_robots} from list of possible: {self.robot_id_list}")
-            self.get_logger().info(f"Desired robot position: {self.cluster.get_desired_position()}")
+            self.get_logger().info(f"Desired robot position: {self.cluster.get_desired_position(self.c_des)}")
             # change configure of cluster here
             self.actual_configured = True
         elif actual_sim == "sim":
             self.sim_cluster_robots.sort() 
             #simulation robots
             self.sim_registered_robots = self.sim_cluster_robots[0:self.cluster_size] #trim extra robots
-            self.sim_r = np.zeros((self.sim_cluster_size*ROVER_DOF, 1))
-            self.sim_rd = np.zeros((self.sim_cluster_size*ROVER_DOF, 1))
             self.sim_configured = True
             
         self.get_logger().info(f"Cluster_robots: {self.registered_robots} Sim_cluster_robots: {self.sim_registered_robots}")
@@ -195,7 +209,7 @@ class ClusterNode(Node):
         if self.output == "actual" or self.both:
             robot_pose = [msg.x , msg.y, msg.theta]
             self.r[cluster_index*ROVER_DOF:((cluster_index+1)*ROVER_DOF), 0] = robot_pose #update robot position in array 
-            _desired = self.cluster.get_desired_position()
+            _desired = self.cluster.get_desired_position(self.c_des)
             self.get_logger().info(f"Actual robot positions {self.r} Desired robot position: {_desired}")
 
             _pose = Pose2D()
@@ -209,10 +223,10 @@ class ClusterNode(Node):
         cluster_index = self.map_robot_id(i, "sim")
         if cluster_index is None:
             return
-        if not self.output == "actual" or self.both:
+        if self.output == "sim" or self.both:
             robot_pose = [msg.x , msg.y, msg.theta]
             self.sim_r[cluster_index*ROVER_DOF:((cluster_index+1)*ROVER_DOF), 0] = robot_pose #update robot position in array 
-            _desired = self.sim_cluster.get_desired_position()
+            _desired = self.sim_cluster.get_desired_position(self.sim_c_des)
             if _desired is None:
                 return
             #self.get_logger().info(f"Sim robot positions {self.sim_r} Desired sim robot position: {_desired}")
@@ -225,10 +239,21 @@ class ClusterNode(Node):
         freq = 1 / (time.time() - self.joy_timestamp ) if self.joy_timestamp is not None else JOY_FREQ
         self.joy_timestamp = time.time()
         if self.mode == "NAV_M":
+            v_x = -msg.linear.x
+            v_y = msg.linear.y
+            v_r = -msg.angular.z * 0.3
             if self.output == "actual" or self.both:
-                self.cluster.update_cdes_vel(-msg.linear.x, msg.linear.y, -msg.angular.z *0.3, freq)
+                self.c_des[0, 0] += v_x / freq
+                self.c_des[1, 0] += v_y / freq
+                self.c_des[2, 0] += v_r / freq
+                self.c_des[2, 0] = self.wrap_to_pi(self.c_des[2, 0])
             if self.output == "sim" or self.both:
-                self.sim_cluster.update_cdes_vel(-msg.linear.x, msg.linear.y, -msg.angular.z *0.3, freq)
+                self.sim_c_des[0, 0] += v_x / freq
+                self.sim_c_des[1, 0] += v_y / freq
+                self.sim_c_des[2, 0] += v_r / freq
+                self.sim_c_des[2, 0] = self.wrap_to_pi(self.sim_c_des[2, 0])      
+            self.get_logger().info(f"Cluster desired position: {self.c_des.flatten()}")
+            self.get_logger().info(f"Sim cluster desired position: {self.sim_c_des.flatten()}")          
 
     #Set cluster parameters from the cluster_params topic
     def cluster_params_callback(self, msg):
@@ -237,38 +262,42 @@ class ClusterNode(Node):
             self.get_logger().info("Resetting cluster parameters")
             if self.both:
                 if self.actual_configured:
-                    self.cluster.initialize_cluster()
+                    self.c_des = np.zeros((self.cluster_size*ROVER_DOF, 1))
+                    self.c_des[self.n_rover*ROVER_DOF - len(self.cluster_params):self.n_rover*ROVER_DOF]= np.reshape(self.cluster_params, (len(self.cluster_params), 1))
                 if self.sim_configured:
-                    self.sim_cluster.initialize_cluster()
+                    self.sim_c_des = np.zeros((self.sim_cluster_size*ROVER_DOF, 1))
+                    self.sim_c_des[self.n_rover*ROVER_DOF - len(self.cluster_params):self.n_rover*ROVER_DOF]= np.reshape(self.cluster_params, (len(self.cluster_params), 1))
             else:
                 if self.output == "actual" and self.actual_configured:
-                    self.cluster.initialize_cluster()
+                    self.c_des = np.zeros((self.cluster_size*ROVER_DOF, 1))
+                    self.c_des[self.n_rover*ROVER_DOF - len(self.cluster_params):self.n_rover*ROVER_DOF]= np.reshape(self.cluster_params, (len(self.cluster_params), 1))
                 elif self.output == "sim" and self.sim_configured:
-                    self.sim_cluster.initialize_cluster()
+                    self.sim_c_des = np.zeros((self.sim_cluster_size*ROVER_DOF, 1))
+                    self.sim_c_des[self.n_rover*ROVER_DOF - len(self.cluster_params):self.n_rover*ROVER_DOF]= np.reshape(self.cluster_params, (len(self.cluster_params), 1))
             return
         if self.both:
             if self.actual_configured:
-                self.cluster.update_cluster_shape(msg.data)
+                self.c_des[self.n_rover*ROVER_DOF - len(self.cluster_params):self.n_rover*ROVER_DOF]= np.reshape(msg.data, (len(msg.data), 1))
             if self.sim_configured:
-                self.sim_cluster.update_cluster_shape(msg.data)
+                self.sim_c_des[self.n_rover*ROVER_DOF - len(self.cluster_params):self.n_rover*ROVER_DOF]= np.reshape(msg.data, (len(msg.data), 1))
         else:
             if self.output == "actual" and self.actual_configured:
-                self.cluster.update_cluster_shape(msg.data)
+                self.c_des[self.n_rover*ROVER_DOF - len(self.cluster_params):self.n_rover*ROVER_DOF]= np.reshape(msg.data, (len(msg.data), 1))
             elif self.output == "sim" and self.sim_configured:
-                self.sim_cluster.update_cluster_shape(msg.data)
+                self.sim_c_des[self.n_rover*ROVER_DOF - len(self.cluster_params):self.n_rover*ROVER_DOF]= np.reshape(msg.data, (len(msg.data), 1))
     
     def cluster_desired_callback(self, msg):
         self.get_logger().info(f"Received cluster desired position: {msg.data}")
         if self.both:
             if self.actual_configured:
-                self.cluster.update_cdes_pos(msg.data)
+                self.c_des[0:len(msg.data)]= np.reshape(msg.data, (len(msg.data), 1))
             if self.sim_configured:
-                self.sim_cluster.update_cdes_pos(msg.data)
+                self.sim_c_des[0:len(msg.data)]= np.reshape(msg.data, (len(msg.data), 1))
         else:
             if self.output == "actual" and self.actual_configured:
-                self.cluster.update_cdes_pos(msg.data)
+                self.c_des[0:len(msg.data)]= np.reshape(msg.data, (len(msg.data), 1))
             elif self.output == "sim" and self.sim_configured:
-                self.sim_cluster.update_cdes_pos(msg.data)
+                self.sim_c_des[0:len(msg.data)]= np.reshape(msg.data, (len(msg.data), 1))
    
     #Publishes velocity commands to robots in either sim or actual
     def publish_velocities(self, output):
@@ -284,19 +313,18 @@ class ClusterNode(Node):
             return
         _cluster = self.cluster if output == "actual" else self.sim_cluster
         _r = self.r if output == "actual" else self.sim_r
-        _rd = self.rd if output == "actual" else self.sim_rd
-        _cdes = _cluster.c_des
-        cd, rd, c_cur= _cluster.get_velocity_command(_r , _rd)
-        #self.get_logger().info(f"Cluster status/cd: {cd.flatten()}")
-        #self.get_logger().info(f"Cluster status/rd: {rd.flatten()}")
-        _rd = rd
+        _rdot = self.rdot if output == "actual" else self.sim_rdot
+        cdot_cmd, rdot, c_cur = _cluster.get_velocity_command(_r , _rdot, self.c_des, self.cdot_des)
+        #self.get_logger().info(f"Cluster status/cdot: {cdot.flatten()}")
+        #self.get_logger().info(f"Cluster status/rdot: {rdot.flatten()}")
+        _rdot = rdot
 
-        #_max = max(np.abs([rd[0], rd[1], rd[3], rd[4], rd[6], rd[7]]))
-        #rd = rd / _max * MAX_VEL if _max > MAX_VEL else rd
+        #_max = max(np.abs([rdot[0], rdot[1], rdot[3], rdot[4], rdot[6], rdot[7]]))
+        #rdot = rdot / _max * MAX_VEL if _max > MAX_VEL else rdot
         rover_vel = []
         for i in range(len(_cluster_robots)):
-            _x = float(rd[i*ROVER_DOF+0, 0])
-            _y = float(rd[i*ROVER_DOF+1, 0])
+            _x = float(rdot[i*ROVER_DOF+0, 0])
+            _y = float(rdot[i*ROVER_DOF+1, 0])
             _trans = math.sqrt(_x**2 + _y**2)
             _rotate = 0.0
             if _trans < EPSILON*KP_GAIN: #Distance tolerance from robots desired position
@@ -328,9 +356,9 @@ class ClusterNode(Node):
             self.get_logger().info(f"Robot {i} velocity[{_msg_prefix}/{self.robot_id_list[_cluster_robots[i]]}/cmd_vel]: {vel.linear.x}, {vel.angular.z}")
         msg = ClusterInfo()
         msg.cluster.data = c_cur.flatten().tolist()
-        msg.cluster_desired.data = _cdes.flatten().tolist()
+        msg.cluster_desired.data = self.c_des.flatten().tolist()
         msg.rover.data = _r.flatten().tolist()
-        msg.rover_desired.data = _rd.flatten().tolist()
+        msg.rover_desired.data = _rdot.flatten().tolist()
         self.pubsub.publish(f"{_msg_prefix}/cluster_info", msg)
     
     def publish_velocities_manager(self):
