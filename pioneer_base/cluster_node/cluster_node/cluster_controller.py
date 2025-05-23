@@ -312,7 +312,7 @@ class ClusterNode(Node):
                 else:
                     _rotate = self.wrap_to_pi(math.pi - _rotate)
                     _trans = -_trans * math.cos(abs(_rotate))
-                rover_vel.append([_trans, _rotate])
+                rover_vel.append([_trans, _rotate*3])
         # SCALEING
         rover_vel = np.array(rover_vel)
         for i in range(len(_cluster_robots)):
