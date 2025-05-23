@@ -185,13 +185,13 @@ class Cluster():
         self.JacobianInv_func = sp.lambdify(c_sym, self.JacobInv, 'numpy')
         self.cluster_angle_index = [2, 3, 4, 5, 6, 7, 12, 13, 14]
 
-    #For testing cluster:
     def get_desired_position(self, c_des):
         if self.IKine_func is None:
             return None
         r = np.array(self.IKine_func(*c_des.flatten())).astype(np.float64)
         return r
-
+    
+    # For testing purposes
     def test_transforms(self, r):
         c = np.array(self.FKine_func(*r.flatten())).astype(np.float64)
         r = np.array(self.IKine_func(*c.flatten())).astype(np.float64)
@@ -201,7 +201,6 @@ class Cluster():
 if __name__ == "__main__":
     # Example usage
     cluster = Cluster(num_robots=5, cluster_type=ClusterConfig.TRILEAD)
-    cluster.set_c_des([0,0,0,0,0,0,0,0,2,3,4,5,0,0.5,0])
     print("R",cluster.get_desired_position([0,0,0,0,0,0,0,0,2,3,4,5,0,0.5,0]))
     with open('cluster_expressions/FKine.txt', 'w') as f:
         f.write(sp.pretty(cluster.FKine, wrap_line=False))
