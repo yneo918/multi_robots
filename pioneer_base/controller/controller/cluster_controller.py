@@ -5,7 +5,6 @@ import time
 from rclpy.node import Node
 from std_msgs.msg import String
 from std_msgs.msg import Float32MultiArray
-from .Cluster import Cluster, ClusterConfig
 from std_msgs.msg import Bool, Int16
 from std_msgs.msg import String
 from sensor_msgs.msg import NavSatFix

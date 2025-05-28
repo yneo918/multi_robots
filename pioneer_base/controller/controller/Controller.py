@@ -74,18 +74,27 @@ class Controller(Node):
         
         # Validate cluster parameters
         self.cluster_params = self.get_parameter('cluster_params').value
-        expected_param_length = self.n_rover * ROVER_DOF - self.n_rover - ROVER_DOF
+        self.cluster_size = self.get_parameter('cluster_size').value
+        expected_param_length = self.cluster_size * ROVER_DOF - self.cluster_size - ROVER_DOF
         if len(self.cluster_params) != expected_param_length:
+            self.get_logger().error(
+                f"Invalid cluster_params length: expected {expected_param_length}, "
+                f"got {len(self.cluster_params)}"
+            )
             raise ValueError(
                 f"cluster_params must be of length {expected_param_length}, "
                 f"got {len(self.cluster_params)}"
             )
+        self.get_logger().info(
+            f"Cluster parameters initialized: {self.cluster_params}"
+        )
         
         self.adaptive_navigation = self.get_parameter('adaptive_navigation').value
 
     def _setup_robot_lists(self, robot_id_list: List[str]):
         """Initialize robot ID lists and status dictionaries"""
         if not isinstance(robot_id_list, list):
+            self.get_logger().error("robot_id_list must be a list of strings")
             raise ValueError("robot_id_list must be a list of strings")
         
         self.robot_id_list = robot_id_list
@@ -102,9 +111,7 @@ class Controller(Node):
         self.get_logger().info(f"ROVER: {self.robot_id_list} N: {self.n_rover}")
 
     def _initialize_cluster_data(self):
-        """Initialize cluster-related data structures"""
-        self.cluster_size = self.get_parameter('cluster_size').value
-        
+        """Initialize cluster-related data structures"""        
         # Configuration flags
         self.actual_configured = False
         self.sim_configured = False
@@ -153,8 +160,8 @@ class Controller(Node):
         self.sim_rdot = np.zeros(array_size)
         
         # Set initial desired positions
-        param_start = self.n_rover * ROVER_DOF - len(self.cluster_params)
-        param_end = self.n_rover * ROVER_DOF
+        param_start = self.cluster_size * ROVER_DOF - len(self.cluster_params)
+        param_end = self.cluster_size * ROVER_DOF
         self.c_des[param_start:param_end] = np.reshape(
             self.cluster_params, (len(self.cluster_params), 1)
         )
@@ -251,30 +258,38 @@ class Controller(Node):
 
     def _robot_pose_callback(self, msg: Pose2D, robot_id: str, output: str):
         """Process robot pose updates"""
-        new_pose = [msg.x, msg.y, msg.theta]
-        
-        # Get appropriate status dictionary
-        status_dict = (self.actual_robot_status if output == "actual" 
-                      else self.sim_robot_status)
-        robot_status = status_dict[robot_id]
-        
-        # Calculate velocity if previous pose exists
-        if robot_status.pose is None:
-            new_velocity = [0.0, 0.0, 0.0]
-        else:
-            prev_pose = robot_status.pose
-            new_velocity = [
-                (msg.x - prev_pose[0]) * FREQ,
-                (msg.y - prev_pose[1]) * FREQ,
-                (msg.theta - prev_pose[2]) * FREQ
-            ]
-        
-        # Update robot status
-        robot_status.update_pose(new_pose, new_velocity, time.time())
-        
-        self.get_logger().info(
-            f"Robot {output}/{robot_id} pose: {new_pose}, vel: {new_velocity}"
-        )
+        try:
+            # 明示的にfloatに変換
+            new_pose = [float(msg.x), float(msg.y), float(msg.theta)]
+            
+            # Get appropriate status dictionary
+            status_dict = (self.actual_robot_status if output == "actual" 
+                        else self.sim_robot_status)
+            robot_status = status_dict[robot_id]
+            
+            # Calculate velocity if previous pose exists
+            if robot_status.pose is None:
+                new_velocity = [0.0, 0.0, 0.0]
+            else:
+                prev_pose = robot_status.pose
+                new_velocity = [
+                    float((msg.x - prev_pose[0]) * FREQ),
+                    float((msg.y - prev_pose[1]) * FREQ),
+                    float((msg.theta - prev_pose[2]) * FREQ)
+                ]
+            
+            # Update robot status
+            robot_status.update_pose(new_pose, new_velocity, time.time())
+            
+            # ログレベルをDEBUGに変更（頻繁な出力を抑制）
+            self.get_logger().debug(
+                f"Robot {output}/{robot_id} pose: {new_pose}, vel: {new_velocity}"
+            )
+            
+        except Exception as e:
+            self.get_logger().error(f"Error in _robot_pose_callback for {robot_id}: {e}")
+            import traceback
+            self.get_logger().error(traceback.format_exc())
 
     def _joycmd_callback(self, msg: Twist):
         """Process joystick commands for cluster navigation"""
@@ -309,8 +324,8 @@ class Controller(Node):
         
         # Update cluster parameters if configured
         if self.actual_configured or self.sim_configured:
-            param_start = self.n_rover * ROVER_DOF - len(self.cluster_params)
-            param_end = self.n_rover * ROVER_DOF
+            param_start = self.cluster_size * ROVER_DOF - len(self.cluster_params)
+            param_end = self.cluster_size * ROVER_DOF
             self.c_des[param_start:param_end] = np.reshape(
                 msg.data, (len(msg.data), 1)
             )
@@ -334,6 +349,9 @@ class Controller(Node):
                 self._publish_velocities("actual")
             if self.sim_configured:
                 self._publish_velocities("sim")
+        else:
+            if self.sim_configured:
+                self._publish_desired_poses(self.sim_registered_robots)
 
     # Cluster management methods
     def _try_configure_clusters(self):
@@ -433,7 +451,7 @@ class Controller(Node):
         self._publish_cluster_info(msg_prefix, c_cur, robot_positions, rdot_des)
         
         # Publish desired poses
-        self._publish_desired_poses(msg_prefix, cluster_robots)
+        self._publish_desired_poses(cluster_robots)
 
     def _publish_zero_velocities(self, msg_prefix: str, cluster_robots: List[str]):
         """Publish zero velocities to all robots"""
@@ -445,19 +463,42 @@ class Controller(Node):
             self.pubsub.publish(f"{msg_prefix}/{robot_id}/cmd_vel", zero_vel)
 
     def _gather_robot_data(self, cluster_robots: List[str], 
-                          robot_status_dict: Dict[str, RobotStatus]) -> Tuple[np.ndarray, np.ndarray]:
+                        robot_status_dict: Dict[str, RobotStatus]) -> Tuple[np.ndarray, np.ndarray]:
         """Gather robot positions and velocities into numpy arrays"""
         positions = []
         velocities = []
         
         for robot_id in cluster_robots:
-            positions.extend(robot_status_dict[robot_id].pose)
-            velocities.extend(robot_status_dict[robot_id].velocity)
+            robot_status = robot_status_dict[robot_id]
+            
+            # Noneチェックを追加
+            if robot_status.pose is None or robot_status.velocity is None:
+                self.get_logger().warn(f"Robot {robot_id} has no pose or velocity data")
+                # デフォルト値を使用
+                positions.extend([0.0, 0.0, 0.0])
+                velocities.extend([0.0, 0.0, 0.0])
+            else:
+                # 明示的にfloatに変換
+                pose = [float(x) for x in robot_status.pose]
+                vel = [float(x) for x in robot_status.velocity]
+                positions.extend(pose)
+                velocities.extend(vel)
         
-        robot_positions = np.array(positions).reshape((self.cluster_size * ROVER_DOF, 1))
-        robot_velocities = np.array(velocities).reshape((self.cluster_size * ROVER_DOF, 1))
-        
-        return robot_positions, robot_velocities
+        try:
+            robot_positions = np.array(positions, dtype=np.float64).reshape((self.cluster_size * ROVER_DOF, 1))
+            robot_velocities = np.array(velocities, dtype=np.float64).reshape((self.cluster_size * ROVER_DOF, 1))
+            
+            self.get_logger().info(f"Robot positions shape: {robot_positions.shape}")
+            self.get_logger().info(f"Robot velocities shape: {robot_velocities.shape}")
+            
+            return robot_positions, robot_velocities
+            
+        except Exception as e:
+            self.get_logger().error(f"Error in _gather_robot_data: {e}")
+            # フォールバック: ゼロ配列を返す
+            zero_positions = np.zeros((self.cluster_size * ROVER_DOF, 1), dtype=np.float64)
+            zero_velocities = np.zeros((self.cluster_size * ROVER_DOF, 1), dtype=np.float64)
+            return zero_positions, zero_velocities
 
     def _compute_and_publish_robot_commands(self, msg_prefix: str, cluster_robots: List[str], 
                                           robot_positions: np.ndarray, rdot_des: np.ndarray):
@@ -551,21 +592,50 @@ class Controller(Node):
 
     def _publish_desired_poses(self, msg_prefix: str, cluster_robots: List[str]):
         """Publish desired poses for each robot"""
-        desired_positions = self.cluster.get_desired_position(self.c_des)
-        
-        for i, robot_id in enumerate(cluster_robots):
-            pose_msg = Pose2D()
-            start_idx = i * ROVER_DOF
-            end_idx = start_idx + ROVER_DOF
-            pose_msg.x, pose_msg.y, pose_msg.theta = desired_positions[start_idx:end_idx]
+        try:
+            desired_positions = self.cluster.get_desired_position(self.c_des)
             
-            self.pubsub.publish(f"{msg_prefix}/{robot_id}/desiredPose2D", pose_msg)
+            # desired_positionsがNoneまたは空の場合の処理
+            if desired_positions is None:
+                self.get_logger().warn("get_desired_position returned None")
+                return
+                
+            self.get_logger().info(f"Desired positions shape: {desired_positions.shape}")
+            self.get_logger().info(f"Desired positions: {desired_positions.flatten()}")
+            
+            for i, robot_id in enumerate(cluster_robots):
+                pose_msg = Pose2D()
+                start_idx = i * ROVER_DOF
+                
+                # numpy配列から適切にfloat値を取得
+                if hasattr(desired_positions, 'shape') and len(desired_positions.shape) == 2:
+                    # 2次元配列の場合 (N, 1)
+                    pose_msg.x = float(desired_positions[start_idx, 0])
+                    pose_msg.y = float(desired_positions[start_idx + 1, 0])
+                    pose_msg.theta = float(desired_positions[start_idx + 2, 0])
+                else:
+                    # 1次元配列の場合
+                    pose_msg.x = float(desired_positions[start_idx])
+                    pose_msg.y = float(desired_positions[start_idx + 1])
+                    pose_msg.theta = float(desired_positions[start_idx + 2])
+                
+                self.get_logger().info(
+                    f"Publishing desired pose for {robot_id}: "
+                    f"x={pose_msg.x:.3f}, y={pose_msg.y:.3f}, theta={pose_msg.theta:.3f}"
+                )
+                
+                self.pubsub.publish(f"{msg_prefix}/{robot_id}/desiredPose2D", pose_msg)
+                
+        except Exception as e:
+            self.get_logger().error(f"Error in _publish_desired_poses: {e}")
+            import traceback
+            self.get_logger().error(traceback.format_exc())
 
     def _reset_cluster_desired_position(self):
         """Reset cluster desired position to initial parameters"""
         self.c_des = np.zeros((self.cluster_size * ROVER_DOF, 1))
-        param_start = self.n_rover * ROVER_DOF - len(self.cluster_params)
-        param_end = self.n_rover * ROVER_DOF
+        param_start = self.cluster_size * ROVER_DOF - len(self.cluster_params)
+        param_end = self.cluster_size * ROVER_DOF
         self.c_des[param_start:param_end] = np.reshape(
             self.cluster_params, (len(self.cluster_params), 1)
         )
