@@ -12,6 +12,10 @@ class ClusterConfig(Enum):
     
     def __str__(self):
         return self.value
+    
+class ClusterError(Exception):
+    """custom exception for cluster errors"""
+    pass
 """
 The Cluster Class node contains all the cluster state space variables and kinematic transforms. The cluster configuration is determined by the
 parameters at startup but may be able to be dynamically adjusted in future once we have defined more configurations.
@@ -34,16 +38,18 @@ class Cluster():
         if control_mode not in ["POS", "VEL"]:
             raise ValueError("control_mode must be either 'POS' or 'VEL'")
         self.control_mode = control_mode
-        try:
-            if KPgains is None:
-                KPgains = [1.0] * (self.num_robots*ROVER_DOF)
-            if KVgains is None:
-                KVgains = [1.0] * (self.num_robots*ROVER_DOF)
-            assert KPgains is not None and len(KPgains) == self.num_robots*ROVER_DOF, "KPgains must be a list of length self.num_robots*ROVER_DOF"
-            assert KVgains is not None and len(KVgains) == self.num_robots*ROVER_DOF, "KVgains must be a list of length self.num_robots*ROVER_DOF"
-        except AssertionError as e:
-            print(f"AssertionError: {e}")
-            return
+
+        expected_length = self.num_robots * ROVER_DOF
+        if KPgains is None:
+            KPgains = [1.0] * expected_length
+        if KVgains is None:
+            KVgains = [1.0] * expected_length
+            
+        if len(KPgains) != expected_length:
+            raise ClusterError(f"KPgains must be length {expected_length}, got {len(KPgains)}")
+        if len(KVgains) != expected_length:
+            raise ClusterError(f"KVgains must be length {expected_length}, got {len(KVgains)}")
+            
         self.Kp = np.diag(KPgains) #nm*nm diagonal matrix of gains
         self.Kv = np.diag(KVgains) #nm*nm diagonal matrix of gains
         self.cluster_angle_index = []
@@ -54,18 +60,23 @@ class Cluster():
 
     #Given the current robot state space variables and desired cluster state space variables, calculate robot velocity vector
     def get_velocity_command(self, r, rdot, c_des, cdot_des):
-        c, cdot = self.calculate_cluster_position(r, rdot)
+        c = self.get_cluster_position(r)
+        cdot = self.calculate_cluster_verocity(r, rdot)
         cdot_cmd = self.calculate_linear_control(c, cdot, c_des, cdot_des)
         _rdot = np.dot(np.array(self.JacobianInv_func(*c.flatten())), cdot_cmd)
         return cdot_cmd, _rdot, c
 
     #Given a the current robot state space variables, update the cluster state space variables
-    def calculate_cluster_position(self, r, rdot):
+    def get_cluster_position(self, r):
         c = self.FKine_func(*r.flatten())
         for i in self.cluster_angle_index:
             c[i, 0] = self.wrap_to_pi(c[i, 0])
+        return c
+    
+    #Given a the current robot state space variables, update the cluster state space variables
+    def calculate_cluster_verocity(self, r, rdot):
         cdot = np.dot(np.array(self.Jacobian_func(*r.flatten())).astype(np.float64), rdot)
-        return c, cdot
+        return cdot
 
     #Linear control equation 
     def calculate_linear_control(self, c, cdot, c_des, cdot_des):
@@ -79,6 +90,7 @@ class Cluster():
             return cdot_cmd
         else:
             raise ValueError("control_mode must be either 'POS' or 'VEL'")
+        
     def wrap_to_pi(self, t):
         return (t + np.pi) % (2 * np.pi) - np.pi
 
@@ -91,7 +103,6 @@ class Cluster():
         if robots == 5:
             if cluster_type == ClusterConfig.TRILEAD:
                 self.cluster_config_trilead()
-
 
     def cluster_config_tricen(self):
         r_sym = sp.symbols('r0:9') #symbols for robot space state variables
