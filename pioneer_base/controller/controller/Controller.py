@@ -9,7 +9,7 @@ from sensor_msgs.msg import NavSatFix
 from geometry_msgs.msg import Twist, Pose2D
 from pioneer_interfaces.msg import ClusterInfo
 from teleop_core.my_ros_module import PubSubManager
-from .Cluster import Cluster, ClusterConfig
+from cluster_node.Cluster import Cluster, ClusterConfig
 
 # Constants
 FREQ = 10

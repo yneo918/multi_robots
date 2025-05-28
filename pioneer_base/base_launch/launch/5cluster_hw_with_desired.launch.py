@@ -34,7 +34,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         Node(
-            package="cluster_node",
+            package="controller",
             executable="cluster_controller",
             parameters=[cluster_file],
         ),
