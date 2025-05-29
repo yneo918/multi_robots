@@ -98,11 +98,14 @@ class Cluster():
     #from a set of prederived transforms
     def configure_cluster(self, robots, cluster_type):
         if robots == 3:
-            if cluster_type == ClusterConfig.TRICEN:
+            if cluster_type == ClusterConfig.TRICEN.value:
                 self.cluster_config_tricen()
-        if robots == 5:
-            if cluster_type == ClusterConfig.TRILEAD:
+                return
+        elif robots == 5:
+            if cluster_type == ClusterConfig.TRILEAD.value:
                 self.cluster_config_trilead()
+                return
+        raise ClusterError(f"Cluster configuration {cluster_type} not implemented for {robots} robots")
 
     def cluster_config_tricen(self):
         r_sym = sp.symbols('r0:9') #symbols for robot space state variables
@@ -141,7 +144,6 @@ class Cluster():
         self.Jacobian_func = sp.lambdify(r_sym, self.Jacob, 'numpy')
         self.JacobianInv_func = sp.lambdify(c_sym, self.JacobInv, 'numpy')
         self.cluster_angle_index = [2, 3, 4, 5, 8]
-    
 
     def cluster_config_trilead(self):
         r_sym = sp.symbols('r0:15') #symbols for robot space state variables

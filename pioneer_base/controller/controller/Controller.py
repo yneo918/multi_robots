@@ -60,7 +60,8 @@ class Controller(Node):
                 ('robot_id_list', ["p1", "p2", "p3", "p4", "p5", "p6"]),
                 ('cluster_size', 5),
                 ('cluster_params', [3.0, 3.0, 3.0, 3.0, 0.0, 0.0, 0.0]), 
-                ('adaptive_navigation', False)
+                ('adaptive_navigation', False),
+                ('cluster_type', "TriangleatLeader"),
             ]
         )
         
@@ -75,6 +76,7 @@ class Controller(Node):
         # Validate cluster parameters
         self.cluster_params = self.get_parameter('cluster_params').value
         self.cluster_size = self.get_parameter('cluster_size').value
+        self.cluster_type = self.get_parameter('cluster_type').value
         expected_param_length = self.cluster_size * ROVER_DOF - self.cluster_size - ROVER_DOF
         if len(self.cluster_params) != expected_param_length:
             self.get_logger().error(
@@ -124,12 +126,16 @@ class Controller(Node):
         self._initialize_cluster_arrays()
         
         # Create cluster object
-        self.cluster = Cluster(
-            num_robots=self.cluster_size,
-            cluster_type=ClusterConfig.TRILEAD,
-            KPgains=[KP_GAIN] * (self.cluster_size * ROVER_DOF),
-            KVgains=[KV_GAIN] * (self.cluster_size * ROVER_DOF)
-        )
+        try:
+            self.cluster = Cluster(
+                num_robots=self.cluster_size,
+                cluster_type=self.cluster_type,
+                KPgains=[KP_GAIN] * (self.cluster_size * ROVER_DOF),
+                KVgains=[KV_GAIN] * (self.cluster_size * ROVER_DOF)
+            )
+            self.get_logger().info(f"Cluster setup with type: {self.cluster_type}")
+        except Exception as e:
+            self.get_logger().error(f"Failed to create cluster: {e}")
         
         # Control state
         self.output = "actual"  # Switch between simulation and actual robots
@@ -590,7 +596,7 @@ class Controller(Node):
         
         self.pubsub.publish(f"{msg_prefix}/cluster_info", cluster_msg)
 
-    def _publish_desired_poses(self, msg_prefix: str, cluster_robots: List[str]):
+    def _publish_desired_poses(self, cluster_robots: List[str]):
         """Publish desired poses for each robot"""
         try:
             desired_positions = self.cluster.get_desired_position(self.c_des)
@@ -624,7 +630,7 @@ class Controller(Node):
                     f"x={pose_msg.x:.3f}, y={pose_msg.y:.3f}, theta={pose_msg.theta:.3f}"
                 )
                 
-                self.pubsub.publish(f"{msg_prefix}/{robot_id}/desiredPose2D", pose_msg)
+                self.pubsub.publish(f"/{robot_id}/desiredPose2D", pose_msg)
                 
         except Exception as e:
             self.get_logger().error(f"Error in _publish_desired_poses: {e}")
