@@ -22,7 +22,7 @@ def main(args=None):
     rclpy.init(args=args)
     
     try:
-        controller = Controller()
+        controller = Controller("cluster_controller")
         rclpy.spin(controller)
     except KeyboardInterrupt:
         pass

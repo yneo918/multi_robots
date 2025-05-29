@@ -45,8 +45,8 @@ class Controller(Node):
     Handles cluster formation, navigation, and velocity commands.
     """
     
-    def __init__(self):
-        super().__init__('controller')
+    def __init__(self, node_name: str = 'controller'):
+        super().__init__(node_name)
         self._initialize_parameters()
         self._initialize_cluster_data()
         self._setup_communication()
