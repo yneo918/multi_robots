@@ -11,9 +11,14 @@ When you set-up RPi, Please use script in pioneer_ws/scripts. Usage is written i
 
 # How to use
 ## Hardware test
-Please run follow:
+With 3 Robot Cluster, please run follow:
 ```
 ros2 launch base_launch cluster_hw_with_desired.launch.py
+```
+
+With 5 Robot Cluster, please run follow:
+```
+ros2 launch base_launch 5cluster_hw_with_desired.launch.py
 ```
 
 Without HW joypad, please run follows too.
