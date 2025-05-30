@@ -21,7 +21,8 @@ setup(
     entry_points={
         'console_scripts': [
             'teleop2js = fake_rover_state_controller.teleop2jointstate:main',
-            'rover_sim = fake_rover_state_controller.rover_sim:main'
+            'rover_sim = fake_rover_state_controller.rover_sim:main',
+            'fake_rover = fake_rover_state_controller.fake_rover:main'
         ],
     },
 )
