@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             "heading_controller = controller.heading_controller:main",
+            "cluster_controller = controller.cluster_controller:main",
         ],
     },
 )

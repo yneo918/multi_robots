@@ -7,6 +7,7 @@ from std_msgs.msg import Float32MultiArray
 from sensor_msgs.msg import NavSatFix
 
 from math import sin, cos, asin, atan2, sqrt, degrees, pi, radians
+from typing import Dict, List, Any, Callable, Optional
 
 
 class JoyBase(Node):
@@ -107,43 +108,180 @@ class NavNode(Node):
 
 
 class PubSubManager:
-    def __init__(self, node=None):
-        self.node = node
-        self._subscribers = [[], {}]  # [list of subscriber objects, dict of topic_name]
-        self._publishers = [[], {}]  # [list of subscriber objects, dict of topic_name]
+    """Manager class for ROS2 publishers and subscribers"""
+    
+    def __init__(self, node: Node):
+        """
+        Initialize PubSubManager
         
-    def create_subscription(self, msg_type, topic_name, callback, qos=10, **kwargs):
-        self._subscribers[0].append(
-            self.node.create_subscription(
+        Args:
+            node: ROS2 node instance
+        """
+        if not isinstance(node, Node):
+            raise TypeError("node must be an instance of rclpy.node.Node")
+        
+        self.node = node
+        self._subscribers: Dict[str, Any] = {}
+        self._publishers: Dict[str, Any] = {}
+        
+    def create_subscription(self, 
+                         msg_type: type, 
+                         topic_name: str, 
+                         callback: Callable, 
+                         qos: int = 10, 
+                         **kwargs) -> None:
+        """
+        Create a subscriber
+        
+        Args:
+            msg_type: Message type
+            topic_name: Topic name
+            callback: Callback function
+            qos: QoS setting
+            **kwargs: Additional options
+            
+        Raises:
+            ValueError: If subscriber for the same topic already exists
+        """
+        if topic_name in self._subscribers:
+            raise ValueError(f"Subscriber for topic '{topic_name}' already exists")
+        
+        try:
+            subscriber = self.node.create_subscription(
                 msg_type,
                 topic_name,
                 callback,
                 qos,
                 **kwargs
             )
-        )
-        self._subscribers[1][topic_name] = len(self._subscribers[0]) - 1
+            self._subscribers[topic_name] = subscriber
+            self.node.get_logger().info(f"Created subscriber for topic: {topic_name}")
+            
+        except Exception as e:
+            self.node.get_logger().error(f"Failed to create subscriber for {topic_name}: {e}")
+            raise
 
-    def create_publisher(self, msg_type, topic_name, qos=10, **kwargs):
-        self._publishers[0].append(
-            self.node.create_publisher(
+    def create_publisher(self, 
+                        msg_type: type, 
+                        topic_name: str, 
+                        qos: int = 10, 
+                        **kwargs) -> None:
+        """
+        Create a publisher
+        
+        Args:
+            msg_type: Message type
+            topic_name: Topic name
+            qos: QoS setting
+            **kwargs: Additional options
+            
+        Raises:
+            ValueError: If publisher for the same topic already exists
+        """
+        if topic_name in self._publishers:
+            raise ValueError(f"Publisher for topic '{topic_name}' already exists")
+        
+        try:
+            publisher = self.node.create_publisher(
                 msg_type,
                 topic_name,
                 qos,
                 **kwargs
             )
-        )
-        self._publishers[1][topic_name] = len(self._publishers[0]) - 1
+            self._publishers[topic_name] = publisher
+            self.node.get_logger().info(f"Created publisher for topic: {topic_name}")
+            
+        except Exception as e:
+            self.node.get_logger().error(f"Failed to create publisher for {topic_name}: {e}")
+            raise
     
-    def publish(self, topic_name, msg):
-        if topic_name in self._publishers[1]:
-            self._publishers[0][self._publishers[1][topic_name]].publish(msg)
-        else:
-            print(f"Publisher for {topic_name} not found.")
-            raise ValueError(f"Publisher for {topic_name} not found.")
-
-
-
+    def publish(self, topic_name: str, msg: Any) -> None:
+        """
+        Publish a message
+        
+        Args:
+            topic_name: Topic name
+            msg: Message to publish
+            
+        Raises:
+            ValueError: If publisher for the specified topic doesn't exist
+        """
+        if topic_name not in self._publishers:
+            error_msg = f"Publisher for topic '{topic_name}' not found"
+            self.node.get_logger().error(error_msg)
+            raise ValueError(error_msg)
+        
+        try:
+            self._publishers[topic_name].publish(msg)
+            
+        except Exception as e:
+            self.node.get_logger().error(f"Failed to publish to {topic_name}: {e}")
+            raise
+    
+    def has_subscriber(self, topic_name: str) -> bool:
+        """Check if subscriber for the specified topic exists"""
+        return topic_name in self._subscribers
+    
+    def has_publisher(self, topic_name: str) -> bool:
+        """Check if publisher for the specified topic exists"""
+        return topic_name in self._publishers
+    
+    def get_subscriber_topics(self) -> List[str]:
+        """Get list of registered subscriber topic names"""
+        return list(self._subscribers.keys())
+    
+    def get_publisher_topics(self) -> List[str]:
+        """Get list of registered publisher topic names"""
+        return list(self._publishers.keys())
+    
+    def remove_subscriber(self, topic_name: str) -> bool:
+        """
+        Remove a subscriber
+        
+        Args:
+            topic_name: Topic name to remove
+            
+        Returns:
+            True if removal was successful, False if topic doesn't exist
+        """
+        if topic_name in self._subscribers:
+            # ROS2 automatically handles subscriber cleanup
+            del self._subscribers[topic_name]
+            self.node.get_logger().info(f"Removed subscriber for topic: {topic_name}")
+            return True
+        return False
+    
+    def remove_publisher(self, topic_name: str) -> bool:
+        """
+        Remove a publisher
+        
+        Args:
+            topic_name: Topic name to remove
+            
+        Returns:
+            True if removal was successful, False if topic doesn't exist
+        """
+        if topic_name in self._publishers:
+            # ROS2 automatically handles publisher cleanup
+            del self._publishers[topic_name]
+            self.node.get_logger().info(f"Removed publisher for topic: {topic_name}")
+            return True
+        return False
+    
+    def clear_all(self) -> None:
+        """Clear all publishers and subscribers"""
+        self._subscribers.clear()
+        self._publishers.clear()
+        self.node.get_logger().info("Cleared all publishers and subscribers")
+    
+    def get_stats(self) -> Dict[str, int]:
+        """Get statistics information"""
+        return {
+            'subscribers': len(self._subscribers),
+            'publishers': len(self._publishers)
+        }
+    
+    
 def main(args=None):
     rclpy.init(args=args)
     joy_handle = JoyBase()

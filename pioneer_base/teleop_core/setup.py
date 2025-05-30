@@ -29,6 +29,7 @@ setup(
             'joy2cmd = teleop_core.run_joy_cmd:main',
             'cmd_demux = teleop_core.demux:main',
             'joywithgui = teleop_core.run_joy_with_gui:main',
+            'joywithgui3 = teleop_core.run_joy_with_gui_3:main',
         ],
     },
 )
