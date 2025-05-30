@@ -3,4 +3,4 @@ cluster_controller:
     robot_id_list: ["p1", "p2", "p3", "p4", "p5"] #list of possible robots to choose from
     cluster_size: 5 #number of robots to use
     cluster_type: "TriangleatLeader"
-    cluster_params: [3,3,3,3,0,0,0]
+    cluster_params: [3.0,3.0,3.0,3.0,0.0,0.0,0.0]
