@@ -21,4 +21,9 @@ Without HW joypad, please run follows too.
 ros2 run virtual_joy virtual_joy
 ```
 
+If you need "fake" actual rover, please run folows:
+```
+ros2 launch sim_launch fake_pioneer.launch.py
+```
+
 With cluster mode, please change mode to NAV_M, and press LB button.
