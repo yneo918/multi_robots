@@ -30,7 +30,7 @@ def generate_launch_description():
 
     display_launch_file = os.path.join(get_package_share_directory('rover_description'), 'launch', 'display_with_hw_desired.launch.py')
     pioneer_launch_file = os.path.join(get_package_share_directory('sim_launch'), 'pioneer_with_hw_desired.launch.py')
-    teleop_launch_file = os.path.join(get_package_share_directory("teleop_core"), 'gui.launch.py')
+    teleop_launch_file = os.path.join(get_package_share_directory("teleop_core"), 'gui_3.launch.py')
 
     return LaunchDescription([
         Node(

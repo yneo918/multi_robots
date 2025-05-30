@@ -130,8 +130,8 @@ class Controller(Node):
             self.cluster = Cluster(
                 num_robots=self.cluster_size,
                 cluster_type=self.cluster_type,
-                KPgains=[KP_GAIN] * (self.cluster_size * ROVER_DOF),
-                KVgains=[KV_GAIN] * (self.cluster_size * ROVER_DOF)
+                kp_gains=[KP_GAIN] * (self.cluster_size * ROVER_DOF),
+                kv_gains=[KV_GAIN] * (self.cluster_size * ROVER_DOF)
             )
             self.get_logger().info(f"Cluster setup with type: {self.cluster_type}")
         except Exception as e:
@@ -599,7 +599,7 @@ class Controller(Node):
     def _publish_desired_poses(self, cluster_robots: List[str]):
         """Publish desired poses for each robot"""
         try:
-            desired_positions = self.cluster.get_desired_position(self.c_des)
+            desired_positions = self.cluster.get_desired_robot_positions(self.c_des)
             
             # desired_positionsがNoneまたは空の場合の処理
             if desired_positions is None:
