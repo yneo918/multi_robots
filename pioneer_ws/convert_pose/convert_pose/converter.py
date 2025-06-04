@@ -32,7 +32,6 @@ class PoseConverter(Node):
         self.lat_offset = 0.0
         self.lon_offset = 0.0
 
-
         self.create_subscription(
             NavSatFix,
             f"/{self.robot_id}/gps1",
@@ -52,6 +51,11 @@ class PoseConverter(Node):
             Bool,
             f"/{self.robot_id}/reset_gps",
             self.reset_gps_callback,
+            1)
+        self.create_subscription(
+            Bool,
+            f"/{self.robot_id}/reset_imu",
+            self.reset_imu_callback,
             1)
         self.pose_publisher = self.create_publisher(
             Pose2D,
@@ -79,6 +83,10 @@ class PoseConverter(Node):
         self.lat_offset = self.lat - self.ref_lat
         self.lon_offset = self.lon - self.ref_lon
         self.get_logger().info(f'[{self.robot_id}]Reset GPS offsets: {self.lat_offset}, {self.lon_offset}')
+
+    def reset_imu_callback(self, msg):
+        self.calibration = self.euler_x
+        self.get_logger().info(f'[{self.robot_id}]Reset IMU calibration: {self.calibration}')
     
     def srv_callback(self, future):
         self.ref_lat = future.result().gps.latitude
