@@ -1,0 +1,69 @@
+# Central configuration file for Pioneer ROS system
+# Modify this file for different robots/users
+
+# Robot identification
+robot:
+  id: "p2"  # Change this for each robot (p1, p2, p3, etc.)
+  
+# User configuration
+user:
+  name: "pioneer-ii"  # Change this for each user
+  home_dir: "/home/pioneer-ii"  # Change this for each user
+
+# GPS configuration
+gps:
+  device_paths:
+    - "/dev/ttyUSB0"
+    - "/dev/ttyUSB1" 
+    - "/dev/ttyACM0"
+    - "/dev/ttyACM1"
+  baudrate: 9600
+  timeout: 10
+  moving_average_rate: 0.2
+  connection_timeout: 10  # seconds
+  retry_delay: 2.0
+
+# IMU configuration  
+imu:
+  heading_offset: 0  # degrees
+  connection_timeout: 10  # seconds
+  retry_delay: 2.0
+  calibration_file: "imu_calib/bno055_offsets.json"  # Relative to user home
+
+# Locomotion configuration
+locomotion:
+  max_velocity: 50  # Normal operation
+  max_velocity_open: 600  # Open loop operation
+  serial_port: "/dev/ttyACM0"
+  baudrate: 115200
+
+# Pose converter configuration
+pose_converter:
+  timer_period: 0.1  # seconds
+  health_check_period: 1.0  # seconds
+  reset_timeout: 5.0  # seconds
+
+# System monitoring
+monitoring:
+  sensor_timeout: 5.0  # seconds
+  max_node_retries: 3
+  node_restart_delay: 5.0  # seconds
+
+# Launch configuration
+launch:
+  sensor_nodes:
+    - run_gps1
+    - run_imu
+  driver_nodes:
+    - movebase_kinematics  
+    - cmd_roboteq
+  converter_nodes:
+    - converter
+
+# Service configuration
+service:
+  name: "ros2_start"
+  description: "ROS 2 Auto Start"
+  working_directory: "ros2_ws"
+  startup_script: "pioneer_ws/scripts/start_ros2.sh"
+  restart_policy: "always"
