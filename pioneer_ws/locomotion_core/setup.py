@@ -1,9 +1,5 @@
 from setuptools import setup
 
-import os
-
-robot_id = os.getenv("ROBOT_ID")
-
 package_name = 'locomotion_core'
 
 setup(
@@ -19,13 +15,13 @@ setup(
     zip_safe=True,
     maintainer='vboxuser',
     maintainer_email='vboxuser@todo.todo',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='Locomotion control package',
+    license='Apache License 2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            f'{robot_id}_movebase_kinematics = locomotion_core.movebase_kinematics:main',
-            f'{robot_id}_cmd_roboteq = locomotion_core.cmd_roboteq:main',
+            'movebase_kinematics = locomotion_core.movebase_kinematics:main',
+            'cmd_roboteq = locomotion_core.cmd_roboteq:main',
         ],
     },
 )

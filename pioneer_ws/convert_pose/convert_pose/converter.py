@@ -18,8 +18,33 @@ from math import sin, cos, asin, atan2, sqrt, degrees, pi, radians
 
 class PoseConverter(Node):
     def __init__(self, n_rover=6):
-        self.robot_id = os.getenv("ROBOT_ID")
-        super().__init__(f'{self.robot_id}_pose_converter')
+        # Get robot ID from parameter or environment
+        robot_id = os.getenv("ROBOT_ID", "pX")
+        super().__init__(f'{robot_id}_pose_converter')
+        
+        # Declare parameters with defaults from system_config.yaml structure
+        self.declare_parameters(
+            namespace='',
+            parameters=[
+                ('robot_id', robot_id),
+                ('timer_period', 0.1),
+                ('health_check_period', 1.0),
+                ('reset_timeout', 5.0)
+            ]
+        )
+        
+        # Get parameters
+        self.robot_id = self.get_parameter('robot_id').get_parameter_value().string_value
+        self.timer_period = self.get_parameter('timer_period').get_parameter_value().double_value
+        self.health_check_period = self.get_parameter('health_check_period').get_parameter_value().double_value
+        self.reset_timeout = self.get_parameter('reset_timeout').get_parameter_value().double_value
+        
+        # Log loaded configuration
+        self.get_logger().info(f'Pose Converter Configuration:')
+        self.get_logger().info(f'  Robot ID: {self.robot_id}')
+        self.get_logger().info(f'  Timer Period: {self.timer_period}s')
+        self.get_logger().info(f'  Health Check Period: {self.health_check_period}s')
+        self.get_logger().info(f'  Reset Timeout: {self.reset_timeout}s')
         
         # Initialize all data variables
         self.ref_lat = None
@@ -29,6 +54,8 @@ class PoseConverter(Node):
         self.gps_status = None
         self.quaternion = None
         self.euler_x = None
+        self.euler_y = None
+        self.euler_z = None
         self.calibration = None
         self.lat_offset = 0.0
         self.lon_offset = 0.0
@@ -42,7 +69,6 @@ class PoseConverter(Node):
         # Reset command acknowledgment
         self.reset_gps_pending = False
         self.reset_imu_pending = False
-        self.reset_timeout = 5.0  # seconds
         self.reset_gps_timer = None
         self.reset_imu_timer = None
         
@@ -62,12 +88,10 @@ class PoseConverter(Node):
         self.cli = self.create_client(RefGPS, 'reference_gps')
         
         # Timer for main processing loop
-        timer_period = 0.1  # seconds
-        self.timer = self.create_timer(timer_period, self.timer_callback)
+        self.timer = self.create_timer(self.timer_period, self.timer_callback)
         
         # Timer for data health monitoring
-        health_check_period = 1.0  # seconds
-        self.health_timer = self.create_timer(health_check_period, self.health_check_callback)
+        self.health_timer = self.create_timer(self.health_check_period, self.health_check_callback)
         
         # Initialize reference GPS
         self.initialize_reference_gps()

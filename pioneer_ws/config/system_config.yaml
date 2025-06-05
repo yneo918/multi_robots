@@ -3,39 +3,41 @@
 
 # Robot identification
 robot:
-  id: "p2"  # Change this for each robot (p1, p2, p3, etc.)
+  id: "p1"  # Change this for each robot (p1, p2, p3, etc.)
   
 # User configuration
 user:
-  name: "pioneer-ii"  # Change this for each user
-  home_dir: "/home/pioneer-ii"  # Change this for each user
+  name: "pioneer-i"  # Change this for each user
+  home_dir: "/home/pioneer-i"  # Change this for each user
 
 # GPS configuration
 gps:
   device_paths:
     - "/dev/ttyUSB0"
-    - "/dev/ttyUSB1" 
-    - "/dev/ttyACM0"
-    - "/dev/ttyACM1"
   baudrate: 9600
   timeout: 10
   moving_average_rate: 0.2
-  connection_timeout: 10  # seconds
+  connection_timeout: 10.0  # seconds
   retry_delay: 2.0
+  update_rate: 1.0  # Hz - GPS module update rate
+  timer_period: 1.0  # seconds - ROS timer period (1.0 = 1Hz)
 
 # IMU configuration  
 imu:
   heading_offset: 0  # degrees
-  connection_timeout: 10  # seconds
+  connection_timeout: 10.0  # seconds
   retry_delay: 2.0
   calibration_file: "imu_calib/bno055_offsets.json"  # Relative to user home
 
 # Locomotion configuration
 locomotion:
-  max_velocity: 50  # Normal operation
+  max_velocity: 176  # Normal operation
   max_velocity_open: 600  # Open loop operation
   serial_port: "/dev/ttyACM0"
   baudrate: 115200
+  # Motor direction configuration - adjust these values based on electrical connections
+  left_motor_sign: 1   # -1 or 1 to invert left motor direction
+  right_motor_sign: 1   # -1 or 1 to invert right motor direction
 
 # Pose converter configuration
 pose_converter:

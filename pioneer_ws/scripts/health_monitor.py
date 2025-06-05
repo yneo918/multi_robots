@@ -115,7 +115,7 @@ class HealthMonitor(Node):
             'log_interval': 60.0,
             'data_rate_threshold': 0.5,  # minimum data rate (Hz)
             'node_restart_commands': {
-                'gps': f'ros2 run gps_core gps_revised --ros-args -p robot_id:={self.robot_id if hasattr(self, "robot_id") else "pX"}',
+                'gps': f'ros2 run gps_core run_gps1 --ros-args -p robot_id:={self.robot_id if hasattr(self, "robot_id") else "pX"}',
                 'imu': f'ros2 run imu_core run_imu --ros-args -p robot_id:={self.robot_id if hasattr(self, "robot_id") else "pX"}',
                 'converter': f'ros2 run convert_pose converter --ros-args -p robot_id:={self.robot_id if hasattr(self, "robot_id") else "pX"}'
             }
@@ -439,7 +439,7 @@ class HealthMonitor(Node):
         try:
             # Use pkill to kill processes by name pattern
             node_patterns = {
-                'gps': 'gps_revised',
+                'gps': 'run_gps1',  # gps_revised から run_gps1 に変更
                 'imu': 'run_imu', 
                 'converter': 'converter'
             }
