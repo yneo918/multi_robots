@@ -55,7 +55,7 @@ class ReadGPS(Node):
         self.gps_serial.send_command(b"PMTK220,1000")
 
         self.gps_publisher = self.create_publisher(NavSatFix, f'/{self.robot_id}/gps1', 1)
-        timer_period = 1.0  # seconds
+        timer_period = 0.25  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
     def timer_callback(self):
