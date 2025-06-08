@@ -90,7 +90,7 @@ class Controller(Node):
         self.get_logger().info(
             f"Cluster parameters initialized: {self.cluster_params}"
         )
-        
+
         self.adaptive_navigation = self.get_parameter('adaptive_navigation').value
 
     def _setup_robot_lists(self, robot_id_list: List[str]):
@@ -265,7 +265,6 @@ class Controller(Node):
     def _robot_pose_callback(self, msg: Pose2D, robot_id: str, output: str):
         """Process robot pose updates"""
         try:
-            # 明示的にfloatに変換
             new_pose = [float(msg.x), float(msg.y), float(msg.theta)]
             
             # Get appropriate status dictionary
@@ -287,7 +286,6 @@ class Controller(Node):
             # Update robot status
             robot_status.update_pose(new_pose, new_velocity, time.time())
             
-            # ログレベルをDEBUGに変更（頻繁な出力を抑制）
             self.get_logger().debug(
                 f"Robot {output}/{robot_id} pose: {new_pose}, vel: {new_velocity}"
             )
@@ -480,11 +478,9 @@ class Controller(Node):
             # Noneチェックを追加
             if robot_status.pose is None or robot_status.velocity is None:
                 self.get_logger().warn(f"Robot {robot_id} has no pose or velocity data")
-                # デフォルト値を使用
                 positions.extend([0.0, 0.0, 0.0])
                 velocities.extend([0.0, 0.0, 0.0])
             else:
-                # 明示的にfloatに変換
                 pose = [float(x) for x in robot_status.pose]
                 vel = [float(x) for x in robot_status.velocity]
                 positions.extend(pose)
@@ -501,7 +497,6 @@ class Controller(Node):
             
         except Exception as e:
             self.get_logger().error(f"Error in _gather_robot_data: {e}")
-            # フォールバック: ゼロ配列を返す
             zero_positions = np.zeros((self.cluster_size * ROVER_DOF, 1), dtype=np.float64)
             zero_velocities = np.zeros((self.cluster_size * ROVER_DOF, 1), dtype=np.float64)
             return zero_positions, zero_velocities
@@ -601,7 +596,6 @@ class Controller(Node):
         try:
             desired_positions = self.cluster.get_desired_robot_positions(self.c_des)
             
-            # desired_positionsがNoneまたは空の場合の処理
             if desired_positions is None:
                 self.get_logger().warn("get_desired_position returned None")
                 return
@@ -612,15 +606,12 @@ class Controller(Node):
             for i, robot_id in enumerate(cluster_robots):
                 pose_msg = Pose2D()
                 start_idx = i * ROVER_DOF
-                
-                # numpy配列から適切にfloat値を取得
+
                 if hasattr(desired_positions, 'shape') and len(desired_positions.shape) == 2:
-                    # 2次元配列の場合 (N, 1)
                     pose_msg.x = float(desired_positions[start_idx, 0])
                     pose_msg.y = float(desired_positions[start_idx + 1, 0])
                     pose_msg.theta = float(desired_positions[start_idx + 2, 0])
                 else:
-                    # 1次元配列の場合
                     pose_msg.x = float(desired_positions[start_idx])
                     pose_msg.y = float(desired_positions[start_idx + 1])
                     pose_msg.theta = float(desired_positions[start_idx + 2])
