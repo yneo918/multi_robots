@@ -7,9 +7,15 @@ from std_msgs.msg import Int16
 from digi.xbee.devices import XBeeDevice, XBee64BitAddress
 from typing import Any, Union, Callable, Optional, Tuple
 
-from time import time
+from time import time, sleep
+import os
 from random import randrange
 
+__todo__ : str = """
+- Add health monitoring, (see run_gps.py for example)
+- Add docstrings to each method
+- Add data structure for each variable
+"""
 
 from adaptive_navigation_utilities.pubsub import PubSubManager
 from adaptive_navigation_utilities.namespace_builder import HardwareNamespace
@@ -28,9 +34,13 @@ class RFReceiver(Node):
     Implemented using in ROS2 and Digi-Xbee library.
     """
 
-    PORT: str = 'port'
-    BAUD_RATE: str = 'baud_rate'
-    FREQ: str = 'freq'
+    DEVICE_PATHS: str = 'device_paths'
+    BAUDRATE: str = 'baudrate'
+    UPDATE_RATE: str = 'update_rate'
+    TIMER_PERIOD: str = 'timer_period'
+    RETRY_DELAY: float = 'retry_delay'
+    RETRY_ATTEMPTS: int = 'retry_attempts'
+
     PUB_TOPIC: str = 'pub_topic'
     RANGE_FAKE_RSSI: Tuple[int] = (-100, -10)
 
@@ -51,9 +61,12 @@ class RFReceiver(Node):
         self.declare_parameters(
             namespace='',
             parameters=[
-                (RFReceiver.PORT, "/dev/ttyUSB1"),
-                (RFReceiver.BAUD_RATE, 115200),
-                (RFReceiver.FREQ, 2),
+                (RFReceiver.DEVICE_PATHS, "/dev/ttyUSB1"),
+                (RFReceiver.BAUDRATE, 115200),
+                (RFReceiver.UPDATE_RATE, 2.0),
+                (RFReceiver.TIMER_PERIOD, 2.0),
+                (RFReceiver.RETRY_DELAY, 2.0),
+                (RFReceiver.RETRY_ATTEMPTS, 5),
                 (RFReceiver.PUB_TOPIC, 'rssi')
             ]
         )
@@ -65,9 +78,15 @@ class RFReceiver(Node):
         # Set attributes from parameters
         # Note: Parameters are at the node level
         #       while attributes are the class level
-        self.port: str = self.get(RFReceiver.PORT)
-        self.baud_rate: str = self.get(RFReceiver.BAUD_RATE)
-        self.freq: int = self.get(RFReceiver.FREQ)
+        self.device_paths: str = self.get(RFReceiver.DEVICE_PATHS)
+        self.baudrate: str = self.get(RFReceiver.BAUDRATE)
+        self.update_rate: float = self.get(RFReceiver.UPDATE_RATE)
+        self.timer_period: float = self.get(RFReceiver.TIMER_PERIOD)
+        self.retry_delay: float = self.get(RFReceiver.RETRY_DELAY)
+        self.retry_attempts: int = self.get(RFReceiver.RETRY_ATTEMPTS)
+
+        # Statistics for mointoring
+        self.connection_attempts: int = 0
 
         # Create attributes based on messages
         # TODO: Make a data structure for this?
@@ -90,7 +109,7 @@ class RFReceiver(Node):
         # Create publish topics
         self.create_publish_topics()
 
-        if DEBUG: print(self.port)
+        if DEBUG: print(self.device_paths)
 
         # If not simulation
         if not self.ns.is_simulation:
@@ -113,21 +132,14 @@ class RFReceiver(Node):
             self.add_data_received_callback(self.callback_func)
 
             # Add poll timer
-            self.create_timer(self.period, self.wait)
+            self.create_timer(self.timer_period, self.wait)
 
         else:
 
             # Add poll timer
-            self.create_timer(self.period, 
+            self.create_timer(self.timer_period, 
                               self.get_fake_rssi_from_received_msg)
         
-
-
-
-    @property
-    def period(self) -> Numeric:
-        return 1/self.freq
-
     # Create publish topics
     def create_publish_topics(self) -> None:
 
@@ -146,8 +158,42 @@ class RFReceiver(Node):
         return self.get_logger()
 
     # Create XBee device
-    def xbee_init(self) -> XBeeDevice:
-        return XBeeDevice(self.port, self.baud_rate)
+    def xbee_init(self) -> Optional[XBeeDevice]:
+
+        for device_path in self.device_paths:
+            self.info(f'Trying RF Receiver device: {device_path}')
+                    
+            for attempt in range(self.retry_attempts):
+                try:
+                    self.connection_attempts += 1
+                    self.info(f'Attempting RF Receiver connection \
+                                                 to {device_path} \
+                            ({attempt + 1}/{self.retry_attempts})')
+                    
+                    # Try to connect to xbee device
+                    device = XBeeDevice(device_path, self.baudrate)
+                    
+                    # If successful device connection return
+                    if device:
+                        return device
+                    
+                    # Check if device exists
+                    if not os.path.exists(device_path):
+                        self.debug(f'Device {device_path} does not exist')
+                        break  # Move to next device
+
+                except Exception as e:
+                    self.warn(f'RF Receiver connection attempt \
+                              {attempt + 1} to {device_path} failed: \
+                              {str(e)}')
+                    
+                    if attempt < self.retry_attempts - 1:
+
+                         # Exponential backoff
+                        sleep(self.retry_delay * (attempt + 1)) 
+        
+        # If no device has been connected, return None
+        return None
     
     # Add callback
     def add_data_received_callback(self, func: Callable) -> None:
