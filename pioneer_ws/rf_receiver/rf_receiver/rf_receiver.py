@@ -5,7 +5,7 @@ from std_msgs.msg import String
 from std_msgs.msg import Int16
 
 from digi.xbee.devices import XBeeDevice, XBee64BitAddress
-from typing import Any, Union, Callable, Optional, Tuple
+from typing import Any, Union, Callable, Optional, Tuple, List
 
 from time import time, sleep
 import os
@@ -61,7 +61,7 @@ class RFReceiver(Node):
         self.declare_parameters(
             namespace='',
             parameters=[
-                (RFReceiver.DEVICE_PATHS, "/dev/ttyUSB1"),
+                (RFReceiver.DEVICE_PATHS, ["/dev/ttyUSB1", "/dev/ttyUSB0", "/dev/ttyUSB2"]),
                 (RFReceiver.BAUDRATE, 115200),
                 (RFReceiver.UPDATE_RATE, 2.0),
                 (RFReceiver.TIMER_PERIOD, 2.0),
@@ -78,7 +78,7 @@ class RFReceiver(Node):
         # Set attributes from parameters
         # Note: Parameters are at the node level
         #       while attributes are the class level
-        self.device_paths: str = self.get(RFReceiver.DEVICE_PATHS)
+        self.device_paths: List[str] = self.get(RFReceiver.DEVICE_PATHS)
         self.baudrate: str = self.get(RFReceiver.BAUDRATE)
         self.update_rate: float = self.get(RFReceiver.UPDATE_RATE)
         self.timer_period: float = self.get(RFReceiver.TIMER_PERIOD)
@@ -161,14 +161,20 @@ class RFReceiver(Node):
     def xbee_init(self) -> Optional[XBeeDevice]:
 
         for device_path in self.device_paths:
+
             self.info(f'Trying RF Receiver device: {device_path}')
                     
             for attempt in range(self.retry_attempts):
                 try:
                     self.connection_attempts += 1
-                    self.info(f'Attempting RF Receiver connection \
-                                                 to {device_path} \
-                            ({attempt + 1}/{self.retry_attempts})')
+                    self.info(f"Attempting RF Receiver connection" \
+                                                 f"to {device_path} " \
+                            f"({attempt + 1}/{self.retry_attempts})")
+                    
+                    # Check if device exists
+                    if not os.path.exists(device_path):
+                        self.debug(f'Device {device_path} does not exist')
+                        break  # Move to next device
                     
                     # Try to connect to xbee device
                     device = XBeeDevice(device_path, self.baudrate)
@@ -176,16 +182,14 @@ class RFReceiver(Node):
                     # If successful device connection return
                     if device:
                         return device
-                    
-                    # Check if device exists
-                    if not os.path.exists(device_path):
-                        self.debug(f'Device {device_path} does not exist')
-                        break  # Move to next device
+            
 
                 except Exception as e:
-                    self.warn(f'RF Receiver connection attempt \
-                              {attempt + 1} to {device_path} failed: \
-                              {str(e)}')
+                    self.warn(f"RF Receiver connection attempt " \
+                              f"{attempt + 1} to {device_path} failed: " \
+                              f"{str(e)}")
+                    
+                    self.warn(f"")
                     
                     if attempt < self.retry_attempts - 1:
 

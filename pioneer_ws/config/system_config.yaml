@@ -33,6 +33,8 @@ imu:
 rf_receiver:
   device_paths:
     - "/dev/ttyUSB1"
+    - "/dev/ttyUSB0"
+    - "/dev/ttyUSB2"
   baudrate: 115200
   retry_delay: 2.0 # seconds
   retry_attempts: 5 # Number of connections attempts per device_path entry
