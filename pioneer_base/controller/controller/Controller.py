@@ -195,7 +195,7 @@ class Controller(Node):
         subscriptions = [
             (Bool, '/joy/hardware', self._hw_sim_callback, 1),
             (String, '/modeC', self._mode_callback, 1),
-            (Twist, '/joy/cmd_vel', self._joycmd_callback, 5),
+            (Twist, '/ctrl/cmd_vel', self._cmd_callback, 5),
             (Bool, '/joy/enable', self._enable_callback, 5),
             (Float32MultiArray, '/cluster_params', self._cluster_params_callback, 5),
             (Float32MultiArray, '/cluster_desired', self._cluster_desired_callback, 5),
@@ -295,7 +295,7 @@ class Controller(Node):
             import traceback
             self.get_logger().error(traceback.format_exc())
 
-    def _joycmd_callback(self, msg: Twist):
+    def _cmd_callback(self, msg: Twist):
         """Process joystick commands for cluster navigation"""
         # Calculate command frequency
         current_time = time.time()
@@ -475,7 +475,7 @@ class Controller(Node):
         for robot_id in cluster_robots:
             robot_status = robot_status_dict[robot_id]
             
-            # Noneチェックを追加
+            # Add None check
             if robot_status.pose is None or robot_status.velocity is None:
                 self.get_logger().warn(f"Robot {robot_id} has no pose or velocity data")
                 positions.extend([0.0, 0.0, 0.0])

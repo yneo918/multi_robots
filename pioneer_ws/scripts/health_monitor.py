@@ -439,7 +439,7 @@ class HealthMonitor(Node):
         try:
             # Use pkill to kill processes by name pattern
             node_patterns = {
-                'gps': 'run_gps1',  # gps_revised から run_gps1 に変更
+                'gps': 'run_gps1',  # Changed from gps_revised to run_gps1
                 'imu': 'run_imu', 
                 'converter': 'converter'
             }

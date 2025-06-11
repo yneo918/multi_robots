@@ -24,8 +24,6 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'rover2_joy = teleop_core.run_joy_single:main',
-            'multirover2_joy = teleop_core.run_joy_multi:main',
             'joy2cmd = teleop_core.run_joy_cmd:main',
             'cmd_demux = teleop_core.demux:main',
             'joywithgui = teleop_core.run_joy_with_gui:main',

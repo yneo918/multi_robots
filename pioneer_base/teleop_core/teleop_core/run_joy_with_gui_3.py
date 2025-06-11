@@ -1,384 +1,179 @@
+"""Joystick command node with GUI for 3-robot cluster control."""
+
 import sys
-import rclpy
-from rclpy.node import Node
 import math
-from geometry_msgs.msg import Twist
-from sensor_msgs.msg import Joy
-from std_msgs.msg import Bool, Int16, String, Float32MultiArray
-
-from .my_ros_module import JoyBase
-
-from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, QWidget,
-    QSpinBox, QComboBox, QCheckBox, QDoubleSpinBox
-)
+import rclpy
+from PyQt6.QtWidgets import QApplication, QVBoxLayout, QLabel, QDoubleSpinBox
 from PyQt6.QtCore import QTimer
-
+from std_msgs.msg import Float32MultiArray
 from pioneer_interfaces.msg import ClusterInfo
 
-class JoyCmd(JoyBase):
+from .joy_cmd_base import JoyCmdBase
+from .gui_base import StatusWindowBase
+from .constants import DEFAULT_QOS
+
+
+class JoyCmd3Robot(JoyCmdBase):
+    """Joystick command node with 3-robot cluster parameters."""
+    
     def __init__(self):
         super().__init__('joy_cmd')
-
-        self.declare_parameters(
-            namespace='',
-            parameters=[
-                ('lx', "LX"),
-                ('ly', "LY"),
-                ('az', "RX"),
-                ('en', "LB"),
-                ('rover_sel', "Y"),
-                ('mode_sel', "X"),
-                ('angle_sel', "A"),
-                ('hardware_sim_sel', "B"),
-                ('broadcast', "RB"),
-                ('revolution', "cross_lr"),
-                ('prismatic', "cross_ud"),
-                ('n_rover', 6),
-            ]
-        )
-
-        self.lx_axisN = self.axis_dict.get(self.get_parameter('lx').value)
-        self.ly_axisN = self.axis_dict.get(self.get_parameter('ly').value)
-        self.az_axisN = self.axis_dict.get(self.get_parameter('az').value)
-        self.en_buttonN = self.button_dict.get(self.get_parameter('en').value)
-        self.rover_sel_button = self.button_dict.get(self.get_parameter('rover_sel').value)
-        self.mode_sel_button = self.button_dict.get(self.get_parameter('mode_sel').value)
-        self.angle_sel_button = self.button_dict.get(self.get_parameter('angle_sel').value)
-        self.hw_sel_button = self.button_dict.get(self.get_parameter('hardware_sim_sel').value)
-        self.broadcast_button = self.button_dict.get(self.get_parameter('broadcast').value)
-        self.N_ROVER = self.get_parameter('n_rover').value
-        self.cluster_x = 0.0
-        self.cluster_y = 0.0
-        self.cluster_t = 0.0
-        self.cluster_b = math.pi / 3
-        self.cluster_p = 10.0
-        self.cluster_q = 10.0
-        self.mode_list = ["NEU_M", "JOY_M", "NAV_M"]
-        self.mode_dict = {"NEU_M": 0, "JOY_M": 1, "NAV_M": 2}
-        self.rover_modeC = self.mode_list[0]
-
-        self.select = 1
-        self.hw_sel = True
-
-        self.pubsub.create_publisher(Twist, '/joy/cmd_vel', 5)
-        self.pubsub.create_publisher(Bool, '/joy/enable', 5)
-        self.pubsub.create_publisher(Bool, '/joy/broadcast', 1)
-        self.pubsub.create_publisher(Bool, '/joy/hardware', 1)
-        self.pubsub.create_publisher(Int16, '/select_rover', 1)
-        self.pubsub.create_publisher(String, '/modeC', 1)
-        self.pubsub.create_publisher(Float32MultiArray, '/joy/cross', 5)
-        self.pubsub.create_publisher(Float32MultiArray, '/cluster_params', 5)
-        self.pubsub.create_publisher(Float32MultiArray, '/cluster_desired', 5)
-
-        self.pubsub.create_subscription(Float32MultiArray, '/cluster_desired', self.cluster_desired_callback, 5)
-
-        timer_period = 0.1
-        self.timer = self.create_timer(timer_period, self.timer_callback)
-        self.get_logger().info(
-            f"JoyCmd Node Initialized\n"
-            f"lx: {self.get_parameter('lx').value},\n"
-            f"az: {self.get_parameter('az').value},\n"
-            f"en: {self.get_parameter('en').value},\n"
-            f"rover_sel: {self.get_parameter('rover_sel').value},\n"
-            f"mode_sel: {self.get_parameter('mode_sel').value},\n"
-            f"hardware_sel: {self.get_parameter('hardware_sim_sel').value},\n"
-            f"broadcast: {self.get_parameter('broadcast').value},\n"
-            f"revolution: {self.get_parameter('revolution').value},\n"
-            f"prismatic: {self.get_parameter('prismatic').value}\n"
-        )
-
-        self.pubsub.create_subscription(ClusterInfo, '/cluster_info', self.cluster_info_callback, 5)
-        self.pubsub.create_subscription(ClusterInfo, '/sim/cluster_info', self.cluster_info_callback, 5)
-
-    def joy_callback(self, msg):
-        _toggle = self.joy_toggle(msg)
-        j_lx = msg.axes[self.lx_axisN]
-        j_ly = msg.axes[self.ly_axisN]
-        j_az = msg.axes[self.az_axisN]
-        #self.get_logger().info(f"lx: {j_lx}, az: {j_az}, stick: {msg.axes[0]}, {msg.axes[1]}, {msg.axes[2]}, {msg.axes[3]}")
-
-        val = Twist()
-        en_state = Bool()
-        empty_twist = Twist()
-        false_state = Bool() 
         
-        empty_twist.linear.x = 0.0
-        empty_twist.angular.z = 0.0
-        false_state.data = False
-
-        if _toggle[self.rover_sel_button] == 1:
-            self.select = self.select % self.N_ROVER + 1
-            self.get_logger().info(f"Sel Button Toggled: {self.select}")
-
-        if _toggle[self.hw_sel_button] == 1:
-            self.hw_sel = not self.hw_sel
-            self.get_logger().info(f"HW/Sim Button Toggled: {'HW' if self.hw_sel else 'Sim'}")
-
-        if _toggle[self.mode_sel_button] == 1:
-            new_mode = self.mode_list[(self.mode_dict[self.rover_modeC] + 1) % 3]
-            self.get_logger().info(f"Mode Button Toggled: {self.rover_modeC} to {new_mode}")
-            self.rover_modeC = new_mode
+        # 3-robot cluster specific parameters
+        self.cluster_p: float = 10.0
+        self.cluster_q: float = 10.0
+        self.cluster_b: float = math.pi / 3
         
-        if _toggle[self.button_dict.get("A")] == 1:
-            if msg.axes[self.axis_dict.get("LT")] == 1 and msg.axes[self.axis_dict.get("RT")] == 1: 
-                self.get_logger().info(f"[HIDDEN COMMAND] -RESET CLUSTER PARAMS-")
-                self.pubsub.publish('/cluster_params', Float32MultiArray(data=[-1.0, -1.0, -1.0]))
+        self._setup_additional_publishers()
+        self._setup_additional_subscriptions()
+        
+    def _setup_additional_publishers(self) -> None:
+        """Setup additional publishers for cluster control."""
+        self.pubsub.create_publisher(
+            Float32MultiArray, '/cluster_params', DEFAULT_QOS)
+        self.pubsub.create_publisher(
+            Float32MultiArray, '/cluster_desired', DEFAULT_QOS)
             
-        broadcast_msg = Bool()
-        broadcast_msg.data = True if msg.buttons[self.broadcast_button] == 1 else False
-        self.pubsub.publish('/joy/broadcast', broadcast_msg)
-
-        if msg.buttons[self.en_buttonN] == 1:
-            en_state.data = True
-            val.linear.x = j_lx
-            val.linear.y = j_ly
-            val.angular.z = j_az
-            self.pubsub.publish('/joy/cmd_vel', val)
-            self.pubsub.publish('/joy/enable', en_state)
-        else:
-            self.pubsub.publish('/joy/cmd_vel', empty_twist)
-            self.pubsub.publish('/joy/enable', false_state)
+    def _setup_additional_subscriptions(self) -> None:
+        """Setup additional subscriptions."""
+        self.pubsub.create_subscription(
+            Float32MultiArray, '/cluster_desired', 
+            self.cluster_desired_callback, DEFAULT_QOS)
+        self.pubsub.create_subscription(
+            ClusterInfo, '/cluster_info', 
+            self.cluster_info_callback, DEFAULT_QOS)
+        self.pubsub.create_subscription(
+            ClusterInfo, '/sim/cluster_info', 
+            self.cluster_info_callback, DEFAULT_QOS)
+            
+    def cluster_info_callback(self, msg: ClusterInfo) -> None:
+        """Handle cluster info updates."""
+        try:
+            data = msg.cluster_desired.data
+            if len(data) >= 9:
+                self.cluster_x = data[0]
+                self.cluster_y = data[1]
+                self.cluster_t = data[2]
+                self.cluster_p = data[6]
+                self.cluster_q = data[7]
+                self.cluster_b = data[8]
+        except Exception as e:
+            self.get_logger().error(f"Error processing cluster info: {e}")
+            
+    def _process_mode_changes(self, msg, toggle) -> None:
+        """Override to add hidden command handling."""
+        super()._process_mode_changes(msg, toggle)
         
-        msg_formation = Float32MultiArray()
-        prismatic_val = msg.axes[self.axis_dict[self.get_parameter('prismatic').value]]
-        revolution_val = msg.axes[self.axis_dict[self.get_parameter('revolution').value]]
-        msg_formation.data = [prismatic_val, revolution_val]
-        self.pubsub.publish('/joy/cross', msg_formation)
+        # Hidden command: A button with both triggers pressed
+        if (self.angle_sel_button and toggle[self.angle_sel_button] == 1 and
+            msg.axes[self.axis_dict.get("LT")] == 1 and 
+            msg.axes[self.axis_dict.get("RT")] == 1):
+            self.get_logger().info("[HIDDEN COMMAND] -RESET CLUSTER PARAMS-")
+            reset_msg = Float32MultiArray(data=[-1.0, -1.0, -1.0])
+            self.pubsub.publish('/cluster_params', reset_msg)
+
+
+class StatusWindow3Robot(StatusWindowBase):
+    """GUI window for 3-robot cluster control."""
     
-    def cluster_desired_callback(self, msg):
-        self.cluster_x = msg.data[0]
-        self.cluster_y = msg.data[1]
-        self.cluster_t = msg.data[2]
-
-    def cluster_info_callback(self, msg):
-        data = msg.cluster_desired.data
-        self.cluster_x = data[0]
-        self.cluster_y = data[1]
-        self.cluster_t = data[2]
-        self.cluster_p = data[6]
-        self.cluster_q = data[7]
-        self.cluster_b = data[8]
-
-    def timer_callback(self):
-        select_msg = Int16()
-        select_msg.data = self.select
-        self.pubsub.publish('/select_rover', select_msg)
-
-        mode_msg = String()
-        mode_msg.data = self.rover_modeC
-        self.pubsub.publish('/modeC', mode_msg)   
-
-        hardware_msg = Bool()
-        hardware_msg.data = self.hw_sel
-        self.pubsub.publish('/joy/hardware', hardware_msg)
-
-
-class StatusWindow(QMainWindow):
-    def __init__(self, node):
-        super().__init__()
-        self.node = node
-        self.setWindowTitle("JoyCmd Status")
-
-        central_widget = QWidget()
-        main_layout = QHBoxLayout()
-
-        left_layout = QVBoxLayout()
-        status_header = QLabel("Status")
-        left_layout.addWidget(status_header)
-        self.status_labels = {
-            "selected_rover": QLabel("Selected Rover: N/A"),
-            "mode": QLabel("Mode: N/A"),
-            "hardware": QLabel("Hardware: N/A"),
-            "cluster_x": QLabel(f"Cluster Xc: {self.node.cluster_x}"),
-            "cluster_y": QLabel(f"Cluster Yc: {self.node.cluster_y}"),
-            "cluster_t": QLabel(f"Cluster Tc: {self.node.cluster_t}"),
-            "cluster_p": QLabel(f"Cluster P: {self.node.cluster_p}"),
-            "cluster_q": QLabel(f"Cluster Q: {self.node.cluster_q}"),
-            "cluster_b": QLabel(f"Cluster B: {self.node.cluster_b}"),
-        }
-        for label in self.status_labels.values():
-            left_layout.addWidget(label)
+    def __init__(self, node: JoyCmd3Robot):
+        super().__init__(node, "JoyCmd Status - 3 Robot Cluster")
         
+    def _add_custom_status_labels(self, layout: QVBoxLayout) -> None:
+        """Add 3-robot specific status labels."""
+        self.status_labels.update({
+            "cluster_p": QLabel(f"Cluster P: {self.node.cluster_p:.4f}"),
+            "cluster_q": QLabel(f"Cluster Q: {self.node.cluster_q:.4f}"),
+            "cluster_b": QLabel(f"Cluster B: {self.node.cluster_b:.4f}"),
+        })
         
-        center_layout = QVBoxLayout()
-
-        modify_header = QLabel("Modify Status")
-        center_layout.addWidget(modify_header)
-
-        self.rover_spin = QSpinBox()
-        self.rover_spin.setMinimum(1)
-        self.rover_spin.setMaximum(self.node.N_ROVER)
-        self.rover_spin.setValue(self.node.select)
-        self.rover_spin.valueChanged.connect(self.update_rover)
-        center_layout.addWidget(QLabel("Select Rover:"))
-        center_layout.addWidget(self.rover_spin)
-
-        self.mode_combo = QComboBox()
-        self.mode_combo.addItems(self.node.mode_list)
-        current_mode_index = self.node.mode_dict[self.node.rover_modeC]
-        self.mode_combo.setCurrentIndex(current_mode_index)
-        self.mode_combo.currentTextChanged.connect(self.update_mode)
-        center_layout.addWidget(QLabel("Mode:"))
-        center_layout.addWidget(self.mode_combo)
-
-        self.hw_checkbox = QCheckBox("HW Mode")
-        self.hw_checkbox.setChecked(self.node.hw_sel)
-        self.hw_checkbox.toggled.connect(self.update_hw)
-        center_layout.addWidget(self.hw_checkbox)
-
-        # Add fields for cluster parameters P, Q, and B
-        self.x_spin = QDoubleSpinBox()
-        self.x_spin.setMinimum(-100.0)
-        self.x_spin.setMaximum(100.0)
-        self.x_spin.setValue(self.node.cluster_x)
-        self.x_spin.valueChanged.connect(self.update_cluster_x)
-        center_layout.addWidget(QLabel("Cluster Xc(m):"))
-        center_layout.addWidget(self.x_spin)
-
-        self.y_spin = QDoubleSpinBox()
-        self.y_spin.setMinimum(-100.0)
-        self.y_spin.setMaximum(100.0)
-        self.y_spin.setValue(self.node.cluster_y)
-        self.y_spin.valueChanged.connect(self.update_cluster_y)
-        center_layout.addWidget(QLabel("Cluster Yc(m):"))
-        center_layout.addWidget(self.y_spin)
-
-        self.t_spin = QDoubleSpinBox()
-        self.t_spin.setMinimum(-10 * math.pi)
-        self.t_spin.setMaximum(10 * math.pi)
-        self.t_spin.setValue(self.node.cluster_t)
-        self.t_spin.valueChanged.connect(self.update_cluster_t)
-        center_layout.addWidget(QLabel("Cluster Tc(rad):"))
-        center_layout.addWidget(self.t_spin)
-
+        for label in ["cluster_p", "cluster_q", "cluster_b"]:
+            layout.addWidget(self.status_labels[label])
+            
+    def _add_custom_controls(self, layout: QVBoxLayout) -> None:
+        """Add 3-robot specific control widgets."""
+        # P parameter
         self.p_spin = QDoubleSpinBox()
         self.p_spin.setMinimum(0.0)
         self.p_spin.setMaximum(100.0)
         self.p_spin.setValue(self.node.cluster_p)
+        self.p_spin.setSingleStep(0.1)
         self.p_spin.valueChanged.connect(self.update_cluster_p)
-        center_layout.addWidget(QLabel("Cluster P(m):"))
-        center_layout.addWidget(self.p_spin)
-
+        layout.addWidget(QLabel("Cluster P(m):"))
+        layout.addWidget(self.p_spin)
+        
+        # Q parameter
         self.q_spin = QDoubleSpinBox()
         self.q_spin.setMinimum(0.0)
         self.q_spin.setMaximum(100.0)
         self.q_spin.setValue(self.node.cluster_q)
+        self.q_spin.setSingleStep(0.1)
         self.q_spin.valueChanged.connect(self.update_cluster_q)
-        center_layout.addWidget(QLabel("Cluster Q(m):"))
-        center_layout.addWidget(self.q_spin)
-
+        layout.addWidget(QLabel("Cluster Q(m):"))
+        layout.addWidget(self.q_spin)
+        
+        # B parameter (angle)
         self.b_spin = QDoubleSpinBox()
         self.b_spin.setMinimum(0.0)
         self.b_spin.setMaximum(2 * math.pi)
         self.b_spin.setValue(self.node.cluster_b)
+        self.b_spin.setSingleStep(0.1)
         self.b_spin.valueChanged.connect(self.update_cluster_b)
-        center_layout.addWidget(QLabel("Cluster B(rad):"))
-        center_layout.addWidget(self.b_spin)
-
-        right_layout = QVBoxLayout()
-        mapping_header = QLabel("Button Assignments")
-        right_layout.addWidget(mapping_header)
-        mapping = {
-            "forward/backward vel": self.node.get_parameter('lx').value,
-            "rotation vel": self.node.get_parameter('az').value,
-            "enable": self.node.get_parameter('en').value,
-            "rover_sel": self.node.get_parameter('rover_sel').value,
-            "mode": self.node.get_parameter('mode_sel').value,
-            "angle_sel": self.node.get_parameter('angle_sel').value,
-            "hardware/sim": self.node.get_parameter('hardware_sim_sel').value,
-            "broadcast": self.node.get_parameter('broadcast').value,
-        }
-        self.mapping_labels = {}
-        for key, value in mapping.items():
-            label = QLabel(f"{key}: {value}")
-            self.mapping_labels[key] = label
-            right_layout.addWidget(label)
-
-        main_layout.addLayout(left_layout)
-        main_layout.addLayout(center_layout)
-        main_layout.addLayout(right_layout)
-
-        central_widget.setLayout(main_layout)
-        self.setCentralWidget(central_widget)
-
-        self.update_timer = QTimer()
-        self.update_timer.timeout.connect(self.update_status)
-        self.update_timer.start(100)
-
-    def update_status(self):
-        self.status_labels["selected_rover"].setText(f"Selected Rover: {self.node.select}")
-        self.status_labels["mode"].setText(f"Mode: {self.node.rover_modeC}")
-        hardware_str = "HW" if self.node.hw_sel else "Sim"
-        self.status_labels["hardware"].setText(f"Hardware: {hardware_str}")
-        self.status_labels["cluster_x"].setText(f"Cluster Xc: {self.node.cluster_x:.4f}")
-        self.status_labels["cluster_y"].setText(f"Cluster Yc: {self.node.cluster_y:.4f}")
-        self.status_labels["cluster_t"].setText(f"Cluster Tc: {self.node.cluster_t:.4f}")
+        layout.addWidget(QLabel("Cluster B(rad):"))
+        layout.addWidget(self.b_spin)
+        
+    def _update_custom_status(self) -> None:
+        """Update 3-robot specific status labels."""
         self.status_labels["cluster_p"].setText(f"Cluster P: {self.node.cluster_p:.4f}")
         self.status_labels["cluster_q"].setText(f"Cluster Q: {self.node.cluster_q:.4f}")
         self.status_labels["cluster_b"].setText(f"Cluster B: {self.node.cluster_b:.4f}")
-
-    def update_rover(self, value):
-        self.node.select = value
-
-    def update_mode(self, text):
-        self.node.rover_modeC = text
-
-    def update_hw(self, checked):
-        self.node.hw_sel = checked
-
-    def update_cluster_x(self, value):
-        self.node.cluster_x = value
-        msg = Float32MultiArray()
-        msg.data = [self.node.cluster_x, self.node.cluster_y, self.node.cluster_t]
-        self.node.pubsub.publish('/cluster_desired', msg)
-    
-    def update_cluster_y(self, value):
-        self.node.cluster_y = value
-        msg = Float32MultiArray()
-        msg.data = [self.node.cluster_x, self.node.cluster_y, self.node.cluster_t]
-        self.node.pubsub.publish('/cluster_desired', msg)
-    
-    def update_cluster_t(self, value):
-        self.node.cluster_t = value
-        msg = Float32MultiArray()
-        msg.data = [self.node.cluster_x, self.node.cluster_y, self.node.cluster_t]
-        self.node.pubsub.publish('/cluster_desired', msg)
-
-    def update_cluster_p(self, value):
+        
+    def update_cluster_p(self, value: float) -> None:
+        """Update cluster P parameter."""
         self.node.cluster_p = value
-        msg = Float32MultiArray()
-        msg.data = [self.node.cluster_p, self.node.cluster_q, self.node.cluster_b]
-        self.node.pubsub.publish('/cluster_params', msg)
-
-    def update_cluster_q(self, value):
+        self._publish_cluster_params()
+        
+    def update_cluster_q(self, value: float) -> None:
+        """Update cluster Q parameter."""
         self.node.cluster_q = value
+        self._publish_cluster_params()
+        
+    def update_cluster_b(self, value: float) -> None:
+        """Update cluster B parameter."""
+        self.node.cluster_b = value
+        self._publish_cluster_params()
+        
+    def _publish_cluster_params(self) -> None:
+        """Publish cluster parameters."""
         msg = Float32MultiArray()
         msg.data = [self.node.cluster_p, self.node.cluster_q, self.node.cluster_b]
         self.node.pubsub.publish('/cluster_params', msg)
 
-    def update_cluster_b(self, value):
-        self.node.cluster_b = value
-        msg = Float32MultiArray()
-        msg.data = [self.node.cluster_p, self.node.cluster_q, self.node.cluster_b]
-        self.node.pubsub.publish('/cluster_params', msg)
 
 def main(args=None):
+    """Main entry point with GUI."""
     rclpy.init(args=args)
-    node = JoyCmd()
-
+    
+    # Create node
+    node = JoyCmd3Robot()
+    
+    # Create Qt application
     app = QApplication(sys.argv)
-    gui = StatusWindow(node)
+    gui = StatusWindow3Robot(node)
     gui.show()
-
+    
+    # Setup ROS spinning timer
     ros_timer = QTimer()
     ros_timer.timeout.connect(lambda: rclpy.spin_once(node, timeout_sec=0.01))
-    ros_timer.start(10)
-
-    exit_code = app.exec()
-    node.destroy_node()
-    rclpy.shutdown()
-    sys.exit(exit_code)
+    ros_timer.start(10)  # 100Hz
+    
+    # Run application
+    try:
+        exit_code = app.exec()
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+        sys.exit(exit_code)
 
 
 if __name__ == '__main__':
