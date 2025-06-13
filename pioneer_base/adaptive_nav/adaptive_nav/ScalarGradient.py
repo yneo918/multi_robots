@@ -3,9 +3,46 @@ import math
 from enum import Enum
 from typing import List, Literal, Tuple, Optional
 
+__author__ = "Christian Pedrigal" 
+
 
 class ControlMode(Enum):
-    """Different control modes for the cluster"""
+    """Different control modes for the cluster
+
+    Each enumaration is contains three objects: 
+    (1) Name: str
+    (2) Bearing Offset: float [rad]
+    (3) Cross-Track Error Gain: float [bearing/ difference in z units]
+
+    For example, for the MAX mode, we have the entry:
+
+        MAX = ("maximum", 0.0, 0.0)
+
+        "maximum" is the name.
+
+        0.0 is the bearing offset. In this case, there is a 0.0 offset 
+        with the current gradient vector that is calculated.
+
+        0.0 is the cross-track error gain. In this case, there is a 0.0
+        cross-track error gain because this mode does not include any
+        contour tracing.
+    
+    For example, for the CROSSTRACK_CCW mode, we have the entry:
+
+        CROSSTRACK_CCW = ("crosstrack_ccw_controller", math.pi/2, 1.0)
+
+        "crosstrack_ccw_controller" is the name.
+
+        math.pi/2 is the bearing offset. In this case, there is a 90 deg. offset 
+        with the current gradient vector that is calculated. This makes sense as
+        this makes the cluster travel along the contour level curve instead of
+        towards the peak/valley that the gradient is currently aiming towards.
+
+        1.0 is the cross-track error gain. In this case, there is a 1.0
+        cross-track error gain so that a difference in 10 z-units 
+        (e.g. RSSI strength) corresponds to a angle adjustment of 10 radians.
+    """
+
     MAX = ("maximum", 0.0, 0.0)
     MIN = ("minimum", math.pi, 0.0)
     CONTOUR_CW = ("contour following clockwise", -math.pi/2, 0.0)
@@ -54,11 +91,14 @@ class ScalarGradient:
         self.mode: ControlMode = mode
 
         # Gradient scalar parameters
-        self.zdes: float = 0.0 #Desired height for contour following
-        self.z_err: float = 0.0 # Cross track error
-        self.grad: List[float] = list()
-        self.curr_bearing = 0.0
-        self.des_bearing = 0.0
+        # NOTE: Initial definitions are given, but they are updated in the 
+        #       instance methods.
+        self.zdes: float = 0.0 # Desired height for contour following
+        self.z_err: float = 0.0 # Difference in desired and current z-value
+                                # (also known as cross-track error)
+        self.grad: List[float] = list() # Gradient vector of the cluster [X, Y, Z]
+        self.curr_bearing = 0.0 # Current bearing angle of the cluster [rad]
+        self.des_bearing = 0.0  # Desired bearing angle of the cluster [rad]
 
         # List of 3 of the robots to form planar vectors
         # The first index is the tail, while the remaining second and third
@@ -77,7 +117,20 @@ class ScalarGradient:
         
     @property
     def direction(self) -> Optional[Literal[0,1]]:
+        # TODO: Not utilized. Can we archive this?
+        """Returns direction of the gradient for the
+           gradient descent/ascent modes i.e. MAX/MIN.
 
+           MAX corresponds to 0 since it is in the same
+           direction as the gradient vector calculated in
+           self.calc_gradient().
+
+           MIN corresponds to 1 since it PI/2 (or 180 deg.)
+           opposite than the gradient vector.
+
+        Returns:
+            0 or 1
+        """
         if self.mode not in (
             ControlMode.MAX,
             ControlMode.MIN
@@ -88,8 +141,16 @@ class ScalarGradient:
         
         
     @property
-    def rotation(self) -> Optional[Literal[-1, 1]]:
+    def rotation(self) -> Optional[Literal[0, -1, 1]]:
+        """ Returns rotation sign based on adaptive navigation
+            mode. This is mostly critical in self.get_velocity()
+            where the desired bearing angle is calculated. 
+            It is used for the contour following modes, not
+            the gradient descent/ascent i.e. NOT MAX/MIN.
 
+        Returns:
+            0, -1, or 1
+        """
         if self.mode not in (
         ControlMode.CONTOUR_CW,
         ControlMode.CONTOUR_CCW,
@@ -105,14 +166,17 @@ class ScalarGradient:
 
     @property
     def tail(self) -> int:
+        """Assigns which robot ids as the tail of the 2 vectors"""
         return self.robot_reference_list[0]
     
     @property 
     def heads(self) -> List[int]:
+        """Assigns 2 robot ids as heads of the 2 vectors"""
         return self.robot_reference_list[1:]
     
     @property
     def z_c(self) -> float:
+        """Current Z-value of the cluster, which is averaged"""
 
         # Get average of the z value across all robots
         return np.average([self.robot_positions[i][-1] \
@@ -121,6 +185,7 @@ class ScalarGradient:
     
     @staticmethod
     def sign(expr) -> Literal[-1, 0, 1]:
+        """Determines if expression is positive or negative"""
         try:
             if expr > 1:
                 return 1
@@ -133,7 +198,18 @@ class ScalarGradient:
 
     
     def get_velocity(self, robot_positions: List[List[float]] = None, zdes: float = None) -> Optional[float]:
+        """Calculates the bearing angle of the robot.
 
+        Args:
+            robot_positions (List[List[float]], optional): Array of array of x-y-z positions.
+             First array specifies the robot. The second (inner) array specifies its x-y-z position.
+             Defaults to None.
+
+            zdes (float, optional): Desired Z-value e.g. RSSI value. Defaults to None.
+
+        Returns:
+            Optional[float]: Bearing angle [rad] of the cluster
+        """
         # Assign to self if external params given
         if zdes != None: 
             self.zdes = zdes
@@ -177,7 +253,22 @@ class ScalarGradient:
 
 
     def calc_gradient(self, robot_positions: List[List[float]] = None) -> List[float]:
-        
+        """Calculates the gradient of the cluster with respect to the x-y-z scalar field 
+        that it is in. This is based on extracting two position vectors based on 3 robots 
+        within the cluster, and performing the cross product of those two vectors to get 
+        the gradient. 
+
+
+
+        Args:
+            robot_positions (List[List[float]], optional): Array of array of x-y-z positions.
+             First array specifies the robot. The second (inner) array specifies its x-y-z position.
+             Defaults to None.
+
+        Returns:
+            List[float]: X and Y components of the calculated gradient
+        """
+
         # Assign to self if external params given
         if robot_positions != None:
             self.robot_positions = np.array(robot_positions)
@@ -193,13 +284,16 @@ class ScalarGradient:
             vectors: List[np.ndarray] = [[0.0]*self.num_robots for _ in range(2)]
 
             # First vector
-            
-            print(self.robot_positions[0])
-
+            # A vector is formed by subtracting the head by its tail
+            # In this case, we are getting the first head e.g. self.heads[0]
+            # and subtract it from the tail e.g. self.tail
             vectors[0] = self.robot_positions[self.heads[0]] \
                             - self.robot_positions[self.tail] 
 
             # Second vector
+            # A vector is formed by subtracting the head by its tail
+            # In this case, we are getting the second head e.g. self.heads[1]
+            # and subtract it from the tail e.g. self.tail
             vectors[1] = self.robot_positions[self.heads[1]] \
                             - self.robot_positions[self.tail] 
             
