@@ -1,183 +1,202 @@
+"""Demultiplexer node for distributing joystick commands."""
+
 import rclpy
 from rclpy.node import Node
-
 from geometry_msgs.msg import Twist
-from sensor_msgs.msg import Joy
-from std_msgs.msg import Bool, Int16
-from std_msgs.msg import String
+from std_msgs.msg import Bool, Int16, String
+from typing import List, Optional
 
 from .my_ros_module import PubSubManager
+from .constants import (
+    RoverMode, DEFAULT_QOS, MAX_VEL_TRANS, MAX_VEL_ROT,
+    DEFAULT_ROBOT_ID_PREFIX
+)
 
-MAX_VEL_TRANS = 0.7
-MAX_VEL_ROT = 0.5
 
 class Demux(Node):
-    def __init__(self, n_rover=6):
-        super().__init__(f'demux')
+    """Demultiplexer node for routing joystick commands to multiple rovers."""
+    
+    def __init__(self):
+        super().__init__('demux')
+        
+        # Initialize state
+        self.block = ''
+        self.select = 0
+        self.mode = RoverMode.NEUTRAL
+        self.broadcast = False
+        self.hardware = True
+        self.joy_cmd: Optional[Twist] = None
+        
+        # Setup parameters and robot list
+        self._setup_parameters()
+        
+        # Initialize publishers and subscribers
+        self.pubsub = PubSubManager(self)
+        self._setup_subscriptions()
+        self._setup_publishers()
+        
+    def _setup_parameters(self) -> None:
+        """Setup and validate ROS parameters."""
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('robot_id_list', ["p0"]),
-                ('heading_controller', False)
+                ('robot_id_list', ["p0"])
             ]
         )
+        
+        # Log parameters
         params = self._parameters
         for name, param in params.items():
             self.get_logger().info(f"PARAMS/ {name}: {param.value}")
-        self.block = '' 
-        self.select = 0
-        self.mode = "NEU_M"
-        
+            
+        # Process robot ID list
         robot_id_list = self.get_parameter('robot_id_list').value
         self.get_logger().info(f"robot_id_list: {robot_id_list}")
-        if len(robot_id_list) == 1 and robot_id_list[0] == "p0":
-            robot_id_list = None
-        self.robot_id_list = []
-        if robot_id_list is None:
-            self.n_rover = n_rover
-            for i in range(self.n_rover):
-                self.robot_id_list.append(f"{self.robot_id_list[i]}")
-        elif isinstance(robot_id_list, int):
-            self.n_rover = n_rover
-            for i in range(self.n_rover):
-                self.robot_id_list.append(f"p{i+1+robot_id_list}")
-        elif isinstance(robot_id_list, list):
-            self.n_rover = len(robot_id_list)
-            if isinstance(robot_id_list[0], int):
-                for i in range(self.n_rover):
-                    self.robot_id_list.append(f"p{robot_id_list[i]}")
-            else:
-                self.robot_id_list = robot_id_list
-        else:
-            print("ROBOT_ID_LIST ERROR")
-            return
+        
+        self.robot_id_list = self._process_robot_id_list(robot_id_list)
+        self.n_rover = len(self.robot_id_list)
+        
         self.get_logger().info(f"ROVER: {self.robot_id_list} N: {self.n_rover}")
-
-
-        self.heading_controller = self.get_parameter('heading_controller').value
-        self.angular_vel = [0.0] * self.n_rover
-
-        self.broadcast = False
-
-        self.hardware = True
-
-        self.pubsub = PubSubManager(self)
-        self.pubsub.create_subscription(
-            Twist,
-            '/joy/cmd_vel',
-            self.joy_cmd_callback,
-            5)
-        self.pubsub.create_subscription(
-            Bool,
-            '/joy/enable',
-            self.joy_en_callback,
-            5)
-        self.pubsub.create_subscription(
-            Int16,
-            '/select_rover',
-            self.sel_callback,
-            1)
-        self.pubsub.create_subscription(
-            Bool,
-            '/joy/broadcast',
-            self.broadcast_callback,
-            1)
-        self.pubsub.create_subscription(
-            Bool,
-            '/joy/hardware',
-            self.hw_sim_callback,
-            1)
-        self.pubsub.create_subscription(
-            String,
-            '/modeC',
-            self.mode_callback,
-            1)
         
-        for i in range(self.n_rover):
-            self.pubsub.create_publisher(Twist, f'{self.block}/{self.robot_id_list[i]}/cmd_vel', 5)
-            self.pubsub.create_publisher(Twist, f'/sim/{self.robot_id_list[i]}/cmd_vel', 5)
-            if self.heading_controller:
-                self.pubsub.create_subscription(
-                    Twist,
-                    f'/heading/{self.robot_id_list[i]}/anglar_vel',
-                    lambda msg, i=i: self.angular_callback(msg, i),
-                    5)
-                self.pubsub.create_publisher(Int16, f'/heading/{self.robot_id_list[i]}/desired', 5)
+    def _process_robot_id_list(self, robot_id_list: any) -> List[str]:
+        """Process and validate robot ID list parameter."""
+        # Default case
+        if robot_id_list is None or (isinstance(robot_id_list, list) and
+                                     len(robot_id_list) == 1 and
+                                     robot_id_list[0] == "p0"):
+            return [f"{DEFAULT_ROBOT_ID_PREFIX}{i+1}" for i in range(6)]
+            
+        # Integer offset case
+        if isinstance(robot_id_list, int):
+            return [f"{DEFAULT_ROBOT_ID_PREFIX}{i+1+robot_id_list}" for i in range(6)]
+            
+        # List case
+        if isinstance(robot_id_list, list):
+            if all(isinstance(robot_id, int) for robot_id in robot_id_list):
+                return [f"{DEFAULT_ROBOT_ID_PREFIX}{robot_id}" for robot_id in robot_id_list]
+            else:
+                return robot_id_list
+                
+        self.get_logger().error("Invalid ROBOT_ID_LIST format")
+        raise ValueError("Invalid ROBOT_ID_LIST format")
         
-        if self.heading_controller:
-            self.pubsub.create_subscription(
-                Int16,
-                '/joy/angle_sel',
-                self.angle_sel_callback,
-                5)
-        
-    
-    def joy_cmd_callback(self, msg):
+    def _setup_subscriptions(self) -> None:
+        """Setup ROS subscriptions."""
+        self.pubsub.create_subscription(
+            Twist, '/joy/cmd_vel', self.joy_cmd_callback, DEFAULT_QOS)
+        self.pubsub.create_subscription(
+            Bool, '/joy/enable', self.joy_en_callback, DEFAULT_QOS)
+        self.pubsub.create_subscription(
+            Int16, '/select_rover', self.sel_callback, 1)
+        self.pubsub.create_subscription(
+            Bool, '/joy/broadcast', self.broadcast_callback, 1)
+        self.pubsub.create_subscription(
+            Bool, '/joy/hardware', self.hw_sim_callback, 1)
+        self.pubsub.create_subscription(
+            String, '/modeC', self.mode_callback, 1)
+            
+    def _setup_publishers(self) -> None:
+        """Setup ROS publishers for all rovers."""
+        # Control command publisher for NAV mode
+        self.pubsub.create_publisher(
+            Twist, '/ctrl/cmd_vel', DEFAULT_QOS)
+            
+        # Publishers for each rover (both hardware and simulation)
+        for robot_id in self.robot_id_list:
+            self.pubsub.create_publisher(
+                Twist, f'{self.block}/{robot_id}/cmd_vel', DEFAULT_QOS)
+            self.pubsub.create_publisher(
+                Twist, f'/sim/{robot_id}/cmd_vel', DEFAULT_QOS)
+                
+    def joy_cmd_callback(self, msg: Twist) -> None:
+        """Handle joystick command velocity messages."""
+        # Scale velocities by limits
         self.lx = msg.linear.y * MAX_VEL_TRANS
         self.az = msg.angular.z * MAX_VEL_ROT
-
-    def broadcast_callback(self, msg):
-        self.broadcast = msg.data
-        #self.get_logger().info(f"BROADCAST: {self.broadcast}")
-
-    def hw_sim_callback(self, msg):
-        self.hardware = msg.data
-    
-    def sel_callback(self, msg):
-        self.select = msg.data
-    
-    def mode_callback(self, msg):
-        self.mode = msg.data
-        #self.get_logger().info(f"MODE: {self.block}")
+        self.joy_cmd = msg
         
-    def joy_en_callback(self,msg):
-        _en = msg.data
-        val = Twist()           # For selected rover
-        empty_twist = Twist()   # For other rovers
-        empty_twist.linear.x = 0.0
-        empty_twist.angular.z = 0.0
-
-        val.linear.x = self.lx
-        val.angular.z = self.az
-        namespace = self.block if self.hardware else "/sim"
-
-        for i in range(self.n_rover):
-            if self.mode == "NEU_M":
-                self.pubsub.publish(f'{namespace}/{self.robot_id_list[i]}/cmd_vel', empty_twist)
-            elif self.mode == "NAV_M":
-                pass
-            elif self.broadcast:
-                if self.heading_controller:
-                    val.angular.z = self.angular_vel[i]
-                self.pubsub.publish(f'{namespace}/{self.robot_id_list[i]}/cmd_vel', val)
-            elif _en and self.select == i+1:
-                if self.heading_controller:
-                    val.angular.z = self.angular_vel[i]
-                self.pubsub.publish(f'{namespace}/{self.robot_id_list[i]}/cmd_vel', val)
-            else:
-                self.pubsub.publish(f'{namespace}/{self.robot_id_list[i]}/cmd_vel', empty_twist)
-
-    def angular_callback(self, msg, i):
-        self.angular_vel[i] = msg.angular.z
-        self.get_logger().info(f"{self.robot_id_list[i]}/ Received angular vel: {msg.angular.z}")   
-
-    def angle_sel_callback(self, msg):
-        angle_msg = Int16()
-        angle_msg.data = msg.data
-        for i in range(self.n_rover):
-            self.pubsub.publish(f'/heading/{self.robot_id_list[i]}/desired', angle_msg)
-        self.get_logger().info(f"Angle selected: {msg.data}")    
+    def broadcast_callback(self, msg: Bool) -> None:
+        """Handle broadcast mode toggle."""
+        self.broadcast = msg.data
+        
+    def hw_sim_callback(self, msg: Bool) -> None:
+        """Handle hardware/simulation mode toggle."""
+        self.hardware = msg.data
+        
+    def sel_callback(self, msg: Int16) -> None:
+        """Handle rover selection changes."""
+        self.select = msg.data
+        
+    def mode_callback(self, msg: String) -> None:
+        """Handle operation mode changes."""
+        try:
+            # Convert string to RoverMode enum
+            for mode in RoverMode:
+                if mode.value == msg.data:
+                    self.mode = mode
+                    break
+        except Exception as e:
+            self.get_logger().error(f"Invalid mode received: {msg.data}")
+            
+    def joy_en_callback(self, msg: Bool) -> None:
+        """Handle joystick enable signal and route commands."""
+        try:
+            enabled = msg.data
+            
+            # Create velocity commands
+            cmd_vel = Twist()
+            cmd_vel.linear.x = self.lx if enabled else 0.0
+            cmd_vel.angular.z = self.az if enabled else 0.0
+            
+            empty_twist = Twist()
+            
+            # Determine namespace based on hardware/sim mode
+            namespace = self.block if self.hardware else "/sim"
+            
+            # Route commands based on mode and selection
+            for i, robot_id in enumerate(self.robot_id_list):
+                topic = f'{namespace}/{robot_id}/cmd_vel'
+                
+                if self.mode == RoverMode.NEUTRAL:
+                    # Neutral mode - no movement
+                    self.pubsub.publish(topic, empty_twist)
+                elif self.mode == RoverMode.NAVIGATION:
+                    # Navigation mode - controller handles movement
+                    pass
+                elif self.broadcast:
+                    # Broadcast mode - all rovers move
+                    self.pubsub.publish(topic, cmd_vel)
+                elif enabled and self.select == i + 1:
+                    # Single rover selected
+                    self.pubsub.publish(topic, cmd_vel)
+                else:
+                    # Not selected - stop
+                    self.pubsub.publish(topic, empty_twist)
+                    
+            # In navigation mode, forward raw joystick command to controller
+            if self.mode == RoverMode.NAVIGATION and self.joy_cmd is not None:
+                self.pubsub.publish('/ctrl/cmd_vel', self.joy_cmd)
+                
+        except Exception as e:
+            self.get_logger().error(f"Error in joy_en_callback: {e}")
 
 
 def main(args=None):
+    """Main entry point."""
     rclpy.init(args=args)
-    demultiplexer = Demux()
-    rclpy.spin(demultiplexer)
-    demultiplexer.destroy_node()
-    rclpy.shutdown()
+    
+    try:
+        demux = Demux()
+        rclpy.spin(demux)
+    except KeyboardInterrupt:
+        pass
+    except Exception as e:
+        print(f"Error: {e}")
+    finally:
+        if 'demux' in locals():
+            demux.destroy_node()
+        rclpy.shutdown()
 
 
 if __name__ == '__main__':
     main()
-
-#ros2 run joy joy_node
