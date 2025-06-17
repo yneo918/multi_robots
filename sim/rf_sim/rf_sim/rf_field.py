@@ -121,7 +121,7 @@ class RFAntennaPublisher(Node):
         # Create PointCloud2
         msg = PointCloud2()
         msg.header.stamp = self.get_clock().now().to_msg()
-        msg.header.frame_id = "map"
+        msg.header.frame_id = "world"
         msg.height = 1
         msg.width = len(x_all)
         msg.is_dense = False
