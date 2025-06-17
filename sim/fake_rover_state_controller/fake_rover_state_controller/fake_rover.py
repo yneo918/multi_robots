@@ -5,10 +5,8 @@ import time
 import math
 
 from geometry_msgs.msg import Twist
-from sensor_msgs.msg import JointState
 from geometry_msgs.msg import Pose2D
 from std_msgs.msg import Int16
-from pioneer_interfaces.msg import PioneerInfo
 from rf_sim_interfaces.srv import GetRxPower
 
 from .my_ros_module import PubSubManager
@@ -47,10 +45,7 @@ class FakeRover(Node):
         t = self.get_parameter('t').value
 
         self.position = {'x': x, 'y': y, 'theta': t}
-        self.position_hw = {'x': 0.0, 'y': 0.0, 'theta': 0.0}
-        self.position_desired = {'x': 0.0, 'y': 0.0, 'theta': 0.0}
         self.vel = {'transform': 0.0, 'rotate': 0.0, 'alive': 0}
-        self.joint_names = ['w_to_x', 'x_to_y', 'y_to_t']
 
         self.rssi = None
 
@@ -61,11 +56,13 @@ class FakeRover(Node):
         timer_period = UPDATE_RATE
         self.pub_timer = self.create_timer(timer_period, self.timer_callback)
 
-        self.client = self.create_client(GetRxPower, 'rf_field')
-        self.rssi_timer = self.create_timer(timer_period, self.check_rssi)
+        self.client = self.create_client(GetRxPower, 'get_rx_power')
+        if self.client.wait_for_service(timeout_sec=1.0):
+            self.rssi_timer = self.create_timer(timer_period, self.check_rssi)
 
     def update_position(self):
         if self.vel['alive'] <= 0:
+            self.pubsub.publish(f'{self.prefix}/{self.robot_id}/pose2D', Pose2D(x=self.position['x'], y=self.position['y'], theta=self.position['theta']))
             return
         else:
             _theta_avg = self.position['theta'] - self.vel['rotate'] * UPDATE_RATE / 2
@@ -86,8 +83,9 @@ class FakeRover(Node):
     
     def publish_rssi(self):
         rssi_msg = Int16()
-        rssi_msg.data = self.rssi
+        rssi_msg.data = int(self.rssi)
         self.pubsub.publish(f'{self.prefix}/{self.robot_id}/rssi', rssi_msg)
+        self.get_logger().info(f'{self.prefix}/{self.robot_id}/rssi {rssi_msg.data}')
     
     def check_rssi(self):
         while not self.client.wait_for_service(timeout_sec=1.0):
@@ -116,11 +114,11 @@ class FakeRover(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    teleop_sub = FakeRover()
+    fake_rover = FakeRover()
 
-    rclpy.spin(teleop_sub)
+    rclpy.spin(fake_rover)
 
-    teleop_sub.destroy_node()
+    fake_rover.destroy_node()
     rclpy.shutdown()
 
 

@@ -37,8 +37,24 @@ def generate_launch_description():
         ),
         Node(
             package="fake_rover_state_controller",
-            executable="rover_sim",
-            name="rover_sim",
+            executable="fake_rover",
+            name="fake_rover",
             output="screen",
+            parameters=[{
+                'robot_id': "p1",
+                'x': 0.0,
+                'y': 0.0,
+                't': 0.0,
+                'prefix': '/sim'
+            }]
+        ),
+        Node(
+            package="fake_rover_state_controller",
+            executable="jointstate_publisher",
+            name="jointstate_publisher",
+            output="screen",
+            parameters=[{
+                'robot_id': "p1"
+            }]
         ),
     ])
