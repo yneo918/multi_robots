@@ -11,7 +11,7 @@ from .constants import (
     RoverMode, DEFAULT_QOS, MAX_VEL_TRANS, MAX_VEL_ROT,
     DEFAULT_ROBOT_ID_PREFIX
 )
-
+from adaptive_nav.ScalarGradient import ControlMode
 
 class Demux(Node):
     """Demultiplexer node for routing joystick commands to multiple rovers."""
@@ -23,6 +23,7 @@ class Demux(Node):
         self.block = ''
         self.select = 0
         self.mode = RoverMode.NEUTRAL
+        self.adaptive_nav_mode = ControlMode.MAX
         self.broadcast = False
         self.hardware = True
         self.joy_cmd: Optional[Twist] = None
@@ -94,6 +95,8 @@ class Demux(Node):
             Bool, '/joy/hardware', self.hw_sim_callback, 1)
         self.pubsub.create_subscription(
             String, '/modeC', self.mode_callback, 1)
+        self.pubsub.create_subscription(
+            String, '/modeA', self.adaptive_mode_callback, 1)
             
     def _setup_publishers(self) -> None:
         """Setup ROS publishers for all rovers."""
@@ -132,6 +135,17 @@ class Demux(Node):
         try:
             # Convert string to RoverMode enum
             for mode in RoverMode:
+                if mode.value == msg.data:
+                    self.mode = mode
+                    break
+        except Exception as e:
+            self.get_logger().error(f"Invalid mode received: {msg.data}")
+
+    def adaptive_mode_callback(self, msg: String) -> None:
+        """Handle adaptive mode changes."""
+        try:
+            # Convert string to ControlMode enum
+            for mode in ControlMode:
                 if mode.value == msg.data:
                     self.mode = mode
                     break

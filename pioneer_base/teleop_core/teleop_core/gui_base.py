@@ -10,6 +10,7 @@ from PyQt6.QtCore import QTimer
 from std_msgs.msg import Float32MultiArray
 
 from .constants import RoverMode
+from adaptive_nav.ScalarGradient import ControlMode
 
 
 class StatusWindowBase(QMainWindow):
@@ -58,6 +59,7 @@ class StatusWindowBase(QMainWindow):
         self.status_labels = {
             "selected_rover": QLabel("Selected Rover: N/A"),
             "mode": QLabel("Mode: N/A"),
+            "adaptive_nav_mode": QLabel("Adaptive Nav. Mode: N/A"),
             "hardware": QLabel("Hardware: N/A"),
             "cluster_x": QLabel(f"Cluster Xc: {self.node.cluster_x:.4f}"),
             "cluster_y": QLabel(f"Cluster Yc: {self.node.cluster_y:.4f}"),
@@ -93,7 +95,14 @@ class StatusWindowBase(QMainWindow):
         self.mode_combo.currentTextChanged.connect(self.update_mode)
         layout.addWidget(QLabel("Mode:"))
         layout.addWidget(self.mode_combo)
-        
+
+        # Adaptive Mode selection
+        self.adaptive_mode_combo = QComboBox()
+        self.adaptive_mode_combo.addItems([mode.value for mode in ControlMode])
+        self.adaptive_mode_combo.currentTextChanged.connect(self.update_adaptive_nav_mode)
+        layout.addWidget(QLabel("Adaptive Mode:"))
+        layout.addWidget(self.adaptive_mode_combo)
+
         # Hardware/Sim checkbox
         self.hw_checkbox = QCheckBox("Hardware Mode")
         self.hw_checkbox.setChecked(self.node.hw_sel)
@@ -124,6 +133,7 @@ class StatusWindowBase(QMainWindow):
             "angle_sel": self.node.get_parameter('angle_sel').value if hasattr(self.node, 'angle_sel_button') else "N/A",
             "hardware/sim": self.node.get_parameter('hardware_sim_sel').value,
             "broadcast": self.node.get_parameter('broadcast').value,
+            "adaptive_nav_mode": self.node.get_parameter('adaptive_nav_mode_sel').value
         }
         
         self.mapping_labels = {}
@@ -178,6 +188,7 @@ class StatusWindowBase(QMainWindow):
         """Update status display labels."""
         self.status_labels["selected_rover"].setText(f"Selected Rover: {self.node.select}")
         self.status_labels["mode"].setText(f"Mode: {self.node.rover_mode.value}")
+        self.status_labels["adaptive_nav_mode"].setText(f"Adaptive Nav. Mode: {self.node.adaptive_nav_mode.value}")
         hardware_str = "Hardware" if self.node.hw_sel else "Simulation"
         self.status_labels["hardware"].setText(f"Hardware: {hardware_str}")
         self.status_labels["cluster_x"].setText(f"Cluster Xc: {self.node.cluster_x:.4f}")
@@ -200,6 +211,13 @@ class StatusWindowBase(QMainWindow):
         for mode in RoverMode:
             if mode.value == text:
                 self.node.rover_mode = mode
+                break
+    
+    def update_adaptive_nav_mode(self, text: str) -> None:
+        """Update adaptive navigation mode."""
+        for mode in ControlMode:
+            if mode.value == text:
+                self.node.adaptive_nav_mode = mode
                 break
                 
     def update_hw(self, checked: bool) -> None:
