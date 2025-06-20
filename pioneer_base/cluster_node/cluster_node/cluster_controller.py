@@ -168,7 +168,7 @@ class ClusterNode(Node):
         self.mode = msg.data
         if self.mode == "JOY_M" or self.mode == "NEU_M":
             self.cluster_enable = False
-        elif self.mode == "NAV_M":
+        elif self.mode == "NAV_M" or self.mode == "ADPTV_NAV_M":
             self.cluster_enable = True
 
     def hw_sim_callback(self, msg):
@@ -222,7 +222,7 @@ class ClusterNode(Node):
     def joycmd_callback(self, msg):
         freq = 1 / (time.time() - self.joy_timestamp ) if self.joy_timestamp is not None else JOY_FREQ
         self.joy_timestamp = time.time()
-        if self.mode == "NAV_M":
+        if self.mode == "NAV_M" or self.mode == "ADPTV_NAV_M":
             v_x = -msg.linear.x
             v_y = msg.linear.y
             v_r = -msg.angular.z * 0.3
