@@ -7,7 +7,7 @@ import math
 import argparse
 import sys
 
-# カスタムサービス (事前にビルドしておく)
+# Custom service (must be built beforehand)
 from rf_sim_interfaces.srv import GetRxPower
 
 class RFAntennaPublisher(Node):
@@ -20,71 +20,71 @@ class RFAntennaPublisher(Node):
         super().__init__('rf_antenna_publisher')
 
         # ---------------------------
-        # (A) パラメータ設定
+        # (A) Parameter settings
         # ---------------------------
         self.antenna_type = antenna_type
         self.freq_hz = freq
         self.tx_power_dbm = tx_power_dbm
-        self.reflection_coef = 0.7  # 地面反射係数(線形)
-        self.num_points = 100000      # ランダム生成する点の数
-        self.max_radius = 50.0      # 最大伝搬距離
+        self.reflection_coef = 0.7  # Ground reflection coefficient (linear)
+        self.num_points = 100000      # Number of randomly generated points
+        self.max_radius = 50.0      # Maximum propagation distance
 
-        # アンテナ位置
+        # Antenna position
         self.real_antenna_pos = np.array([0.0, 0.0, 1.0])
-        self.image_antenna_pos = np.array([0.0, 0.0, -1.0])  # イメージアンテナ (反射)
+        self.image_antenna_pos = np.array([0.0, 0.0, -1.0])  # Image antenna (reflection)
 
-        # アンテナの向き (Yaw/Pitch) → メインローブ軸ベクトル self.antenna_dir
+        # Antenna orientation (Yaw/Pitch) → Main lobe axis vector self.antenna_dir
         self.antenna_dir = self.compute_antenna_direction(yaw_deg, pitch_deg)
 
         self.get_logger().info(f"[RFAntennaPublisher] type={antenna_type}, freq={freq}, tx={tx_power_dbm} dBm")
         self.get_logger().info(f"Yaw={yaw_deg} deg, Pitch={pitch_deg} deg, dir={self.antenna_dir}")
 
         # ---------------------------
-        # (B) ポイントクラウドパブリッシャ
+        # (B) Point cloud publisher
         # ---------------------------
         self.publisher_ = self.create_publisher(PointCloud2, 'rf_field', 10)
         self.timer = self.create_timer(0.5, self.publish_rf_field)
 
         # ---------------------------
-        # (C) サービスサーバ
+        # (C) Service server
         # ---------------------------
         self.srv_server = self.create_service(GetRxPower, 'get_rx_power', self.get_rx_power_callback)
 
     # ---------------------------
-    # (A1) アンテナ方向ベクトルを計算
+    # (A1) Calculate antenna direction vector
     # ---------------------------
     def compute_antenna_direction(self, yaw_deg, pitch_deg):
         """
-        z軸正方向(0,0,1) を初期向きとし、Yaw(Y軸回り), Pitch(Y軸回り)で回転して
-        アンテナのメインローブ軸となる単位ベクトルを返す。
-         - yaw_deg: Z軸回り (heading)
-         - pitch_deg: Y軸回り
-        好みで roll_deg(X軸回り) を追加してもよい。
+        Returns unit vector for antenna main lobe axis by rotating from initial direction
+        z-axis positive (0,0,1) with Yaw (around Z-axis) and Pitch (around Y-axis).
+         - yaw_deg: Around Z-axis (heading)
+         - pitch_deg: Around Y-axis
+        Roll (around X-axis) can be added if desired.
         """
         yaw_rad = math.radians(yaw_deg)
         pitch_rad = math.radians(pitch_deg)
 
-        # 初期ベクトル: z軸
+        # Initial vector: z-axis
         v = np.array([0.0, 0.0, 1.0], dtype=float)
 
-        # 回転行列 Rz(yaw)
+        # Rotation matrix Rz(yaw)
         Rz = np.array([
             [ math.cos(yaw_rad), -math.sin(yaw_rad), 0],
             [ math.sin(yaw_rad),  math.cos(yaw_rad), 0],
             [               0,                 0,    1],
         ], dtype=float)
 
-        # 回転行列 Ry(pitch)
+        # Rotation matrix Ry(pitch)
         Ry = np.array([
             [ math.cos(pitch_rad), 0, math.sin(pitch_rad)],
             [ 0,                   1,                  0],
             [-math.sin(pitch_rad), 0, math.cos(pitch_rad)],
         ], dtype=float)
 
-        # 合成回転 R = Rz * Ry (順序は用途に応じて調整)
+        # Combined rotation R = Rz * Ry (order adjusted according to application)
         R = Rz @ Ry
 
-        # 回転後ベクトル
+        # Rotated vector
         rotated = R @ v
         norm_val = np.linalg.norm(rotated)
         if norm_val < 1e-12:
@@ -92,33 +92,33 @@ class RFAntennaPublisher(Node):
         return rotated / norm_val
 
     # =======================================================
-    # (B) ポイントクラウドをパブリッシュ
+    # (B) Publish point cloud
     # =======================================================
     def publish_rf_field(self):
-        # 1) 実アンテナ(直接波)
+        # 1) Real antenna (direct wave)
         x1, y1, z1, p_db1 = self.generate_points(antenna_pos=self.real_antenna_pos, reflection_lin=1.0)
 
-        # 2) イメージアンテナ(反射波)
+        # 2) Image antenna (reflected wave)
         x2, y2, z2, p_db2 = self.generate_points(antenna_pos=self.image_antenna_pos, reflection_lin=self.reflection_coef)
 
-        # 合体
+        # Combine
         x_all = np.concatenate((x1, x2))
         y_all = np.concatenate((y1, y2))
         z_all = np.concatenate((z1, z2))
         p_db_all = np.concatenate((p_db1, p_db2))
 
-        # z<0 は削除 (地面下なので電波なし)
+        # Remove z<0 (no radio waves underground)
         mask = (z_all >= 0)
         x_all = x_all[mask]
         y_all = y_all[mask]
         z_all = z_all[mask]
         p_db_all = p_db_all[mask]
 
-        # dB(-100～0) → 0.0～1.0 に正規化
+        # Normalize dB(-100 to 0) → 0.0 to 1.0
         intensity = (p_db_all + 100.0) / 100.0
         intensity = np.clip(intensity, 0.0, 1.0)
 
-        # PointCloud2 作成
+        # Create PointCloud2
         msg = PointCloud2()
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.header.frame_id = "map"
@@ -126,7 +126,7 @@ class RFAntennaPublisher(Node):
         msg.width = len(x_all)
         msg.is_dense = False
         msg.is_bigendian = False
-        msg.point_step = 16  # (x, y, z, intensity) 4つのfloat32
+        msg.point_step = 16  # (x, y, z, intensity) four float32 values
         msg.row_step = msg.point_step * len(x_all)
 
         msg.fields = [
@@ -146,52 +146,52 @@ class RFAntennaPublisher(Node):
 
     def generate_points(self, antenna_pos, reflection_lin):
         """
-        ランダムに点 (r,theta,phi) を生成し、その点での受信電力[dB]を計算
-        (アンテナの向き self.antenna_dir や指向性を考慮)
+        Generate random points (r,theta,phi) and calculate received power [dB] at those points
+        (considering antenna orientation self.antenna_dir and directivity)
         """
-        # (1) ランダムに (r, theta, phi) 生成
+        # (1) Generate random (r, theta, phi)
         r     = np.random.uniform(0.5, self.max_radius, self.num_points)
         theta = np.random.uniform(0.0, np.pi, self.num_points)
         phi   = np.random.uniform(0.0, 2.0*np.pi, self.num_points)
 
-        # (2) 直交座標に変換 (アンテナ位置をオフセット)
+        # (2) Convert to Cartesian coordinates (offset by antenna position)
         x = r*np.sin(theta)*np.cos(phi) + antenna_pos[0]
         y = r*np.sin(theta)*np.sin(phi) + antenna_pos[1]
         z = r*np.cos(theta)             + antenna_pos[2]
 
-        # (3) 相対ベクトル rel
+        # (3) Relative vector rel
         rel_x = x - antenna_pos[0]
         rel_y = y - antenna_pos[1]
         rel_z = z - antenna_pos[2]
         rr = np.sqrt(rel_x**2 + rel_y**2 + rel_z**2)
         rr = np.clip(rr, 1e-12, None)
 
-        # (4) アンテナ向き self.antenna_dir との角度を計算
-        #     dot = rel・dir
+        # (4) Calculate angle with antenna direction self.antenna_dir
+        #     dot = rel·dir
         dot_vals = rel_x*self.antenna_dir[0] + rel_y*self.antenna_dir[1] + rel_z*self.antenna_dir[2]
-        cos_vals = dot_vals / (rr * np.linalg.norm(self.antenna_dir))  # dirは単位ベクトルなのでnorm=1だが、一応…
+        cos_vals = dot_vals / (rr * np.linalg.norm(self.antenna_dir))  # dir is unit vector so norm=1, but just in case...
         cos_vals = np.clip(cos_vals, -1.0, 1.0)
         theta_ant = np.arccos(cos_vals)  # 0 <= theta_ant <= π
 
-        # (5) 指向性ゲイン [dBi]
+        # (5) Directivity gain [dBi]
         gain_db = self.compute_gain_db(theta_ant)
 
-        # (6) 反射係数 (線形→dB)
+        # (6) Reflection coefficient (linear→dB)
         reflection_db = 10.0 * math.log10(reflection_lin)
 
-        # (7) フリースペース伝搬損失 FSPL(dB)
+        # (7) Free-space path loss FSPL(dB)
         fspl_db = 20.0*np.log10(rr) + 20.0*np.log10(self.freq_hz) - 147.55
 
-        # (8) 受信電力 p_rx_db
+        # (8) Received power p_rx_db
         p_rx_db = self.tx_power_dbm + gain_db + reflection_db - fspl_db
         return x, y, z, p_rx_db
 
     def compute_gain_db(self, theta):
         """
-        アンテナタイプによる指向性ゲイン [dBi] を返す
+        Returns directivity gain [dBi] based on antenna type
          - omnidirectional: 0 dBi
-         - directional: cos²(θ) (線形 → dB)
-         - yagi: ガウシアンビーム
+         - directional: cos²(θ) (linear → dB)
+         - yagi: Gaussian beam
         """
         if self.antenna_type == "omnidirectional":
             return np.zeros_like(theta)
@@ -202,7 +202,7 @@ class RFAntennaPublisher(Node):
             return g_db
 
         elif self.antenna_type == "yagi":
-            theta_0 = np.pi/6.0  # 30度
+            theta_0 = np.pi/6.0  # 30 degrees
             g_lin = np.exp(- (theta/theta_0)**2)
             g_db = 10.0*np.log10(np.clip(g_lin, 1e-12, None))
             return g_db
@@ -212,26 +212,26 @@ class RFAntennaPublisher(Node):
             return np.zeros_like(theta)
 
     # =======================================================
-    # (C) サービス (x,y,z) -> 受信電力[dB]
+    # (C) Service (x,y,z) -> received power [dB]
     # =======================================================
     def get_rx_power_callback(self, request, response):
         """
-        任意の座標 (x,y,z) での「直接波 + 反射波」を合成した受信電力 [dB] を計算して返す。
-        z<0 なら -999dB とする。
+        Calculate and return the combined received power [dB] of "direct wave + reflected wave" at arbitrary coordinates (x,y,z).
+        If z<0, return -999dB.
         """
         xq, yq, zq = request.x, request.y, request.z
 
-        # 地面下の場合は電波なし
+        # No radio waves underground
         if zq < 0:
             response.rx_db = -999.0
             return response
 
-        # (1) 直接波(実アンテナ)
+        # (1) Direct wave (real antenna)
         direct_db = self.compute_rx_power_db_for_point(xq, yq, zq, self.real_antenna_pos, 1.0)
-        # (2) 反射波(イメージアンテナ)
+        # (2) Reflected wave (image antenna)
         refl_db   = self.compute_rx_power_db_for_point(xq, yq, zq, self.image_antenna_pos, self.reflection_coef)
 
-        # (3) パワー合成 (線形加算 -> dB)
+        # (3) Power combination (linear addition -> dB)
         p_direct_lin = 10.0**(direct_db/10.0)
         p_refl_lin   = 10.0**(refl_db/10.0)
         p_total_lin  = p_direct_lin + p_refl_lin
@@ -242,7 +242,7 @@ class RFAntennaPublisher(Node):
 
     def compute_rx_power_db_for_point(self, x, y, z, antenna_pos, reflection_lin):
         """
-        1点 (x,y,z) での受信電力 [dB] を計算 (アンテナ指向性 + FSPL + reflection)
+        Calculate received power [dB] at one point (x,y,z) (antenna directivity + FSPL + reflection)
         """
         rel_x = x - antenna_pos[0]
         rel_y = y - antenna_pos[1]
@@ -251,13 +251,13 @@ class RFAntennaPublisher(Node):
         if rr < 1e-12:
             rr = 1e-12
 
-        # アンテナ向き self.antenna_dir との角度
+        # Angle with antenna direction self.antenna_dir
         dot_val = rel_x*self.antenna_dir[0] + rel_y*self.antenna_dir[1] + rel_z*self.antenna_dir[2]
         cos_val = dot_val / (rr * np.linalg.norm(self.antenna_dir))
         cos_val = max(-1.0, min(1.0, cos_val))
         theta = math.acos(cos_val)
 
-        # 指向性ゲイン [dBi]
+        # Directivity gain [dBi]
         gain_db = 0.0
         if self.antenna_type == "omnidirectional":
             gain_db = 0.0
@@ -269,13 +269,13 @@ class RFAntennaPublisher(Node):
             g_lin = math.exp(- (theta/theta_0)**2)
             gain_db = 10.0*math.log10(max(g_lin, 1e-12))
 
-        # 反射係数 (線形→dB)
+        # Reflection coefficient (linear→dB)
         reflection_db = 10.0 * math.log10(reflection_lin)
 
         # FSPL(dB)
         fspl_db = 20.0*math.log10(rr) + 20.0*math.log10(self.freq_hz) - 147.55
 
-        # 受信電力 [dB]
+        # Received power [dB]
         p_rx_db = self.tx_power_dbm + gain_db + reflection_db - fspl_db
         return p_rx_db
 
