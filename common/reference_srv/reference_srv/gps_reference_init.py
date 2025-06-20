@@ -25,7 +25,7 @@ class GPSReferenceRequest(Node):
             with open(REFERENCE_FILE_PATH, 'w') as f:
                 f.write(f'{lat},{lon}')
             self.get_logger().info('Reference GPS saved to file.')
-            sys.exit(0)  # 正常終了
+            sys.exit(0)  # Normal exit
         except Exception as e:
             self.get_logger().error(f'Fail to connect to the server: {e}')
             sys.exit(1)
