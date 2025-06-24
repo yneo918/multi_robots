@@ -80,7 +80,7 @@ class ScalarGradient:
                  mode: ControlMode = ControlMode.MAX
                  ):
         
-        self.num_robots: ClusterSize = num_robots.value
+        self.num_robots: ClusterSize = num_robots
 
         # Array of robot position vectors in [x, y, z] where x, y is position in the plane
         # and z is the "height" in the scalar field.
