@@ -41,6 +41,8 @@ class ANNode(Node):
         self.vel_timer = self.create_timer(timer_period, self.publish_velocities_manager)
         self.output = "actual" 
 
+        self.cli = self.create_client(GetRxPower, 'get_rx_power') #service to get the RSSI values
+        
     def set_pubsub(self):
         self.pubsub.create_subscription(Bool, '/joy/hardware', self.hw_sim_callback, 1)
         self.pubsub.create_publisher(Twist, '/joy/cmd_vel', 5) #publish to cluster
@@ -81,7 +83,23 @@ class ANNode(Node):
     def sim_rssi(self, msg, robot_id):
         self.sim_gradient.robot_positions[self.robot_id_list.index(robot_id)][2] = msg.data
 
+    def get_rx_power(self, output):
+        for robot_pos in self.gradient.robot_positions:
+            req = GetRxPower.Request(x=robot_pos[0], y=robot_pos[1], z=0.0) # Z is 0 since we are in plane
+        self.cli.call_async(self.req)
+        self.cli.wait_for_service(timeout_sec=1.0):
+        self.get_logger().info('service not available, waiting again...')
+        self.req = AddTwoInts.Request()
+
     def publish_velocities(self, output):
+        for robot_id in self.robot_id_list:
+            if output == 'actual':
+                self.gradient.calculate_gradient(robot_id)
+            elif output == 'sim':
+                
+                self.sim_gradient.calculate_gradient(robot_id)
+
+        
         _msg = Twist()
         velocity = self.gradient.get_velocity() if output == 'actual' else self.sim_gradient.get_velocity()
         if velocity is None or not len(velocity) == 2:
