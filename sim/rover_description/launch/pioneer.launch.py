@@ -52,14 +52,24 @@ def launch_setup(context, *args, **kwargs):
         ),
         Node(
             package='fake_rover_state_controller',
-            executable='rover_sim',
-            name='rover_sim',
+            executable='fake_rover',
+            name='fake_rover',
             output='screen',
             parameters=[{
                 'robot_id': robot_id,
                 'x': x,
                 'y': y,
                 't': t,
+                'prefix': '/sim'
+            }]
+        ),
+        Node(
+            package='fake_rover_state_controller',
+            executable='jointstate_publisher',
+            name='jointstate_publisher',
+            output='screen',
+            parameters=[{
+                'robot_id': robot_id
             }]
         ),
     ]

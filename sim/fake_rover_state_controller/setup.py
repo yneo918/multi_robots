@@ -21,7 +21,8 @@ setup(
     entry_points={
         'console_scripts': [
             'rover_sim = fake_rover_state_controller.rover_sim:main',
-            'fake_rover = fake_rover_state_controller.fake_rover:main'
+            'fake_rover = fake_rover_state_controller.fake_rover:main',
+            'jointstate_publisher = fake_rover_state_controller.jointstate_publisher:main'
         ],
     },
 )
