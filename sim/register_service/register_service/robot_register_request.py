@@ -34,10 +34,10 @@ class RobotRegisterRequest(Node):
             response = future.result()
             if response.success:
                 self.get_logger().info('Registered.')
-                sys.exit(0)  # 正常終了
+                sys.exit(0)  # Normal exit
             else:
                 self.get_logger().warn(f'Reject: {self.req.robot_id}')
-                sys.exit(1)  # エラー終了
+                sys.exit(1)  # Error exit
         except Exception as e:
             self.get_logger().error(f'Fail to connect to the register server: {e}')
             sys.exit(1)

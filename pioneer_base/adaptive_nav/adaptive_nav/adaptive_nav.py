@@ -3,7 +3,7 @@ import math
 import numpy as np
 import time
 from rclpy.node import Node
-from .ScalarGradient import ScalarGradient
+from .ScalarGradient import ScalarGradient, ControlMode
 from std_msgs.msg import Bool, Int16, String, Float32MultiArray
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import Pose2D
@@ -46,6 +46,8 @@ class ANNode(Node):
     def set_pubsub(self):
         self.pubsub.create_subscription(Bool, '/joy/hardware', self.hw_sim_callback, 1)
         self.pubsub.create_publisher(Twist, '/joy/cmd_vel', 5) #publish to cluster
+        self.pubsub.create_subscription(String, '/modeA', self.update_adaptive_mode, 1)
+
         for robot_id in self.robot_id_list:
             self.pubsub.create_subscription(
                 Pose2D,
@@ -90,6 +92,12 @@ class ANNode(Node):
         self.cli.wait_for_service(timeout_sec=1.0):
         self.get_logger().info('service not available, waiting again...')
         self.req = AddTwoInts.Request()
+        
+    def update_adaptive_mode(self, msg):
+        for mode in ControlMode:
+            if msg.data == mode.value:
+                self.gradient = mode
+                self.sim_gradient = mode
 
     def publish_velocities(self, output):
         for robot_id in self.robot_id_list:

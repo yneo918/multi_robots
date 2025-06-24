@@ -7,8 +7,8 @@ import threading
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 
-# PyQt6への変更点:
-# 列挙型が Qt.AlignmentFlag, Qt.ItemFlag, Qt.TextFlag に分割されている点などに注意
+# PyQt6 changes:
+# Note that enum types are divided into Qt.AlignmentFlag, Qt.ItemFlag, Qt.TextFlag, etc.
 from PyQt6.QtCore import (
     Qt, QSize, pyqtSignal, QObject
 )
@@ -25,22 +25,22 @@ from geometry_msgs.msg import Pose2D
 
 class CSVLogger:
     """
-    Pose2Dの書き込みをスレッドセーフに行うためのロガークラス。
+    Logger class for thread-safe writing of Pose2D data.
     """
     def __init__(self, filename):
         self.filename = filename
         self.lock = threading.Lock()
         
-        # CSVファイルを初期化（ヘッダ行を書き込む）: 
-        # 既存ファイルを上書きする想定の場合は "w" 、追記したい場合は "a" に切り替えてください
+        # Initialize CSV file (write header row):
+        # Use "w" to overwrite existing file, or "a" to append to existing file
         with open(self.filename, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             writer.writerow(["message_name", "timestamp", "x", "y", "theta"])
 
     def log_pose2d(self, topic_name, x, y, theta):
         """
-        Pose2DメッセージをCSVに追記する。
-        topic_name: トピック名 (ここでは"メッセージ名"として扱う)
+        Append Pose2D message to CSV.
+        topic_name: Topic name (treated as "message name" here)
         """
         timestamp = time.time()
         with self.lock:
@@ -51,16 +51,16 @@ class CSVLogger:
 
 class UpdateSignal(QObject):
     """
-    他スレッドからのGUI更新を受け付けるためのSignal。
-    topic_name(str), formatted_msg(str)を受け取ってスレッドセーフにGUI更新へ渡す。
+    Signal for accepting GUI updates from other threads.
+    Receives topic_name(str), formatted_msg(str) and passes them thread-safely to GUI update.
     """
     new_message = pyqtSignal(str, str)
 
 
 class ROS2Pose2DMonitor(Node):
     """
-    geometry_msgs/msg/Pose2D 型のトピックのみを購読し、
-    受信内容をCSVに保存するNode。
+    Node that subscribes only to geometry_msgs/msg/Pose2D type topics
+    and saves received content to CSV.
     """
     def __init__(self, update_signal, csv_logger):
         super().__init__('ros2_pose2d_monitor')
@@ -68,7 +68,7 @@ class ROS2Pose2DMonitor(Node):
         self.csv_logger = csv_logger
         self.subscribers = {}
 
-        # 定期的にトピック一覧を更新して、Pose2D だけサブスクライブ
+        # Periodically update topic list and subscribe only to Pose2D topics
         self.create_timer(1.0, self.update_topics)
 
     def update_topics(self):
@@ -86,7 +86,7 @@ class ROS2Pose2DMonitor(Node):
         )
 
         def callback(msg):
-            # 受信したPose2DメッセージをJSON形式に整形してGUIへ渡す
+            # Format received Pose2D message to JSON and pass to GUI
             msg_dict = {
                 "x": msg.x,
                 "y": msg.y,
@@ -95,7 +95,7 @@ class ROS2Pose2DMonitor(Node):
             formatted_msg = json.dumps(msg_dict, indent=2)
             self.update_signal.new_message.emit(topic_name, formatted_msg)
 
-            # CSVに書き込み
+            # Write to CSV
             self.csv_logger.log_pose2d(topic_name, msg.x, msg.y, msg.theta)
 
         sub = self.create_subscription(
@@ -106,8 +106,8 @@ class ROS2Pose2DMonitor(Node):
 
 class ROS2GUI(QWidget):
     """
-    Pose2D型トピックを監視して、そのメッセージをGUIに表示するとともに
-    CSVへ保存する簡易アプリケーション(PyQt6対応)。
+    Simple application (PyQt6 compatible) that monitors Pose2D type topics,
+    displays their messages in GUI, and saves them to CSV.
     """
     def __init__(self):
         super().__init__()
@@ -130,10 +130,10 @@ class ROS2GUI(QWidget):
         self.update_signal = UpdateSignal()
         self.update_signal.new_message.connect(self.update_table)
 
-        # CSVロガーの初期化
+        # Initialize CSV logger
         self.csv_logger = CSVLogger("pose2d_log.csv")
 
-        # ROSノード起動
+        # Start ROS node
         self.node = ROS2Pose2DMonitor(self.update_signal, self.csv_logger)
         self.ros_thread_stop_event = Event()
         self.ros_thread = Thread(target=self.run_ros_spin, daemon=True)
@@ -143,7 +143,7 @@ class ROS2GUI(QWidget):
         rclpy.spin(self.node)
 
     def closeEvent(self, event):
-        # ウィンドウを閉じる際にROSを停止
+        # Stop ROS when closing window
         self.node.destroy_node()
         rclpy.shutdown()
         self.ros_thread_stop_event.set()
@@ -154,14 +154,14 @@ class ROS2GUI(QWidget):
         self.table.setItem(row, 0, QTableWidgetItem(topic))
 
         item = QTableWidgetItem(msg)
-        # PyQt6 では alignment などのenumは AlignmentFlag を使用
+        # In PyQt6, enums like alignment use AlignmentFlag
         item.setTextAlignment(Qt.AlignmentFlag.AlignTop)
 
-        # アイテムを選択のみ可能、編集不可にする
+        # Make item selectable only, not editable
         flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
         item.setFlags(flags)
 
-        # QFontMetrics: boundingRect のシグネチャ用に TextFlag 参照を使う
+        # QFontMetrics: use TextFlag reference for boundingRect signature
         font_metrics = QFontMetrics(self.table.font())
         text_rect = font_metrics.boundingRect(
             0, 0,

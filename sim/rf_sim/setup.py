@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'rf_field = rf_sim.rf_field:main',
+            'simple_3d_surface = rf_sim.simple_3d_surface:main'
         ],
     },
 )
