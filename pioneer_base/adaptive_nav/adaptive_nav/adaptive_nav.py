@@ -43,7 +43,7 @@ class ANNode(Node):
         timer_period = 1 / FREQ  # set frequency to publish velocity commands
         self.vel_timer = self.create_timer(timer_period, self.publish_velocities_manager)
         self.output = "actual" 
-        self.z = 1.0  
+        self.z = -10.0  
 
         self.cli = self.create_client(GetRxPower, 'get_rx_power') #service to get the RSSI values
         while not self.cli.wait_for_service(timeout_sec=1.0):
@@ -89,25 +89,7 @@ class ANNode(Node):
 
     def sim_rssi(self, msg, robot_id):
         self.sim_gradient.robot_positions[self.robot_id_list.index(robot_id)][2] = msg.data
-
-    # Check if the service response is ready and update the robot positions with the received RSSI values
-    def check_response(self):
-        for i in range(len(self.sim_gradient.robot_positions)):
-            if self.future[i] is not None and self.future[i].done():
-                try:
-                    response = self.future.result()
-                    self.sim_gradient.robot_positions[i][2] = response.rx_power_db
-                    self.get_logger().info(f'Received rx power: {self.rx_power_db} dB')
-                except Exception as e:
-                    self.get_logger().error(f'Service call failed: {e}')
-                self.future = None  # Reset for next request
-
-    # Service request to get the RSSI values for the simulation robots
-    def get_rx_power(self):
-        for i in range(len(self.sim_gradient.robot_positions)):
-            if self.future[i] is None or self.future[i].done():
-                req = GetRxPower.Request(x=self.sim_gradient.robot_positions[i][0], y=self.sim_gradient.robot_positions[i][1], z= 0.0) # Z is 0 since we are in plane
-                self.future[i] = self.cli.call_async(req)
+        self.get_logger().info(f"Simulated RSSI for {robot_id}: {msg.data}")
 
     def update_adaptive_mode(self, msg):
         for mode in ControlMode:
@@ -119,13 +101,6 @@ class ANNode(Node):
                     self.get_logger().info(f"Adaptive mode changed from {temp.value} to {mode.value}")
 
     def publish_velocities(self, output):
-        for robot_id in self.robot_id_list:
-            if output == 'actual':
-               self.get_logger().info(f"Calculating actual gradient for robot {robot_id}")
-            elif output == 'sim':
-                self.get_rx_power()
-                self.check_response()
-
         _msg = Twist()
         velocity = self.gradient.get_velocity() if output == 'actual' else self.sim_gradient.get_velocity()
        # if velocity is None:

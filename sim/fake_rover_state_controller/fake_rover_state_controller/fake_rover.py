@@ -85,7 +85,7 @@ class FakeRover(Node):
         rssi_msg = Int16()
         rssi_msg.data = int(self.rssi)
         self.pubsub.publish(f'{self.prefix}/{self.robot_id}/rssi', rssi_msg)
-        self.get_logger().info(f'{self.prefix}/{self.robot_id}/rssi {rssi_msg.data}')
+        #self.get_logger().info(f'{self.prefix}/{self.robot_id}/rssi {rssi_msg.data}')
     
     def check_rssi(self):
         while not self.client.wait_for_service(timeout_sec=1.0):
@@ -102,7 +102,7 @@ class FakeRover(Node):
         try:
             response = future.result()
             self.rssi = response.rx_db
-            self.get_logger().info(f"Received RSSI: {self.rssi}")
+            #self.get_logger().info(f"Received RSSI: {self.rssi}")
         except Exception as e:
             self.get_logger().error(f"Service call failed: {e}")
 
