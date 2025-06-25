@@ -17,7 +17,7 @@ JOY_FREQ = FREQ
 KP_GAIN = 1.0
 KV_GAIN = 1.0
 EPSILON = 0.1
-MAX_VEL = 0.5
+MAX_VEL = 1.0
 ROVER_DOF = 3  # (x, y, theta)
 
 class RobotStatus:
@@ -57,11 +57,11 @@ class Controller(Node):
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('robot_id_list', ["p1", "p2", "p3", "p4", "p5", "p6"]),
-                ('cluster_size', 5),
-                ('cluster_params', [3.0, 3.0, 3.0, 3.0, 0.0, 0.0, 0.0]), 
-                ('adaptive_navigation', False),
-                ('cluster_type', "TriangleatLeader"),
+                ('robot_id_list', ["p2", "p3", "p4"]),
+                ('cluster_size', 3),
+                ('cluster_params', [8.0, 8.0, 1.047]), 
+                ('adaptive_navigation', True),
+                ('cluster_type', "TriangleatCentroid"),
             ]
         )
         
@@ -314,7 +314,7 @@ class Controller(Node):
             self.c_des[2, 0] += v_r / freq
             self.c_des[2, 0] = self._wrap_to_pi(self.c_des[2, 0])
             
-            self.get_logger().info(f"Cluster desired position: {self.c_des.flatten()}")
+            #self.get_logger().info(f"Cluster desired position: {self.c_des.flatten()}")
 
     def _cluster_params_callback(self, msg: Float32MultiArray):
         """Update cluster formation parameters"""
@@ -336,7 +336,7 @@ class Controller(Node):
 
     def _cluster_desired_callback(self, msg: Float32MultiArray):
         """Update desired cluster position"""
-        self.get_logger().info(f"Received cluster desired position: {msg.data}")
+        #self.get_logger().info(f"Received cluster desired position: {msg.data}")
         
         if self.actual_configured or self.sim_configured:
             data_length = len(msg.data)
@@ -490,8 +490,8 @@ class Controller(Node):
             robot_positions = np.array(positions, dtype=np.float64).reshape((self.cluster_size * ROVER_DOF, 1))
             robot_velocities = np.array(velocities, dtype=np.float64).reshape((self.cluster_size * ROVER_DOF, 1))
             
-            self.get_logger().info(f"Robot positions shape: {robot_positions.shape}")
-            self.get_logger().info(f"Robot velocities shape: {robot_velocities.shape}")
+            #self.get_logger().info(f"Robot positions shape: {robot_positions.shape}")
+            #self.get_logger().info(f"Robot velocities shape: {robot_velocities.shape}")
             
             return robot_positions, robot_velocities
             
@@ -549,10 +549,10 @@ class Controller(Node):
         desired_angle = math.atan2(x_vel, y_vel)
         angular_error = self._wrap_to_pi(desired_angle - current_theta)
         
-        self.get_logger().info(
-            f"x_vel={x_vel:.3f}, y_vel={y_vel:.3f}, "
-            f"current_theta={current_theta:.3f}, desired_angle={desired_angle:.3f}"
-        )
+        #self.get_logger().info(
+        #    f"x_vel={x_vel:.3f}, y_vel={y_vel:.3f}, "
+        #    f"current_theta={current_theta:.3f}, desired_angle={desired_angle:.3f}"
+        #)
         
         # Determine forward/backward motion based on angular error
         if abs(angular_error) < math.pi / 2:
@@ -600,8 +600,8 @@ class Controller(Node):
                 self.get_logger().warn("get_desired_position returned None")
                 return
                 
-            self.get_logger().info(f"Desired positions shape: {desired_positions.shape}")
-            self.get_logger().info(f"Desired positions: {desired_positions.flatten()}")
+            #self.get_logger().info(f"Desired positions shape: {desired_positions.shape}")
+            #self.get_logger().info(f"Desired positions: {desired_positions.flatten()}")
             
             for i, robot_id in enumerate(cluster_robots):
                 pose_msg = Pose2D()
@@ -616,10 +616,10 @@ class Controller(Node):
                     pose_msg.y = float(desired_positions[start_idx + 1])
                     pose_msg.theta = float(desired_positions[start_idx + 2])
                 
-                self.get_logger().info(
-                    f"Publishing desired pose for {robot_id}: "
-                    f"x={pose_msg.x:.3f}, y={pose_msg.y:.3f}, theta={pose_msg.theta:.3f}"
-                )
+                #self.get_logger().info(
+                #    f"Publishing desired pose for {robot_id}: "
+                #    f"x={pose_msg.x:.3f}, y={pose_msg.y:.3f}, theta={pose_msg.theta:.3f}"
+                #)
                 
                 self.pubsub.publish(f"/{robot_id}/desiredPose2D", pose_msg)
                 

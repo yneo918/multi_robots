@@ -38,19 +38,22 @@ class ANNode(Node):
         self.gradient = ScalarGradient(num_robots=len(self.robot_id_list))
         self.sim_gradient = ScalarGradient(num_robots=len(self.robot_id_list))
 
+        #self.gradient.mode = ControlMode.MAX
+        #self.sim_gradient.mode = ControlMode.MAX
+
         self.future = [None] * len(self.robot_id_list)  # Store futures for each robot
 
         timer_period = 1 / FREQ  # set frequency to publish velocity commands
         self.vel_timer = self.create_timer(timer_period, self.publish_velocities_manager)
         self.output = "actual" 
-        self.z = -10.0  
+        self.z = -30.0  
 
         self.cli = self.create_client(GetRxPower, 'get_rx_power') #service to get the RSSI values
         while not self.cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('Waiting for service get_rx_power...')
     def set_pubsub(self):
         self.pubsub.create_subscription(Bool, '/joy/hardware', self.hw_sim_callback, 1)
-        self.pubsub.create_publisher(Twist, '/joy/cmd_vel', 5) #publish to cluster
+        self.pubsub.create_publisher(Twist, '/ctrl/cmd_vel', 5) #publish to cluster
         self.pubsub.create_subscription(String, '/modeA', self.update_adaptive_mode, 1)
 
         for robot_id in self.robot_id_list:
@@ -102,7 +105,7 @@ class ANNode(Node):
 
     def publish_velocities(self, output):
         _msg = Twist()
-        velocity = self.gradient.get_velocity() if output == 'actual' else self.sim_gradient.get_velocity()
+        velocity = self.gradient.get_velocity(zdes=self.z) if output == 'actual' else self.sim_gradient.get_velocity(zdes=self.z)
        # if velocity is None:
         #    self.get_logger().warn("No velocity calculated, skipping publish.")
          #   return
@@ -110,7 +113,7 @@ class ANNode(Node):
          #   self.get_logger().info(f"Publishing velocity: {velocity} for output: {output}")
         _msg.linear.x = math.cos(velocity)
         _msg.linear.y = math.sin(velocity)
-        self.pubsub.publish('/joy/cmd_vel', _msg)
+        self.pubsub.publish('/ctrl/cmd_vel', _msg)
 
     def publish_velocities_manager(self):
         if self.output == "actual":
@@ -129,7 +132,7 @@ class ANNode(Node):
         else:
             self.output = "actual"
         if temp != self.output:
-            self.get_logger().info(f"Changed output to {self.output}")
+            self.get_logger().info(f"Changed output to {self.output} for adaptive navigation.")
     
 def main(args=None):
     rclpy.init(args=args)
