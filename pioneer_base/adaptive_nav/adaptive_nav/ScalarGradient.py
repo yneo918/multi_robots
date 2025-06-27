@@ -44,11 +44,11 @@ class ControlMode(Enum):
     """
 
     MAX = ("maximum", math.pi/2, 0.0)
-    MIN = ("minimum", math.pi*3/2, 0.0)
-    CONTOUR_CW = ("contour following clockwise", -math.pi/2, 0.0)
-    CONTOUR_CCW = ("contour following counter-clockwise", math.pi/2, 0.0)
-    CROSSTRACK_CW = ("crosstrack_cw_controller", -math.pi/2, math.pi) 
-    CROSSTRACK_CCW = ("crosstrack_ccw_controller", math.pi/2, math.pi)
+    MIN = ("minimum", -math.pi/2, 0.0)
+    CONTOUR_CW = ("contour following clockwise", 0.0, 0.0)
+    CONTOUR_CCW = ("contour following counter-clockwise", math.pi, 0.0)
+    CROSSTRACK_CW = ("crosstrack_cw_controller", math.pi, math.pi) 
+    CROSSTRACK_CCW = ("crosstrack_ccw_controller", 0.0, math.pi)
 
     def __init__(self, value: str, bearing_offset: float, gain: Optional[float]):
         self._value_ = value
@@ -152,15 +152,12 @@ class ScalarGradient:
             0, -1, or 1
         """
         if self.mode not in (
-        ControlMode.CONTOUR_CW,
-        ControlMode.CONTOUR_CCW,
         ControlMode.CROSSTRACK_CW,
         ControlMode.CROSSTRACK_CCW,
         ):
             return 0
 
         return 1 if self.mode in (
-            ControlMode.CONTOUR_CW,
             ControlMode.CROSSTRACK_CW,
         ) else -1
 

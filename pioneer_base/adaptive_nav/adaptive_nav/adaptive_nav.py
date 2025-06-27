@@ -48,7 +48,7 @@ class ANNode(Node):
         self.output = "actual" 
         self.enable = False
 
-        self.z = -45.0  # Desired RSSI value for the robot to navigate towards, in dBm
+        self.z = -65.0  # Desired RSSI value for the robot to navigate towards, in dBm
 
         self.cli = self.create_client(GetRxPower, 'get_rx_power') #service to get the RSSI values
         while not self.cli.wait_for_service(timeout_sec=1.0):
