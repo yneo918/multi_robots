@@ -529,10 +529,10 @@ class Controller(Node):
             try:
                 topic = f"{msg_prefix}/{robot_id}/cmd_vel"
                 self.pubsub.publish(topic, vel_msg)
-                self.get_logger().info(
-                    f"Robot {i} velocity[{topic}]: "
-                    f"linear={vel_msg.linear.x:.3f}, angular={vel_msg.angular.z:.3f}"
-                )
+                #self.get_logger().info(
+                #    f"Robot {i} velocity[{topic}]: "
+                #    f"linear={vel_msg.linear.x:.3f}, angular={vel_msg.angular.z:.3f}"
+                #)
             except Exception as e:
                 self.get_logger().error(f"Failed to publish velocity command: {e}")
 

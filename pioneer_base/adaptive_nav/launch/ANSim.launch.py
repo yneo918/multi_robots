@@ -42,10 +42,10 @@ def generate_launch_description():
             package="rf_sim",
             executable="rf_field",
         ),
-        #Node(
-         #   package="virtual_joy",
-          #  executable="virtual_joy",
-        #),
+        Node(
+            package="virtual_joy",
+            executable="virtual_joy",
+        ),
         Node(
         package="teleop_core",
         executable="cmd_demux",

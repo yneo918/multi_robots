@@ -46,7 +46,9 @@ class ANNode(Node):
         timer_period = 1 / FREQ  # set frequency to publish velocity commands
         self.vel_timer = self.create_timer(timer_period, self.publish_velocities_manager)
         self.output = "actual" 
-        self.z = -30.0  
+        self.enable = False
+
+        self.z = -45.0  # Desired RSSI value for the robot to navigate towards, in dBm
 
         self.cli = self.create_client(GetRxPower, 'get_rx_power') #service to get the RSSI values
         while not self.cli.wait_for_service(timeout_sec=1.0):
@@ -55,7 +57,7 @@ class ANNode(Node):
         self.pubsub.create_subscription(Bool, '/joy/hardware', self.hw_sim_callback, 1)
         self.pubsub.create_publisher(Twist, '/ctrl/cmd_vel', 5) #publish to cluster
         self.pubsub.create_subscription(String, '/modeA', self.update_adaptive_mode, 1)
-
+        self.pubsub.create_subscription(Bool, '/joy/enable', self._enable_callback, 5)
         for robot_id in self.robot_id_list:
             self.pubsub.create_subscription(
                 Pose2D,
@@ -68,12 +70,12 @@ class ANNode(Node):
                 lambda msg, robot_id=robot_id: self.sim_pose(msg, robot_id),
                 5)
             self.pubsub.create_subscription(
-                Int16,
+                Float64,
                 f'/{robot_id}/rssi',
                 lambda msg, robot_id=robot_id: self.actual_rssi(msg, robot_id),
                 5)
             self.pubsub.create_subscription(
-                Int16,
+                Float64,
                 f'/sim/{robot_id}/rssi',
                 lambda msg, robot_id=robot_id: self.sim_rssi(msg, robot_id),
                 5)
@@ -88,11 +90,18 @@ class ANNode(Node):
         self.sim_gradient.robot_positions[self.robot_id_list.index(robot_id)][0:2] = robot_pose
 
     def actual_rssi(self, msg, robot_id):
-        self.gradient.robot_positions[self.robot_id_list.index(robot_id)][2] = msg.data
+        self.gradient.robot_positions[self.robot_id_list.index(robot_id)][2] = self.normalize_db(msg.data)  # Normalize the RSSI value
+        #self.gradient.robot_positions[self.robot_id_list.index(robot_id)][2] = 10 ** (msg.data/ 10) # Convert dBm to power to linearize
 
-    def sim_rssi(self, msg, robot_id):
-        self.sim_gradient.robot_positions[self.robot_id_list.index(robot_id)][2] = msg.data
-        self.get_logger().info(f"Simulated RSSI for {robot_id}: {msg.data}")
+    def sim_rssi(self, msg, robot_id): 
+        self.sim_gradient.robot_positions[self.robot_id_list.index(robot_id)][2] = self.normalize_db(msg.data)  # Normalize the RSSI value
+        #self.sim_gradient.robot_positions[self.robot_id_list.index(robot_id)][2] = 10 ** (msg.data/ 10) # Convert dBm to power to linearize
+        #self.get_logger().info(f"Simulated RSSI for {robot_id}: {self.normalize_db(msg.data)}") #values range from -33 to -70
+
+    def normalize_db(self, db_val, db_min=-70.0, db_max=-33.0):
+        db_val_clipped = max(min(db_val, db_max), db_min)  # Clamp to expected range
+        norm = (db_val_clipped - db_min) / (db_max - db_min)
+        return norm
 
     def update_adaptive_mode(self, msg):
         for mode in ControlMode:
@@ -105,25 +114,26 @@ class ANNode(Node):
 
     def publish_velocities(self, output):
         _msg = Twist()
-        velocity = self.gradient.get_velocity(zdes=self.z) if output == 'actual' else self.sim_gradient.get_velocity(zdes=self.z)
-       # if velocity is None:
-        #    self.get_logger().warn("No velocity calculated, skipping publish.")
-         #   return
-        #else:
-         #   self.get_logger().info(f"Publishing velocity: {velocity} for output: {output}")
-        _msg.linear.x = math.cos(velocity)
-        _msg.linear.y = math.sin(velocity)
+        bearing = self.gradient.get_velocity(zdes=self.normalize_db(self.z)) if output == 'actual' else self.sim_gradient.get_velocity(zdes=self.normalize_db(self.z))
+        if bearing is None:
+            self.get_logger().warn("No bearing calculated, skipping publish.")
+            return
+        else:
+            self.get_logger().info(f"Publishing bearing: {bearing} for output: {output}")
+        _msg.linear.x = math.cos(bearing) * 0.5
+        _msg.linear.y = math.sin(bearing) * 0.5
         self.pubsub.publish('/ctrl/cmd_vel', _msg)
 
     def publish_velocities_manager(self):
-        if self.output == "actual":
-            self.publish_velocities("actual")
-        elif self.output == "sim":
-            for i in range(len(self.sim_gradient.robot_positions)):
-                if self.sim_gradient.robot_positions[i][0] == None or self.sim_gradient.robot_positions[i][1] == None:
-                    self.get_logger().warn(f"Robot {self.robot_id_list[i]} has no position data, skipping simulation velocity calculation.")
-                    return
-            self.publish_velocities("sim")
+        if self.enable:
+            if self.output == "actual":
+                self.publish_velocities("actual")
+            elif self.output == "sim":
+                for i in range(len(self.sim_gradient.robot_positions)):
+                    if self.sim_gradient.robot_positions[i][0] == None or self.sim_gradient.robot_positions[i][1] == None:
+                        self.get_logger().warn(f"Robot {self.robot_id_list[i]} has no position data, skipping simulation velocity calculation.")
+                        return
+                self.publish_velocities("sim")
         
     def hw_sim_callback(self, msg):
         temp = self.output
@@ -133,7 +143,9 @@ class ANNode(Node):
             self.output = "actual"
         if temp != self.output:
             self.get_logger().info(f"Changed output to {self.output} for adaptive navigation.")
-    
+    def _enable_callback(self, msg: Bool):
+        """Handle enable/disable commands"""
+        self.enable = msg.data
 def main(args=None):
     rclpy.init(args=args)
     node = ANNode()

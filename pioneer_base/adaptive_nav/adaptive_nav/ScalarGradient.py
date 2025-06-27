@@ -43,12 +43,12 @@ class ControlMode(Enum):
         (e.g. RSSI strength) corresponds to a angle adjustment of 10 radians.
     """
 
-    MAX = ("maximum", 0.0, 0.0)
-    MIN = ("minimum", math.pi, 0.0)
+    MAX = ("maximum", math.pi/2, 0.0)
+    MIN = ("minimum", math.pi*3/2, 0.0)
     CONTOUR_CW = ("contour following clockwise", -math.pi/2, 0.0)
     CONTOUR_CCW = ("contour following counter-clockwise", math.pi/2, 0.0)
-    CROSSTRACK_CW = ("crosstrack_cw_controller", -math.pi/2, 1.0) 
-    CROSSTRACK_CCW = ("crosstrack_ccw_controller", math.pi/2, 1.0)
+    CROSSTRACK_CW = ("crosstrack_cw_controller", -math.pi/2, math.pi) 
+    CROSSTRACK_CCW = ("crosstrack_ccw_controller", math.pi/2, math.pi)
 
     def __init__(self, value: str, bearing_offset: float, gain: Optional[float]):
         self._value_ = value
@@ -221,11 +221,11 @@ class ScalarGradient:
             # Calculate the bearing angle
             # NOTE (1): PI/2 - ATAN2() returns the complement angle
             # NOTE (2): grad[0], grad[1], is the x- and y- component
-            current_bearing: float = math.pi/2 - math.atan2(grad[1], grad[0])
+            current_bearing: float = math.pi/2 - math.atan2(grad[1], grad[0]) #values range from 2pi to 0 
 
             # Update internal param
             self.curr_bearing = current_bearing
-
+            
                 
             # Based on the current mode, change the angle by a fixed offset
             # For Example: the offset for maximum/increasing gradient is 0,
@@ -238,7 +238,7 @@ class ScalarGradient:
             # cross-track control
             desired_bearing: float = current_bearing + self.mode.bearing_offset \
             + self.rotation * (
-                self.sign(self.z_err) * min(self.mode.gain * abs(self.z_err), math.pi/2)
+                self.sign(self.z_err) * min(self.mode.gain * abs(self.z_err), math.pi/2) - math.pi/2 #believe - math.pi/2 was missing
             )
 
             # Update internal param
