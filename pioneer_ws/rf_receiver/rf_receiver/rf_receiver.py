@@ -51,7 +51,8 @@ class RFReceiver(Node):
         # Note: We use the __name__ macro and
         # parse for the file name to use as
         # the node name
-        super().__init__(__name__.split('.')[-1])
+        robot_id = os.getenv("ROBOT_ID", "pX")
+        super().__init__(f'{robot_id}_rf_receiver')
     
         # Get namespace
         self.ns: HardwareNamespace = HardwareNamespace(self.get_namespace())
@@ -61,6 +62,7 @@ class RFReceiver(Node):
         self.declare_parameters(
             namespace='',
             parameters=[
+                (RFReceiver.ROBOT_ID, robot_id),
                 (RFReceiver.DEVICE_PATHS, ["/dev/ttyUSB1", "/dev/ttyUSB0", "/dev/ttyUSB2"]),
                 (RFReceiver.BAUDRATE, 115200),
                 (RFReceiver.UPDATE_RATE, 2.0),
@@ -74,10 +76,10 @@ class RFReceiver(Node):
         # Create PubSubManager
         self.pubsub: PubSubManager = PubSubManager(self)
 
-
         # Set attributes from parameters
         # Note: Parameters are at the node level
         #       while attributes are the class level
+        self.robot_id = self.get(RFReceiver.ROBOT_ID)
         self.device_paths: List[str] = self.get(RFReceiver.DEVICE_PATHS)
         self.baudrate: str = self.get(RFReceiver.BAUDRATE)
         self.update_rate: float = self.get(RFReceiver.UPDATE_RATE)
@@ -146,7 +148,7 @@ class RFReceiver(Node):
         # Create publish topic of message
         self.pubsub.create_publisher(
             Int16,
-            self.get(RFReceiver.PUB_TOPIC),
+            f'/{self.robot_id}/{self.get(RFReceiver.PUB_TOPIC)}',
             10
         )
 
@@ -236,7 +238,7 @@ class RFReceiver(Node):
             
             # Publish data
             self.pubsub.publish(
-                self.get(RFReceiver.PUB_TOPIC),
+                f'/{self.robot_id}/{self.get(RFReceiver.PUB_TOPIC)}',
                 Int16(data=self.rssi)
             )
 
@@ -262,7 +264,7 @@ class RFReceiver(Node):
 
         # Publish fake data
         self.pubsub.publish(
-            self.get(RFReceiver.PUB_TOPIC),
+            f'/{self.robot_id}/{self.get(RFReceiver.PUB_TOPIC)}',
             Int16(data=self.rssi)
         )
 
