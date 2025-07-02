@@ -54,6 +54,10 @@ locomotion:
   # Motor direction configuration - adjust these values based on electrical connections
   left_motor_sign: 1   # -1 or 1 to invert left motor direction
   right_motor_sign: 1   # -1 or 1 to invert right motor direction
+  # Battery monitoring configuration
+  battery_monitoring:
+    enabled: true  # Enable battery voltage monitoring
+    update_interval: 1.0  # seconds - Battery voltage check interval
 
 # Pose converter configuration
 pose_converter:
