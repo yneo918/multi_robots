@@ -34,6 +34,7 @@ class RFReceiver(Node):
     Implemented using in ROS2 and Digi-Xbee library.
     """
 
+    ROBOT_ID: str = 'robot_id'
     DEVICE_PATHS: str = 'device_paths'
     BAUDRATE: str = 'baudrate'
     UPDATE_RATE: str = 'update_rate'
@@ -63,7 +64,7 @@ class RFReceiver(Node):
             namespace='',
             parameters=[
                 (RFReceiver.ROBOT_ID, robot_id),
-                (RFReceiver.DEVICE_PATHS, ["/dev/ttyUSB1", "/dev/ttyUSB0", "/dev/ttyUSB2"]),
+                (RFReceiver.DEVICE_PATHS, ["/dev/ttyUSB2", "/dev/ttyUSB1", "/dev/ttyUSB0"]),
                 (RFReceiver.BAUDRATE, 115200),
                 (RFReceiver.UPDATE_RATE, 2.0),
                 (RFReceiver.TIMER_PERIOD, 2.0),
@@ -118,10 +119,11 @@ class RFReceiver(Node):
 
             # Initialize XBee Device
             self.device: XBeeDevice = self.xbee_init()
-
-            # Open the device
-            self.device.open()
-            if DEBUG: print("Device is opening...")
+            while self.device == None:
+                self.info("No devices avaliable")
+                sleep(5.0)
+                self.device: XBeeDevice = self.xbee_init()
+            self.info("successfully opened xbee")
 
             # Add attribute for callback
             if func is None:
@@ -165,12 +167,13 @@ class RFReceiver(Node):
         for device_path in self.device_paths:
 
             self.info(f'Trying RF Receiver device: {device_path}')
-                    
+            self.connection_attempts = 0                    
+            device = 0 #temp variable
             for attempt in range(self.retry_attempts):
                 try:
                     self.connection_attempts += 1
                     self.info(f"Attempting RF Receiver connection" \
-                                                 f"to {device_path} " \
+                                                 f" to {device_path} " \
                             f"({attempt + 1}/{self.retry_attempts})")
                     
                     # Check if device exists
@@ -180,9 +183,10 @@ class RFReceiver(Node):
                     
                     # Try to connect to xbee device
                     device = XBeeDevice(device_path, self.baudrate)
-                    
+
                     # If successful device connection return
                     if device:
+                        device.open()
                         return device
             
 
@@ -197,7 +201,8 @@ class RFReceiver(Node):
 
                          # Exponential backoff
                         sleep(self.retry_delay * (attempt + 1)) 
-        
+            if device:
+                device.close
         # If no device has been connected, return None
         return None
     
