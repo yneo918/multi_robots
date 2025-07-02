@@ -6,8 +6,47 @@
 set -e  # Exit on any error
 
 CONFIG_FILE="config/system_config.yaml"
+CONFIG_DEFAULT="config/system_config.yaml.default"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Function to check and create config file from template
+setup_config_file() {
+    if [ ! -f "$CONFIG_FILE" ]; then
+        if [ -f "$CONFIG_DEFAULT" ]; then
+            echo "=========================================="
+            echo "FIRST TIME SETUP DETECTED"
+            echo "=========================================="
+            echo "Creating local configuration from template..."
+            cp "$CONFIG_DEFAULT" "$CONFIG_FILE"
+            echo "Created $CONFIG_FILE from template."
+            echo ""
+            echo "IMPORTANT: Please edit $CONFIG_FILE with your robot-specific settings:"
+            echo "  - robot.id: Your robot ID (p1, p2, p3, etc.)"
+            echo "  - user.name: Your username"
+            echo "  - user.home_dir: Your home directory"
+            echo ""
+            echo "After editing, run this script again to continue setup."
+            echo "=========================================="
+            exit 0
+        else
+            echo "Error: Neither $CONFIG_FILE nor $CONFIG_DEFAULT found!"
+            echo "Cannot proceed without configuration."
+            exit 1
+        fi
+    else
+        # Check if template is newer than local config
+        if [ -f "$CONFIG_DEFAULT" ] && [ "$CONFIG_DEFAULT" -nt "$CONFIG_FILE" ]; then
+            echo "WARNING: Template configuration is newer than your local configuration."
+            echo "New features may have been added. Consider reviewing:"
+            echo "  diff $CONFIG_FILE $CONFIG_DEFAULT"
+            echo ""
+        fi
+    fi
+}
+
+# Set up configuration file
+setup_config_file
 
 # Function to read YAML values
 read_yaml() {
