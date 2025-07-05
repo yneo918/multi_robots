@@ -9,7 +9,7 @@ from sensor_msgs.msg import NavSatFix
 from geometry_msgs.msg import Twist, Pose2D
 from pioneer_interfaces.msg import ClusterInfo
 from teleop_core.my_ros_module import PubSubManager
-from cluster_node.Cluster import Cluster, ClusterConfig
+from cluster_node.Cluster import Cluster, ClusterConfig, ControlMode
 
 # Constants
 FREQ = 10
@@ -62,6 +62,7 @@ class Controller(Node):
                 ('cluster_params', [8.0, 8.0, 1.047]), 
                 ('adaptive_navigation', True),
                 ('cluster_type', "TriangleatCentroid"),
+                ('control_mode', "VEL"),
             ]
         )
         
@@ -131,7 +132,8 @@ class Controller(Node):
                 num_robots=self.cluster_size,
                 cluster_type=self.cluster_type,
                 kp_gains=[KP_GAIN] * (self.cluster_size * ROVER_DOF),
-                kv_gains=[KV_GAIN] * (self.cluster_size * ROVER_DOF)
+                kv_gains=[KV_GAIN] * (self.cluster_size * ROVER_DOF),
+                control_mode=self.get_parameter('control_mode').value
             )
             self.get_logger().info(f"Cluster setup with type: {self.cluster_type}")
         except Exception as e:
@@ -246,7 +248,7 @@ class Controller(Node):
     def _mode_callback(self, msg: String):
         """Handle mode change commands"""
         self.mode = msg.data
-        self.cluster_enable = self.mode == "NAV_M"
+        self.cluster_enable = (self.mode == "NAV_M" or self.mode == "ADPTV_NAV_M")
         if self.mode in ["JOY_M", "NEU_M"]:
             self.cluster_enable = False
 
@@ -302,19 +304,32 @@ class Controller(Node):
         freq = (1.0 / (current_time - self.joy_timestamp) 
                 if self.joy_timestamp is not None else JOY_FREQ)
         self.joy_timestamp = current_time
-        
-        if self.mode == "NAV_M":
-            # Update desired cluster position based on joystick input
-            v_x = -msg.linear.x
-            v_y = msg.linear.y
-            v_r = -msg.angular.z * 0.3
-            
-            self.c_des[0, 0] += v_x / freq
-            self.c_des[1, 0] += v_y / freq
-            self.c_des[2, 0] += v_r / freq
-            self.c_des[2, 0] = self._wrap_to_pi(self.c_des[2, 0])
-            
-            #self.get_logger().info(f"Cluster desired position: {self.c_des.flatten()}")
+
+        if self.mode == "NAV_M" or self.mode == "ADPTV_NAV_M": #only update cluster if in navigation mode
+            try:
+                if self.cluster.control_mode == ControlMode.POSITION:
+                        # Update desired cluster position based on joystick input
+                        v_x = -msg.linear.x
+                        v_y = msg.linear.y
+                        v_r = -msg.angular.z * 0.3
+                        
+                        self.c_des[0, 0] += v_x / freq
+                        self.c_des[1, 0] += v_y / freq
+                        self.c_des[2, 0] += v_r / freq
+                        self.c_des[2, 0] = self._wrap_to_pi(self.c_des[2, 0])
+                        
+                        #self.get_logger().info(f"Cluster desired position: {self.c_des.flatten()}")
+                elif self.cluster.control_mode == ControlMode.VELOCITY:
+                    if self.output == "actual":
+                        self.cdot_des[0, 0] = -msg.linear.x
+                        self.cdot_des[1, 0] = msg.linear.y
+                        self.cdot_des[2, 0] = self._wrap_to_pi(-msg.angular.z * 0.3)
+                    elif self.output == "sim":
+                        self.sim_cdot_des[0, 0] = -msg.linear.x
+                        self.sim_cdot_des[1, 0] = msg.linear.y
+                        self.sim_cdot_des[2, 0] = self._wrap_to_pi(-msg.angular.z * 0.3)
+            except Exception as e:
+                self.get_logger().error(f"Error in _cmd_callback: {e}")
 
     def _cluster_params_callback(self, msg: Float32MultiArray):
         """Update cluster formation parameters"""

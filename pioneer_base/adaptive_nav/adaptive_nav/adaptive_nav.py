@@ -57,7 +57,7 @@ class ANNode(Node):
         self.pubsub.create_subscription(Bool, '/joy/hardware', self.hw_sim_callback, 1)
         self.pubsub.create_publisher(Twist, '/ctrl/cmd_vel', 5) #publish to cluster
         self.pubsub.create_subscription(String, '/modeA', self.update_adaptive_mode, 1)
-        self.pubsub.create_subscription(Bool, '/joy/enable', self._enable_callback, 5)
+        self.pubsub.create_subscription(String, '/modeC', self._mode_callback, 1)
         for robot_id in self.robot_id_list:
             self.pubsub.create_subscription(
                 Pose2D,
@@ -112,6 +112,12 @@ class ANNode(Node):
                 if temp != mode:
                     self.get_logger().info(f"Adaptive mode changed from {temp.value} to {mode.value}")
 
+    def _mode_callback(self, msg: String):
+        if msg.data == "ADPTV_NAV_M":
+            self.enable = True
+        else:
+            self.enable = False
+
     def publish_velocities(self, output):
         _msg = Twist()
         bearing = self.gradient.get_velocity(zdes=self.normalize_db(self.z)) if output == 'actual' else self.sim_gradient.get_velocity(zdes=self.normalize_db(self.z))
@@ -143,9 +149,7 @@ class ANNode(Node):
             self.output = "actual"
         if temp != self.output:
             self.get_logger().info(f"Changed output to {self.output} for adaptive navigation.")
-    def _enable_callback(self, msg: Bool):
-        """Handle enable/disable commands"""
-        self.enable = msg.data
+
 def main(args=None):
     rclpy.init(args=args)
     node = ANNode()

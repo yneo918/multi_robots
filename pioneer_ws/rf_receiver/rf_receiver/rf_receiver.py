@@ -53,7 +53,7 @@ class RFReceiver(Node):
         # parse for the file name to use as
         # the node name
         robot_id = os.getenv("ROBOT_ID", "pX")
-        super().__init__(f'{robot_id}_rf_receiver')
+        super().__init__(f"{robot_id}_{name.split('.')[-1]}")
     
         # Get namespace
         self.ns: HardwareNamespace = HardwareNamespace(self.get_namespace())
