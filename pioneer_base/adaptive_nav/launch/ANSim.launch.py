@@ -20,7 +20,7 @@ def generate_launch_description():
     package_name = 'cluster_node'
     pkg_share = get_package_share_directory(package_name)
     # Construct paths to the parameter files relative to the launch file directory
-    cluster_file = os.path.join(pkg_share, 'config', '3cluster.yaml')
+    cluster_file = os.path.join(pkg_share, 'config', '3cluster_velocity.yaml')
     display_launch_file = os.path.join(get_package_share_directory('rover_description'), 'launch', 'display.launch.py')
     pioneer_launch_file = os.path.join(get_package_share_directory('sim_launch'), 'pioneer_with_desired.launch.py')
     # Check if parameter files exist
