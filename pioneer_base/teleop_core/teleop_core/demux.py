@@ -95,8 +95,6 @@ class Demux(Node):
             Bool, '/joy/hardware', self.hw_sim_callback, 1)
         self.pubsub.create_subscription(
             String, '/modeC', self.mode_callback, 1)
-        self.pubsub.create_subscription(
-            String, '/modeA', self.adaptive_mode_callback, 1)
             
     def _setup_publishers(self) -> None:
         """Setup ROS publishers for all rovers."""
@@ -141,17 +139,6 @@ class Demux(Node):
         except Exception as e:
             self.get_logger().error(f"Invalid mode received: {msg.data}")
 
-    def adaptive_mode_callback(self, msg: String) -> None:
-        """Handle adaptive mode changes."""
-        try:
-            # Convert string to ControlMode enum
-            for mode in ControlMode:
-                if mode.value == msg.data:
-                    self.mode = mode
-                    break
-        except Exception as e:
-            self.get_logger().error(f"Invalid mode received: {msg.data}")
-            
     def joy_en_callback(self, msg: Bool) -> None:
         """Handle joystick enable signal and route commands."""
         try:
@@ -174,7 +161,7 @@ class Demux(Node):
                 if self.mode == RoverMode.NEUTRAL:
                     # Neutral mode - no movement
                     self.pubsub.publish(topic, empty_twist)
-                elif self.mode == RoverMode.NAVIGATION:
+                elif self.mode == RoverMode.NAVIGATION or self.mode == RoverMode.ADAPTIVE_NAVIGATION:
                     # Navigation mode - controller handles movement
                     pass
                 elif self.broadcast:

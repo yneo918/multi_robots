@@ -62,7 +62,7 @@ class Controller(Node):
                 ('cluster_params', [8.0, 8.0, 1.047]), 
                 ('adaptive_navigation', True),
                 ('cluster_type', "TriangleatCentroid"),
-                ('control_mode', "VEL"),
+                ('control_mode', "POS"),
             ]
         )
         
@@ -78,6 +78,7 @@ class Controller(Node):
         self.cluster_params = self.get_parameter('cluster_params').value
         self.cluster_size = self.get_parameter('cluster_size').value
         self.cluster_type = self.get_parameter('cluster_type').value
+        self.control_mode = self.get_parameter('control_mode').value
         expected_param_length = self.cluster_size * ROVER_DOF - self.cluster_size - ROVER_DOF
         if len(self.cluster_params) != expected_param_length:
             self.get_logger().error(
@@ -133,7 +134,7 @@ class Controller(Node):
                 cluster_type=self.cluster_type,
                 kp_gains=[KP_GAIN] * (self.cluster_size * ROVER_DOF),
                 kv_gains=[KV_GAIN] * (self.cluster_size * ROVER_DOF),
-                control_mode=self.get_parameter('control_mode').value
+                control_mode=self.control_mode
             )
             self.get_logger().info(f"Cluster setup with type: {self.cluster_type}")
         except Exception as e:
