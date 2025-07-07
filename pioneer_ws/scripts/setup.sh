@@ -76,6 +76,15 @@ MONITOR_SENSOR_TIMEOUT=$(read_yaml "$CONFIG_FILE" "monitoring.sensor_timeout")
 MONITOR_MAX_RETRIES=$(read_yaml "$CONFIG_FILE" "monitoring.max_node_retries")
 MONITOR_RESTART_DELAY=$(read_yaml "$CONFIG_FILE" "monitoring.node_restart_delay")
 
+# Read RF Receiver configuration
+RF_DEVICE_PATHS=$(read_yaml "$CONFIG_FILE" "rf_receiver.device_paths")
+RF_BAUDRATE=$(read_yaml "$CONFIG_FILE" "rf_receiver.baudrate")
+RF_UPDATE_RATE=$(read_yaml "$CONFIG_FILE" "rf_receiver.update_rate")
+RF_TIMER_PERIOD=$(read_yaml "$CONFIG_FILE" "rf_receiver.timer_period")
+RF_RETRY_DELAY=$(read_yaml "$CONFIG_FILE" "rf_receiver.retry_delay")
+RF_RETRY_ATTEMPTS=$(read_yaml "$CONFIG_FILE" "rf_receiver.retry_attempts")
+RF_PUB_TOPIC=$(read_yaml "$CONFIG_FILE" "rf_receiver.pub_topic")
+
 if [ -z "$ROBOT_ID" ] || [ -z "$USER_NAME" ] || [ -z "$HOME_DIR" ]; then
     echo "Error: Failed to read required configuration values"
     echo "Please check your configuration file: $CONFIG_FILE"
@@ -161,6 +170,20 @@ ${ROBOT_ID}_cmd_roboteq:
     baudrate: $LOCOMOTION_BAUDRATE
 EOF
 
+# RF Receiver parameters
+cat > "$WORK_DIR/pioneer_ws/config/nodes/rf_receiver_params.yaml" << EOF
+rf_receiver:
+  ros__parameters:
+    robot_id: "$ROBOT_ID"
+    device_paths: $RF_DEVICE_PATHS
+    baudrate: $RF_BAUDRATE
+    update_rate: $RF_UPDATE_RATE
+    timer_period: $RF_TIMER_PERIOD
+    retry_delay: $RF_RETRY_DELAY
+    retry_attempts: $RF_RETRY_ATTEMPTS
+    pub_topic: "$RF_PUB_TOPIC"
+EOF
+
 # Export environment variables for current session
 export ROBOT_ID="$ROBOT_ID"
 export IMU_OFFSET="$IMU_HEADING_OFFSET"
@@ -235,13 +258,22 @@ def generate_launch_description():
         parameters=[os.path.join(config_dir, "converter_params.yaml")],
         output='screen'
     )
+
+    # RF Receiver node
+    rf_receiver_node = Node(
+        package="rf_receiver",
+        executable="rf_receiver",
+        parameters=[os.path.join(config_dir, "rf_receiver_params.yaml")],
+        output='screen'
+    )
     
     ld.add_action(gps_node)
     ld.add_action(imu_node)
     ld.add_action(movebase_node)
     ld.add_action(cmd_roboteq_node)
     ld.add_action(converter_node)
-    
+    ld.add_action(rf_receiver_node)
+
     return ld
 EOF
 

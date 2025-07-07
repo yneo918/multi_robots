@@ -11,7 +11,7 @@ from .constants import (
     RoverMode, DEFAULT_QOS, MAX_VEL_TRANS, MAX_VEL_ROT,
     DEFAULT_ROBOT_ID_PREFIX
 )
-
+from adaptive_nav.ScalarGradient import ControlMode
 
 class Demux(Node):
     """Demultiplexer node for routing joystick commands to multiple rovers."""
@@ -23,6 +23,7 @@ class Demux(Node):
         self.block = ''
         self.select = 0
         self.mode = RoverMode.NEUTRAL
+        self.adaptive_nav_mode = ControlMode.MAX
         self.broadcast = False
         self.hardware = True
         self.joy_cmd: Optional[Twist] = None
@@ -137,7 +138,7 @@ class Demux(Node):
                     break
         except Exception as e:
             self.get_logger().error(f"Invalid mode received: {msg.data}")
-            
+
     def joy_en_callback(self, msg: Bool) -> None:
         """Handle joystick enable signal and route commands."""
         try:
@@ -160,7 +161,7 @@ class Demux(Node):
                 if self.mode == RoverMode.NEUTRAL:
                     # Neutral mode - no movement
                     self.pubsub.publish(topic, empty_twist)
-                elif self.mode == RoverMode.NAVIGATION:
+                elif self.mode == RoverMode.NAVIGATION or self.mode == RoverMode.ADAPTIVE_NAVIGATION:
                     # Navigation mode - controller handles movement
                     pass
                 elif self.broadcast:

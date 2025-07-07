@@ -41,9 +41,35 @@ def generate_launch_description():
             name="fake_rover",
             output="screen",
             parameters=[{
-                'robot_id': "p1",
+                'robot_id': "p2",
                 'x': 0.0,
                 'y': 0.0,
+                't': 0.0,
+                'prefix': '/sim'
+            }]
+        ),
+        Node(
+            package="fake_rover_state_controller",
+            executable="fake_rover",
+            name="fake_rover",
+            output="screen",
+            parameters=[{
+                'robot_id': "p3",
+                'x': 5.0,
+                'y': 5.0,
+                't': 0.0,
+                'prefix': '/sim'
+            }]
+        ),
+        Node(
+            package="fake_rover_state_controller",
+            executable="fake_rover",
+            name="fake_rover",
+            output="screen",
+            parameters=[{
+                'robot_id': "p4",
+                'x': 5.0,
+                'y': -5.0,
                 't': 0.0,
                 'prefix': '/sim'
             }]
@@ -54,7 +80,7 @@ def generate_launch_description():
             name="jointstate_publisher",
             output="screen",
             parameters=[{
-                'robot_id': "p1"
+                'robot_id': "p2, p3, p4",
             }]
         ),
     ])

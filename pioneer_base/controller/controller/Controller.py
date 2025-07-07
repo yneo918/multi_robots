@@ -9,7 +9,7 @@ from sensor_msgs.msg import NavSatFix
 from geometry_msgs.msg import Twist, Pose2D
 from pioneer_interfaces.msg import ClusterInfo
 from teleop_core.my_ros_module import PubSubManager
-from cluster_node.Cluster import Cluster, ClusterConfig
+from cluster_node.Cluster import Cluster, ClusterConfig, ControlMode
 
 # Constants
 FREQ = 10
@@ -17,7 +17,7 @@ JOY_FREQ = FREQ
 KP_GAIN = 1.0
 KV_GAIN = 1.0
 EPSILON = 0.1
-MAX_VEL = 0.5
+MAX_VEL = 1.0
 ROVER_DOF = 3  # (x, y, theta)
 
 class RobotStatus:
@@ -57,11 +57,12 @@ class Controller(Node):
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('robot_id_list', ["p1", "p2", "p3", "p4", "p5", "p6"]),
-                ('cluster_size', 5),
-                ('cluster_params', [3.0, 3.0, 3.0, 3.0, 0.0, 0.0, 0.0]), 
-                ('adaptive_navigation', False),
-                ('cluster_type', "TriangleatLeader"),
+                ('robot_id_list', ["p2", "p3", "p4"]),
+                ('cluster_size', 3),
+                ('cluster_params', [8.0, 8.0, 1.047]), 
+                ('adaptive_navigation', True),
+                ('cluster_type', "TriangleatCentroid"),
+                ('control_mode', "POS"),
             ]
         )
         
@@ -77,6 +78,7 @@ class Controller(Node):
         self.cluster_params = self.get_parameter('cluster_params').value
         self.cluster_size = self.get_parameter('cluster_size').value
         self.cluster_type = self.get_parameter('cluster_type').value
+        self.control_mode = self.get_parameter('control_mode').value
         expected_param_length = self.cluster_size * ROVER_DOF - self.cluster_size - ROVER_DOF
         if len(self.cluster_params) != expected_param_length:
             self.get_logger().error(
@@ -131,7 +133,8 @@ class Controller(Node):
                 num_robots=self.cluster_size,
                 cluster_type=self.cluster_type,
                 kp_gains=[KP_GAIN] * (self.cluster_size * ROVER_DOF),
-                kv_gains=[KV_GAIN] * (self.cluster_size * ROVER_DOF)
+                kv_gains=[KV_GAIN] * (self.cluster_size * ROVER_DOF),
+                control_mode=self.control_mode
             )
             self.get_logger().info(f"Cluster setup with type: {self.cluster_type}")
         except Exception as e:
@@ -246,7 +249,7 @@ class Controller(Node):
     def _mode_callback(self, msg: String):
         """Handle mode change commands"""
         self.mode = msg.data
-        self.cluster_enable = self.mode == "NAV_M"
+        self.cluster_enable = (self.mode == "NAV_M" or self.mode == "ADPTV_NAV_M")
         if self.mode in ["JOY_M", "NEU_M"]:
             self.cluster_enable = False
 
@@ -302,19 +305,32 @@ class Controller(Node):
         freq = (1.0 / (current_time - self.joy_timestamp) 
                 if self.joy_timestamp is not None else JOY_FREQ)
         self.joy_timestamp = current_time
-        
-        if self.mode == "NAV_M":
-            # Update desired cluster position based on joystick input
-            v_x = -msg.linear.x
-            v_y = msg.linear.y
-            v_r = -msg.angular.z * 0.3
-            
-            self.c_des[0, 0] += v_x / freq
-            self.c_des[1, 0] += v_y / freq
-            self.c_des[2, 0] += v_r / freq
-            self.c_des[2, 0] = self._wrap_to_pi(self.c_des[2, 0])
-            
-            self.get_logger().info(f"Cluster desired position: {self.c_des.flatten()}")
+
+        if self.mode == "NAV_M" or self.mode == "ADPTV_NAV_M": #only update cluster if in navigation mode
+            try:
+                if self.cluster.control_mode == ControlMode.POSITION:
+                        # Update desired cluster position based on joystick input
+                        v_x = -msg.linear.x
+                        v_y = msg.linear.y
+                        v_r = -msg.angular.z * 0.3
+                        
+                        self.c_des[0, 0] += v_x / freq
+                        self.c_des[1, 0] += v_y / freq
+                        self.c_des[2, 0] += v_r / freq
+                        self.c_des[2, 0] = self._wrap_to_pi(self.c_des[2, 0])
+                        
+                        #self.get_logger().info(f"Cluster desired position: {self.c_des.flatten()}")
+                elif self.cluster.control_mode == ControlMode.VELOCITY:
+                    if self.output == "actual":
+                        self.cdot_des[0, 0] = -msg.linear.x
+                        self.cdot_des[1, 0] = msg.linear.y
+                        self.cdot_des[2, 0] = self._wrap_to_pi(-msg.angular.z * 0.3)
+                    elif self.output == "sim":
+                        self.sim_cdot_des[0, 0] = -msg.linear.x
+                        self.sim_cdot_des[1, 0] = msg.linear.y
+                        self.sim_cdot_des[2, 0] = self._wrap_to_pi(-msg.angular.z * 0.3)
+            except Exception as e:
+                self.get_logger().error(f"Error in _cmd_callback: {e}")
 
     def _cluster_params_callback(self, msg: Float32MultiArray):
         """Update cluster formation parameters"""
@@ -336,7 +352,7 @@ class Controller(Node):
 
     def _cluster_desired_callback(self, msg: Float32MultiArray):
         """Update desired cluster position"""
-        self.get_logger().info(f"Received cluster desired position: {msg.data}")
+        #self.get_logger().info(f"Received cluster desired position: {msg.data}")
         
         if self.actual_configured or self.sim_configured:
             data_length = len(msg.data)
@@ -490,8 +506,8 @@ class Controller(Node):
             robot_positions = np.array(positions, dtype=np.float64).reshape((self.cluster_size * ROVER_DOF, 1))
             robot_velocities = np.array(velocities, dtype=np.float64).reshape((self.cluster_size * ROVER_DOF, 1))
             
-            self.get_logger().info(f"Robot positions shape: {robot_positions.shape}")
-            self.get_logger().info(f"Robot velocities shape: {robot_velocities.shape}")
+            #self.get_logger().info(f"Robot positions shape: {robot_positions.shape}")
+            #self.get_logger().info(f"Robot velocities shape: {robot_velocities.shape}")
             
             return robot_positions, robot_velocities
             
@@ -529,10 +545,10 @@ class Controller(Node):
             try:
                 topic = f"{msg_prefix}/{robot_id}/cmd_vel"
                 self.pubsub.publish(topic, vel_msg)
-                self.get_logger().info(
-                    f"Robot {i} velocity[{topic}]: "
-                    f"linear={vel_msg.linear.x:.3f}, angular={vel_msg.angular.z:.3f}"
-                )
+                #self.get_logger().info(
+                #    f"Robot {i} velocity[{topic}]: "
+                #    f"linear={vel_msg.linear.x:.3f}, angular={vel_msg.angular.z:.3f}"
+                #)
             except Exception as e:
                 self.get_logger().error(f"Failed to publish velocity command: {e}")
 
@@ -549,10 +565,10 @@ class Controller(Node):
         desired_angle = math.atan2(x_vel, y_vel)
         angular_error = self._wrap_to_pi(desired_angle - current_theta)
         
-        self.get_logger().info(
-            f"x_vel={x_vel:.3f}, y_vel={y_vel:.3f}, "
-            f"current_theta={current_theta:.3f}, desired_angle={desired_angle:.3f}"
-        )
+        #self.get_logger().info(
+        #    f"x_vel={x_vel:.3f}, y_vel={y_vel:.3f}, "
+        #    f"current_theta={current_theta:.3f}, desired_angle={desired_angle:.3f}"
+        #)
         
         # Determine forward/backward motion based on angular error
         if abs(angular_error) < math.pi / 2:
@@ -600,8 +616,8 @@ class Controller(Node):
                 self.get_logger().warn("get_desired_position returned None")
                 return
                 
-            self.get_logger().info(f"Desired positions shape: {desired_positions.shape}")
-            self.get_logger().info(f"Desired positions: {desired_positions.flatten()}")
+            #self.get_logger().info(f"Desired positions shape: {desired_positions.shape}")
+            #self.get_logger().info(f"Desired positions: {desired_positions.flatten()}")
             
             for i, robot_id in enumerate(cluster_robots):
                 pose_msg = Pose2D()
@@ -616,10 +632,10 @@ class Controller(Node):
                     pose_msg.y = float(desired_positions[start_idx + 1])
                     pose_msg.theta = float(desired_positions[start_idx + 2])
                 
-                self.get_logger().info(
-                    f"Publishing desired pose for {robot_id}: "
-                    f"x={pose_msg.x:.3f}, y={pose_msg.y:.3f}, theta={pose_msg.theta:.3f}"
-                )
+                #self.get_logger().info(
+                #    f"Publishing desired pose for {robot_id}: "
+                #    f"x={pose_msg.x:.3f}, y={pose_msg.y:.3f}, theta={pose_msg.theta:.3f}"
+                #)
                 
                 self.pubsub.publish(f"/{robot_id}/desiredPose2D", pose_msg)
                 

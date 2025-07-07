@@ -8,6 +8,7 @@ class RoverMode(Enum):
     NEUTRAL = "NEU_M"
     JOYSTICK = "JOY_M"
     NAVIGATION = "NAV_M"
+    ADAPTIVE_NAVIGATION = "ADPTV_NAV_M"
 
 
 # Velocity limits

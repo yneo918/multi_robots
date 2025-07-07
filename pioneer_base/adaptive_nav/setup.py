@@ -1,6 +1,7 @@
 from setuptools import find_packages, setup
-
-package_name = 'rf_sim'
+import os
+from glob import glob
+package_name = 'adaptive_nav'
 
 setup(
     name=package_name,
@@ -10,18 +11,18 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        (os.path.join('share', package_name), glob('launch/*.launch.py')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='neo',
-    maintainer_email='yneo918@gmail.com',
+    maintainer='ricky',
+    maintainer_email='rschober@scu.edu',
     description='TODO: Package description',
     license='Apache-2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'rf_field = rf_sim.rf_field:main',
-            'simple_3d_surface = rf_sim.simple_3d_surface:main'
+            'adaptive_nav = adaptive_nav.adaptive_nav:main'
         ],
     },
 )

@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'rf_sim'
+package_name = 'adaptive_navigation_utilities'
 
 setup(
     name=package_name,
@@ -13,15 +13,13 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='neo',
-    maintainer_email='yneo918@gmail.com',
-    description='TODO: Package description',
+    maintainer='christian',
+    maintainer_email='cpedrigal@scu.edu',
+    description='Utility functions and classes used across packages in repo',
     license='Apache-2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'rf_field = rf_sim.rf_field:main',
-            'simple_3d_surface = rf_sim.simple_3d_surface:main'
         ],
     },
 )

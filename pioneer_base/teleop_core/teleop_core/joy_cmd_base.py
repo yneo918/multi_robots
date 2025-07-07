@@ -12,6 +12,7 @@ from .constants import (
     RoverMode, DEFAULT_QOS, LOW_QOS,
     DEFAULT_N_ROVER, MAX_VEL_TRANS, MAX_VEL_ROT
 )
+from adaptive_nav.ScalarGradient import ControlMode
 
 
 class JoyCmdBase(JoyBase):
@@ -24,6 +25,7 @@ class JoyCmdBase(JoyBase):
         self.select: int = 1
         self.hw_sel: bool = True
         self.rover_mode: RoverMode = RoverMode.NEUTRAL
+        self.adaptive_nav_mode: ControlMode = ControlMode.MAX
         self.selected_angle: int = 0
         self.n_rover: int = DEFAULT_N_ROVER
         
@@ -62,6 +64,7 @@ class JoyCmdBase(JoyBase):
                 ('angle_sel', "A"),
                 ('hardware_sim_sel', "B"),
                 ('broadcast', "RB"),
+                ('adaptive_nav_mode_sel', "RS"),
                 ('n_rover', DEFAULT_N_ROVER),
             ]
         )
@@ -76,6 +79,7 @@ class JoyCmdBase(JoyBase):
         self.angle_sel_button = self.button_dict.get(self.get_parameter('angle_sel').value)
         self.hw_sel_button = self.button_dict.get(self.get_parameter('hardware_sim_sel').value)
         self.broadcast_button = self.button_dict.get(self.get_parameter('broadcast').value)
+        self.adaptive_nav_mode_sel_button = self.button_dict.get(self.get_parameter('adaptive_nav_mode_sel').value)
         self.n_rover = self.get_parameter('n_rover').value
         
         self._log_parameters()
@@ -93,6 +97,7 @@ class JoyCmdBase(JoyBase):
             f"angle_sel: {self.get_parameter('angle_sel').value}\n"
             f"hardware_sel: {self.get_parameter('hardware_sim_sel').value}\n"
             f"broadcast: {self.get_parameter('broadcast').value}\n"
+            f"adaptive_nav_mode_sel: {self.get_parameter('adaptive_nav_mode_sel').value}\n"
             f"n_rover: {self.n_rover}"
         )
         
@@ -104,6 +109,7 @@ class JoyCmdBase(JoyBase):
         self.pubsub.create_publisher(Bool, '/joy/hardware', LOW_QOS)
         self.pubsub.create_publisher(Int16, '/select_rover', LOW_QOS)
         self.pubsub.create_publisher(String, '/modeC', LOW_QOS)
+        self.pubsub.create_publisher(String, '/modeA', LOW_QOS)
         
     def _setup_subscriptions(self) -> None:
         """Setup ROS subscriptions. Override in derived classes for additional subscriptions."""
@@ -141,6 +147,14 @@ class JoyCmdBase(JoyBase):
             current_idx = modes.index(self.rover_mode)
             self.rover_mode = modes[(current_idx + 1) % len(modes)]
             self.get_logger().info(f"Operation Mode: {self.rover_mode.value}")
+
+        # Adaptive Navigation Mode Select
+        if toggle[self.adaptive_nav_mode_sel_button] == 1:
+            adaptive_nav_modes = list(ControlMode)
+            current_idx = adaptive_nav_modes.index(self.adaptive_nav_mode)
+            self.adaptive_nav_mode = adaptive_nav_modes[(current_idx + 1) %
+                                                                 len(adaptive_nav_modes)]
+            self.get_logger().info(f"Adaptive Navigation Mode: {self.adaptive_nav_mode.value}")
 
         # Angle selection
         if self.angle_sel_button and toggle[self.angle_sel_button] == 1:
@@ -189,6 +203,11 @@ class JoyCmdBase(JoyBase):
         hardware_msg = Bool()
         hardware_msg.data = self.hw_sel
         self.pubsub.publish('/joy/hardware', hardware_msg)
+
+        # Publish adaptive navigation operation mode
+        adaptive_nav_mode_msg = String()
+        adaptive_nav_mode_msg.data = self.adaptive_nav_mode.value
+        self.pubsub.publish('/modeA', adaptive_nav_mode_msg)
 
     def cluster_desired_callback(self, msg: Float32MultiArray) -> None:
         """Handle cluster desired position updates."""

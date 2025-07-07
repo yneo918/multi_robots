@@ -29,6 +29,17 @@ imu:
   retry_delay: 2.0
   calibration_file: "imu_calib/bno055_offsets.json"  # Relative to user home
 
+# RF Receiver configuration
+rf_receiver:
+  device_paths: ["/dev/ttyUSB1", "/dev/ttyUSB0", "/dev/ttyUSB2"]
+  baudrate: 115200
+  update_rate: 2.0
+  timer_period: 2.0
+  retry_delay: 2.0
+  retry_attempts: 5
+  pub_topic: "rssi"
+
+
 # Locomotion configuration
 locomotion:
   max_velocity: 176  # Normal operation

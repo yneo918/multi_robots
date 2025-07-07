@@ -6,7 +6,7 @@ import math
 
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import Pose2D
-from std_msgs.msg import Int16
+from std_msgs.msg import Int16, Float64
 from rf_sim_interfaces.srv import GetRxPower
 
 from .my_ros_module import PubSubManager
@@ -51,7 +51,7 @@ class FakeRover(Node):
 
         self.pubsub.create_subscription(Twist, f'{self.prefix}/{self.robot_id}/cmd_vel', self.teleop_callback, 10)
         self.pubsub.create_publisher(Pose2D, f'{self.prefix}/{self.robot_id}/pose2D', 10)
-        self.pubsub.create_publisher(Int16, f'{self.prefix}/{self.robot_id}/rssi', 5)
+        self.pubsub.create_publisher(Float64, f'{self.prefix}/{self.robot_id}/rssi', 5)
         
         timer_period = UPDATE_RATE
         self.pub_timer = self.create_timer(timer_period, self.timer_callback)
@@ -82,10 +82,10 @@ class FakeRover(Node):
             self.publish_rssi()
     
     def publish_rssi(self):
-        rssi_msg = Int16()
-        rssi_msg.data = int(self.rssi)
+        rssi_msg = Float64()
+        rssi_msg.data = self.rssi
         self.pubsub.publish(f'{self.prefix}/{self.robot_id}/rssi', rssi_msg)
-        self.get_logger().info(f'{self.prefix}/{self.robot_id}/rssi {rssi_msg.data}')
+        #self.get_logger().info(f'{self.prefix}/{self.robot_id}/rssi {rssi_msg.data}')
     
     def check_rssi(self):
         while not self.client.wait_for_service(timeout_sec=1.0):
@@ -102,7 +102,7 @@ class FakeRover(Node):
         try:
             response = future.result()
             self.rssi = response.rx_db
-            self.get_logger().info(f"Received RSSI: {self.rssi}")
+            #self.get_logger().info(f"Received RSSI: {self.rssi}")
         except Exception as e:
             self.get_logger().error(f"Service call failed: {e}")
 
