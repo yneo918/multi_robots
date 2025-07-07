@@ -151,7 +151,6 @@ class Demux(Node):
             
             # Determine namespace based on hardware/sim mode
             namespace = self.block if self.hardware else "/sim"
-            self.get_logger().info(f"DEMUX: mode/{self.mode}")
             
             # Route commands based on mode and selection
             for i, robot_id in enumerate(self.robot_id_list):

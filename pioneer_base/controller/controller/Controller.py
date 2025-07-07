@@ -78,6 +78,7 @@ class Controller(Node):
         self.cluster_params = self.get_parameter('cluster_params').value
         self.cluster_size = self.get_parameter('cluster_size').value
         self.cluster_type = self.get_parameter('cluster_type').value
+        self.control_mode = self.get_parameter('control_mode').value
         expected_param_length = self.cluster_size * ROVER_DOF - self.cluster_size - ROVER_DOF
         if len(self.cluster_params) != expected_param_length:
             self.get_logger().error(
@@ -133,7 +134,7 @@ class Controller(Node):
                 cluster_type=self.cluster_type,
                 kp_gains=[KP_GAIN] * (self.cluster_size * ROVER_DOF),
                 kv_gains=[KV_GAIN] * (self.cluster_size * ROVER_DOF),
-                control_mode=self.get_parameter('control_mode').value
+                control_mode=self.control_mode
             )
             self.get_logger().info(f"Cluster setup with type: {self.cluster_type}")
         except Exception as e:
@@ -544,10 +545,10 @@ class Controller(Node):
             try:
                 topic = f"{msg_prefix}/{robot_id}/cmd_vel"
                 self.pubsub.publish(topic, vel_msg)
-                #self.get_logger().info(
-                #    f"Robot {i} velocity[{topic}]: "
-                #    f"linear={vel_msg.linear.x:.3f}, angular={vel_msg.angular.z:.3f}"
-                #)
+                self.get_logger().info(
+                    f"Robot {i} velocity[{topic}]: "
+                    f"linear={vel_msg.linear.x:.3f}, angular={vel_msg.angular.z:.3f}"
+                )
             except Exception as e:
                 self.get_logger().error(f"Failed to publish velocity command: {e}")
 
@@ -557,7 +558,7 @@ class Controller(Node):
         translation_magnitude = math.sqrt(x_vel**2 + y_vel**2)
         
         # Check if robot is close enough to desired position
-        if translation_magnitude < EPSILON * KP_GAIN:
+        if self.control_mode == ControlMode.POSITION and translation_magnitude < EPSILON * KP_GAIN:
             return 0.0, 0.0
         
         # Compute desired heading and angular error
