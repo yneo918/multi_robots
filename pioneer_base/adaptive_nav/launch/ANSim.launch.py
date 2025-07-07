@@ -29,13 +29,15 @@ def generate_launch_description():
 
     return LaunchDescription([
         Node(
-            package="adaptive_nav",
-            executable="adaptive_nav",
-            parameters=[cluster_file],
-        ),
-        Node(
             package="controller",
             executable="cluster_controller",
+            name="cluster_feedback", #name must match yaml file
+            parameters=[cluster_file], 
+        ),
+        Node(
+            package="adaptive_nav",
+            executable="adaptive_nav",
+            name="cluster_feedback", #name must match yaml file
             parameters=[cluster_file],
         ),
         Node(

@@ -159,7 +159,7 @@ class Demux(Node):
                 if self.mode == RoverMode.NEUTRAL:
                     # Neutral mode - no movement
                     self.pubsub.publish(topic, empty_twist)
-                elif self.mode == RoverMode.NAVIGATION:
+                elif self.mode == RoverMode.NAVIGATION or self.mode == RoverMode.ADAPTIVE_NAVIGATION:
                     # Navigation mode - controller handles movement
                     pass
                 elif self.mode == RoverMode.ADAPTIVE_NAVIGATION:

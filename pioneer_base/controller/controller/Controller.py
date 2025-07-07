@@ -62,7 +62,7 @@ class Controller(Node):
                 ('cluster_params', [8.0, 8.0, 1.047]), 
                 ('adaptive_navigation', True),
                 ('cluster_type', "TriangleatCentroid"),
-                ('control_mode', "VEL"),
+                ('control_mode', "POS"),
             ]
         )
         
