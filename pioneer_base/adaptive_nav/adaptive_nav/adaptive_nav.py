@@ -22,7 +22,7 @@ JOY_FREQ = FREQ
 
 class ANNode(Node):
     def __init__(self):
-        super().__init__('cluster_controller')
+        super().__init__('adaptive_navigator')
         self.declare_parameters(
             namespace='',
             parameters=[

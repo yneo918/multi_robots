@@ -358,6 +358,8 @@ class Cluster:
                                  desired_cluster_velocity: np.ndarray) -> np.ndarray:
         """Calculate control command based on control mode."""
         if self.control_mode == ControlMode.VELOCITY:
+            for i in range(ROVER_DOF, len(desired_cluster_velocity)):
+                desired_cluster_velocity[i, 0] = desired_cluster_state[i, 0] - current_cluster_state[i, 0]
             return desired_cluster_velocity
         
         elif self.control_mode == ControlMode.POSITION:

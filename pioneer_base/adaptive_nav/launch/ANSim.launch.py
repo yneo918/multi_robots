@@ -55,7 +55,7 @@ def generate_launch_description():
         ),
         Node(
         package="teleop_core",
-        executable="joywithgui",
+        executable="joywithgui3",
         parameters=["pioneer_base/teleop_core/config/joy-assign.yaml"],
         ),   
         IncludeLaunchDescription(
