@@ -170,6 +170,9 @@ IMU_HEADING_OFFSET=$(read_yaml "$CONFIG_FILE" "imu.heading_offset")
 IMU_CONNECTION_TIMEOUT=$(read_yaml "$CONFIG_FILE" "imu.connection_timeout")
 IMU_RETRY_DELAY=$(read_yaml "$CONFIG_FILE" "imu.retry_delay")
 IMU_CALIBRATION_FILE=$(read_yaml "$CONFIG_FILE" "imu.calibration_file")
+IMU_USE_EXTENDED=$(read_yaml "$CONFIG_FILE" "imu.use_extended_node" || echo "false")
+IMU_EXTENDED_RATE=$(read_yaml "$CONFIG_FILE" "imu.extended_publish_rate" || echo "20.0")
+IMU_ACCEL_THRESHOLD=$(read_yaml "$CONFIG_FILE" "imu.acceleration_threshold" || echo "0.1")
 
 # Read RF Receiver configuration
 RF_BAUDRATE=$(read_yaml "$CONFIG_FILE" "rf_receiver.baudrate")
@@ -241,7 +244,7 @@ echo ""
 echo "Configuration loaded:"
 echo "  GPS: baudrate=$GPS_BAUDRATE, timeout=$GPS_TIMEOUT, update_rate=${GPS_UPDATE_RATE}Hz"
 echo "  GPS Device Paths: [$GPS_DEVICE_PATHS]"
-echo "  IMU: heading_offset=$IMU_HEADING_OFFSET"
+echo "  IMU: heading_offset=$IMU_HEADING_OFFSET, extended_node=$IMU_USE_EXTENDED"
 echo "  Locomotion: max_vel=$LOCOMOTION_MAX_VEL"
 echo "  Monitoring: sensor_timeout=$MONITOR_SENSOR_TIMEOUT"
 
@@ -281,6 +284,17 @@ ${ROBOT_ID}_imu:
     retry_delay: $IMU_RETRY_DELAY
     calibration_file: "$HOME_DIR/$IMU_CALIBRATION_FILE"
     calibFileLoc: "$HOME_DIR/$IMU_CALIBRATION_FILE"
+
+${ROBOT_ID}_imu_extended:
+  ros__parameters:
+    robot_id: "$ROBOT_ID"
+    heading_offset: $IMU_HEADING_OFFSET
+    connection_timeout: $IMU_CONNECTION_TIMEOUT
+    retry_delay: $IMU_RETRY_DELAY
+    calibration_file: "$HOME_DIR/$IMU_CALIBRATION_FILE"
+    calibFileLoc: "$HOME_DIR/$IMU_CALIBRATION_FILE"
+    publish_rate: $IMU_EXTENDED_RATE
+    acceleration_threshold: $IMU_ACCEL_THRESHOLD
 EOF
 
 # Pose converter parameters
@@ -371,12 +385,22 @@ def generate_launch_description():
     )
     
     # IMU node with parameters
-    imu_node = Node(
-        package="imu_core",
-        executable="run_imu",
-        parameters=[os.path.join(config_dir, "imu_params.yaml")],
-        output='screen'
-    )
+    # Check if extended node should be used
+    use_extended_imu = "$IMU_USE_EXTENDED"
+    if use_extended_imu == "true":
+        imu_node = Node(
+            package="imu_core",
+            executable="run_imu_extended",
+            parameters=[os.path.join(config_dir, "imu_params.yaml")],
+            output='screen'
+        )
+    else:
+        imu_node = Node(
+            package="imu_core",
+            executable="run_imu",
+            parameters=[os.path.join(config_dir, "imu_params.yaml")],
+            output='screen'
+        )
     
     # Locomotion nodes with parameters
     movebase_node = Node(
@@ -636,7 +660,7 @@ echo "  Service: ${SERVICE_NAME}.service"
 echo ""
 echo "Key Settings Applied:"
 echo "  GPS: baudrate=$GPS_BAUDRATE, timeout=$GPS_TIMEOUT, update_rate=${GPS_UPDATE_RATE}Hz"
-echo "  IMU: heading_offset=$IMU_HEADING_OFFSET" 
+echo "  IMU: heading_offset=$IMU_HEADING_OFFSET, extended_node=$IMU_USE_EXTENDED" 
 echo "  Locomotion: max_vel=$LOCOMOTION_MAX_VEL"
 echo "  Monitoring: sensor_timeout=$MONITOR_SENSOR_TIMEOUT"
 echo ""

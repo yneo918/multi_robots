@@ -31,6 +31,7 @@ imu:
   # Advanced options
   use_extended_node: false  # Use extended IMU node with full sensor data
   extended_publish_rate: 20.0  # Hz for extended IMU data
+  acceleration_threshold: 0.1  # m/s² - Acceleration noise threshold
 
 # RF Receiver configuration
 rf_receiver:
