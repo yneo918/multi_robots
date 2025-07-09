@@ -159,7 +159,9 @@ class MotorDriver(Node):
                 voltage = self.read_battery_voltage()
                 
                 if voltage is not None:
-                    self.last_battery_voltage = voltage
+                    # Round voltage to 1 decimal place for consistent display
+                    voltage_rounded = round(voltage, 1)
+                    self.last_battery_voltage = voltage_rounded
                     
                     # Create and publish BatteryState message
                     battery_msg = BatteryState()
@@ -167,7 +169,7 @@ class MotorDriver(Node):
                     battery_msg.header.frame_id = f"{self.robot_id}_battery"
                     
                     # Voltage information
-                    battery_msg.voltage = voltage
+                    battery_msg.voltage = voltage_rounded
                     battery_msg.present = True
                     
                     # Power supply health (always good for simple monitoring)
@@ -183,7 +185,7 @@ class MotorDriver(Node):
                     battery_msg.design_capacity = float('nan')
                     
                     self.battery_publisher.publish(battery_msg)
-                    self.get_logger().debug(f'Battery voltage: {voltage:.2f}V')
+                    self.get_logger().debug(f'Battery voltage: {voltage_rounded:.1f}V')
                 else:
                     self.get_logger().debug('Failed to read battery voltage')
                     
