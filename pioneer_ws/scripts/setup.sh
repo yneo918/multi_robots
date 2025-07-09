@@ -115,7 +115,11 @@ try:
     value = data
     for k in keys:
         value = value[k]
-    print(value)
+    # Convert Python boolean to lowercase string for shell compatibility
+    if isinstance(value, bool):
+        print(str(value).lower())
+    else:
+        print(value)
 except Exception as e:
     print('', file=sys.stderr)
     sys.exit(1)
@@ -210,6 +214,10 @@ LOCOMOTION_BAUDRATE=$(read_yaml "$CONFIG_FILE" "locomotion.baudrate")
 LOCOMOTION_LEFT_MOTOR_SIGN=$(read_yaml "$CONFIG_FILE" "locomotion.left_motor_sign")
 LOCOMOTION_RIGHT_MOTOR_SIGN=$(read_yaml "$CONFIG_FILE" "locomotion.right_motor_sign")
 
+# Read Battery monitoring configuration
+BATTERY_ENABLED=$(read_yaml "$CONFIG_FILE" "locomotion.battery_monitoring.enabled" || echo "true")
+BATTERY_UPDATE_INTERVAL=$(read_yaml "$CONFIG_FILE" "locomotion.battery_monitoring.update_interval" || echo "1.0")
+
 # Read Pose converter configuration
 POSE_TIMER_PERIOD=$(read_yaml "$CONFIG_FILE" "pose_converter.timer_period")
 POSE_HEALTH_CHECK_PERIOD=$(read_yaml "$CONFIG_FILE" "pose_converter.health_check_period")
@@ -245,7 +253,7 @@ echo "Configuration loaded:"
 echo "  GPS: baudrate=$GPS_BAUDRATE, timeout=$GPS_TIMEOUT, update_rate=${GPS_UPDATE_RATE}Hz"
 echo "  GPS Device Paths: [$GPS_DEVICE_PATHS]"
 echo "  IMU: heading_offset=$IMU_HEADING_OFFSET, extended_node=$IMU_USE_EXTENDED"
-echo "  Locomotion: max_vel=$LOCOMOTION_MAX_VEL"
+echo "  Locomotion: max_vel=$LOCOMOTION_MAX_VEL, battery_monitoring=$BATTERY_ENABLED"
 echo "  Monitoring: sensor_timeout=$MONITOR_SENSOR_TIMEOUT"
 
 # Create necessary directories
@@ -324,6 +332,8 @@ ${ROBOT_ID}_cmd_roboteq:
     robot_id: "$ROBOT_ID"
     serial_port: "$LOCOMOTION_SERIAL_PORT"
     baudrate: $LOCOMOTION_BAUDRATE
+    battery_monitoring.enabled: $BATTERY_ENABLED
+    battery_monitoring.update_interval: $BATTERY_UPDATE_INTERVAL
 EOF
 
 # RF Receiver parameters
