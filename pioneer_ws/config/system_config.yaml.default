@@ -13,7 +13,7 @@ user:
 # GPS configuration
 gps:
   device_paths:
-    - "/dev/ttyUSB0"
+    - "/dev/usb"
   baudrate: 9600
   timeout: 10
   moving_average_rate: 0.2
@@ -42,6 +42,7 @@ rf_receiver:
   retry_attempts: 5 # Number of connections attempts per device_path entry
   update_rate: 2.0 # Hz - RF Receiver module update rate
   timer_period: 2.0 # seconds - ROS timer
+  pub_topic: "rssi"
 
 
 # Locomotion configuration
