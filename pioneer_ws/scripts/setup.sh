@@ -108,14 +108,27 @@ read_yaml() {
     python3 -c "
 import yaml
 import sys
+import re
+
 try:
     with open('$file', 'r') as f:
         data = yaml.safe_load(f)
-    keys = '$key'.split('.')
+    path = '$key'
+    
+    # Split key path by dot, but handle indices like 'foo[0]'
+    keys = []
+    for part in path.split('.'):
+        match = re.findall(r'([^\[\]]+)|\[(\d+)\]', part)
+        for name, index in match:
+            if name:
+                keys.append(name)
+            elif index:
+                keys.append(int(index))
+
     value = data
     for k in keys:
         value = value[k]
-    # Convert Python boolean to lowercase string for shell compatibility
+
     if isinstance(value, bool):
         print(str(value).lower())
     else:
@@ -338,7 +351,7 @@ EOF
 
 # RF Receiver parameters
 cat > "$WORK_DIR/pioneer_ws/config/nodes/rf_receiver_params.yaml" << EOF
-rf_receiver:
+${ROBOT_ID}_rf_receiver:
   ros__parameters:
     robot_id: "$ROBOT_ID"
     device_paths: $RF_DEVICE_PATHS

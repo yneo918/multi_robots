@@ -53,7 +53,7 @@ class RFReceiver(Node):
         # parse for the file name to use as
         # the node name
         robot_id = os.getenv("ROBOT_ID", "pX")
-        super().__init__(f"{robot_id}_{name.split('.')[-1]}")
+        super().__init__(f"{robot_id}_{__name__.split('.')[-1]}")
     
         # Get namespace
         self.ns: HardwareNamespace = HardwareNamespace(self.get_namespace())
@@ -108,7 +108,8 @@ class RFReceiver(Node):
         
         # Check if sim
         self.info(f"Is in sim mode: {self.ns.is_simulation}")
-
+        
+        self.info(f"Device paths {self.device_paths}")
         # Create publish topics
         self.create_publish_topics()
 
