@@ -43,11 +43,11 @@ class GetMoveCmds(Node):
         
         # Log loaded configuration
         self.get_logger().info(f'Movebase Kinematics Configuration:')
-        self.get_logger().info(f'  Robot ID: {self.robot_id}')
-        self.get_logger().info(f'  Max Velocity: {self.max_vel}')
-        self.get_logger().info(f'  Max Velocity (Open Loop): {self.max_vel_open}')
-        self.get_logger().info(f'  Left Motor Sign: {self.left_motor_sign}')
-        self.get_logger().info(f'  Right Motor Sign: {self.right_motor_sign}')
+        self.get_logger().debug(f'  Robot ID: {self.robot_id}')
+        self.get_logger().debug(f'  Max Velocity: {self.max_vel}')
+        self.get_logger().debug(f'  Max Velocity (Open Loop): {self.max_vel_open}')
+        self.get_logger().debug(f'  Left Motor Sign: {self.left_motor_sign}')
+        self.get_logger().debug(f'  Right Motor Sign: {self.right_motor_sign}')
 
         # Create a subscription to the 'cmd_vel' topic with a callback function 
         self.subscription = self.create_subscription(

@@ -104,12 +104,12 @@ class RFReceiver(Node):
         self.warn: Callable = self.log().warn
         self.error: Callable = self.log().error
     
-        self.info(f"Namespace: {self.ns.namespace}")
+        self.debug(f"Namespace: {self.ns.namespace}")
         
         # Check if sim
         self.info(f"Is in sim mode: {self.ns.is_simulation}")
         
-        self.info(f"Device paths {self.device_paths}")
+        self.debug(f"Device paths {self.device_paths}")
         # Create publish topics
         self.create_publish_topics()
 
@@ -121,7 +121,7 @@ class RFReceiver(Node):
             # Initialize XBee Device
             self.device: XBeeDevice = self.xbee_init()
             while self.device == None:
-                self.info("No devices avaliable")
+                self.debug("No devices avaliable")
                 sleep(5.0)
                 self.device: XBeeDevice = self.xbee_init()
             self.info("successfully opened xbee")
@@ -167,13 +167,13 @@ class RFReceiver(Node):
 
         for device_path in self.device_paths:
 
-            self.info(f'Trying RF Receiver device: {device_path}')
+            self.debug(f'Trying RF Receiver device: {device_path}')
             self.connection_attempts = 0                    
             device = 0 #temp variable
             for attempt in range(self.retry_attempts):
                 try:
                     self.connection_attempts += 1
-                    self.info(f"Attempting RF Receiver connection" \
+                    self.debug(f"Attempting RF Receiver connection" \
                                                  f" to {device_path} " \
                             f"({attempt + 1}/{self.retry_attempts})")
                     
@@ -226,10 +226,10 @@ class RFReceiver(Node):
                     message.remote_device.get_64bit_addr()
         self.timestamp = message.timestamp
 
-        # Log messages at INFO level
-        self.info(f"Received: {self.msg}")
-        self.info(f"From: {self.remote_device}")
-        self.info(f"Timestamp: {self.timestamp}")
+        # Log messages at DEBUG level
+        self.debug(f"Received: {self.msg}")
+        self.debug(f"From: {self.remote_device}")
+        self.debug(f"Timestamp: {self.timestamp}")
 
 
         try:
@@ -240,7 +240,7 @@ class RFReceiver(Node):
 
             # Get rssi
             self.rssi = self.update_rssi()
-            self.info(f"RSSI of last message: {self.rssi}")
+            self.debug(f"RSSI of last message: {self.rssi}")
             
             # Publish data
             self.pubsub.publish(
@@ -266,7 +266,7 @@ class RFReceiver(Node):
                         )
         
         # Log rssi
-        self.info(f"RSSI: {self.rssi}")
+        self.debug(f"RSSI: {self.rssi}")
 
         # Publish fake data
         self.pubsub.publish(
@@ -285,7 +285,7 @@ class RFReceiver(Node):
             self.device.open()
         try:
             self.rssi = self.update_rssi()
-            self.info(f"Polled RSSI: {self.rssi}")
+            self.debug(f"Polled RSSI: {self.rssi}")
         except Exception as e:
             self.error(f"Polling error: {e}")
 

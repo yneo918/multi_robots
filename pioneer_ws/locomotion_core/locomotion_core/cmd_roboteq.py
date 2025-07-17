@@ -44,12 +44,12 @@ class MotorDriver(Node):
         
         # Log loaded configuration
         self.get_logger().info(f'Motor Driver Configuration:')
-        self.get_logger().info(f'  Robot ID: {self.robot_id}')
-        self.get_logger().info(f'  Serial Port: {serial_port}')
-        self.get_logger().info(f'  Baudrate: {baudrate}')
-        self.get_logger().info(f'  Battery Monitoring: {self.battery_enabled}')
+        self.get_logger().debug(f'  Robot ID: {self.robot_id}')
+        self.get_logger().debug(f'  Serial Port: {serial_port}')
+        self.get_logger().debug(f'  Baudrate: {baudrate}')
+        self.get_logger().debug(f'  Battery Monitoring: {self.battery_enabled}')
         if self.battery_enabled:
-            self.get_logger().info(f'  Battery Update Interval: {self.battery_interval}s')
+            self.get_logger().debug(f'  Battery Update Interval: {self.battery_interval}s')
 
         try:
             self.roboteq_obj = serial.Serial(
@@ -84,7 +84,7 @@ class MotorDriver(Node):
                 self.battery_interval,
                 self.battery_monitoring_callback)
             
-            self.get_logger().info(f'Battery monitoring enabled on topic /{self.robot_id}/battery_state')
+            self.get_logger().debug(f'Battery monitoring enabled on topic /{self.robot_id}/battery_state')
 
     def move_motor_ch1(self, val):
         try:
@@ -197,7 +197,7 @@ class MotorDriver(Node):
         try:
             if hasattr(self, 'roboteq_obj') and self.roboteq_obj.is_open:
                 self.roboteq_obj.close()
-                self.get_logger().info('Motor controller connection closed')
+                self.get_logger().debug('Motor controller connection closed')
         except:
             pass
         super().destroy_node()

@@ -41,10 +41,10 @@ class PoseConverter(Node):
         
         # Log loaded configuration
         self.get_logger().info(f'Pose Converter Configuration:')
-        self.get_logger().info(f'  Robot ID: {self.robot_id}')
-        self.get_logger().info(f'  Timer Period: {self.timer_period}s')
-        self.get_logger().info(f'  Health Check Period: {self.health_check_period}s')
-        self.get_logger().info(f'  Reset Timeout: {self.reset_timeout}s')
+        self.get_logger().debug(f'  Robot ID: {self.robot_id}')
+        self.get_logger().debug(f'  Timer Period: {self.timer_period}s')
+        self.get_logger().debug(f'  Health Check Period: {self.health_check_period}s')
+        self.get_logger().debug(f'  Reset Timeout: {self.reset_timeout}s')
         
         # Initialize all data variables
         self.ref_lat = None
@@ -183,7 +183,7 @@ class PoseConverter(Node):
             retry_count = 0
             max_retries = 10
             while not self.cli.wait_for_service(timeout_sec=2.0) and retry_count < max_retries:
-                self.get_logger().warn(f'Reference GPS service not available, waiting... (attempt {retry_count + 1})')
+                self.get_logger().debug(f'Reference GPS service not available, waiting... (attempt {retry_count + 1})')
                 retry_count += 1
                 time.sleep(1.0)
             
@@ -202,7 +202,7 @@ class PoseConverter(Node):
             self.req.robot_id = self.robot_id
             self.future = self.cli.call_async(self.req)
             self.future.add_done_callback(self.srv_callback)
-            self.get_logger().info(f'[{self.req.robot_id}]Sent request for reference GPS')
+            self.get_logger().debug(f'[{self.req.robot_id}]Sent request for reference GPS')
         except Exception as e:
             self.get_logger().error(f'Failed to request reference GPS: {e}')
     
@@ -435,16 +435,16 @@ class PoseConverter(Node):
         # Check GPS health
         if current_time - self.last_gps_time > 5.0:  # 5 seconds timeout
             self.gps_data_available = False
-            self.get_logger().warn('GPS data timeout detected')
+            self.get_logger().debug('GPS data timeout detected')
         
         # Check IMU health
         if current_time - self.last_imu_time > 5.0:  # 5 seconds timeout
             self.imu_data_available = False
-            self.get_logger().warn('IMU data timeout detected')
+            self.get_logger().debug('IMU data timeout detected')
         
         # Check reference GPS
         if self.ref_lat is None or self.ref_lon is None:
-            self.get_logger().warn('Reference GPS not available, retrying...')
+            self.get_logger().debug('Reference GPS not available, retrying...')
             self.initialize_reference_gps()
     
     def timer_callback(self):

@@ -25,7 +25,6 @@ setup(
     entry_points={
         'console_scripts': [
             'run_imu = imu_core.imu_node:main',
-            'run_imu_extended = imu_core.imu_extended_node:main',
         ],
     },
 )

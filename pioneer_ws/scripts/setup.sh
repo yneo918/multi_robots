@@ -187,9 +187,25 @@ IMU_HEADING_OFFSET=$(read_yaml "$CONFIG_FILE" "imu.heading_offset")
 IMU_CONNECTION_TIMEOUT=$(read_yaml "$CONFIG_FILE" "imu.connection_timeout")
 IMU_RETRY_DELAY=$(read_yaml "$CONFIG_FILE" "imu.retry_delay")
 IMU_CALIBRATION_FILE=$(read_yaml "$CONFIG_FILE" "imu.calibration_file")
-IMU_USE_EXTENDED=$(read_yaml "$CONFIG_FILE" "imu.use_extended_node" || echo "false")
-IMU_EXTENDED_RATE=$(read_yaml "$CONFIG_FILE" "imu.extended_publish_rate" || echo "20.0")
-IMU_ACCEL_THRESHOLD=$(read_yaml "$CONFIG_FILE" "imu.acceleration_threshold" || echo "0.1")
+IMU_PUBLISH_RATE=$(read_yaml "$CONFIG_FILE" "imu.publish_rate" || echo "20.0")
+IMU_ENABLE_EXTENDED=$(read_yaml "$CONFIG_FILE" "imu.enable_extended_output" || echo "true")
+IMU_ENABLE_LEGACY=$(read_yaml "$CONFIG_FILE" "imu.enable_legacy_compatibility" || echo "true")
+
+# Validate IMU parameters
+if ! echo "$IMU_PUBLISH_RATE" | grep -E '^[0-9]+(\.[0-9]+)?$' > /dev/null; then
+    echo "Error: IMU publish_rate must be a positive number, got '$IMU_PUBLISH_RATE'"
+    exit 1
+fi
+
+if ! echo "$IMU_ENABLE_EXTENDED" | grep -E '^(true|false)$' > /dev/null; then
+    echo "Error: IMU enable_extended_output must be true or false, got '$IMU_ENABLE_EXTENDED'"
+    exit 1
+fi
+
+if ! echo "$IMU_ENABLE_LEGACY" | grep -E '^(true|false)$' > /dev/null; then
+    echo "Error: IMU enable_legacy_compatibility must be true or false, got '$IMU_ENABLE_LEGACY'"
+    exit 1
+fi
 
 # Read RF Receiver configuration
 RF_BAUDRATE=$(read_yaml "$CONFIG_FILE" "rf_receiver.baudrate")
@@ -241,13 +257,6 @@ MONITOR_SENSOR_TIMEOUT=$(read_yaml "$CONFIG_FILE" "monitoring.sensor_timeout")
 MONITOR_MAX_RETRIES=$(read_yaml "$CONFIG_FILE" "monitoring.max_node_retries")
 MONITOR_RESTART_DELAY=$(read_yaml "$CONFIG_FILE" "monitoring.node_restart_delay")
 
-# Read RF Receiver configuration
-RF_DEVICE_PATHS=$(read_yaml "$CONFIG_FILE" "rf_receiver.device_paths")
-RF_BAUDRATE=$(read_yaml "$CONFIG_FILE" "rf_receiver.baudrate")
-RF_UPDATE_RATE=$(read_yaml "$CONFIG_FILE" "rf_receiver.update_rate")
-RF_TIMER_PERIOD=$(read_yaml "$CONFIG_FILE" "rf_receiver.timer_period")
-RF_RETRY_DELAY=$(read_yaml "$CONFIG_FILE" "rf_receiver.retry_delay")
-RF_RETRY_ATTEMPTS=$(read_yaml "$CONFIG_FILE" "rf_receiver.retry_attempts")
 RF_PUB_TOPIC=$(read_yaml "$CONFIG_FILE" "rf_receiver.pub_topic")
 
 if [ -z "$ROBOT_ID" ] || [ -z "$USER_NAME" ] || [ -z "$HOME_DIR" ]; then
@@ -265,7 +274,7 @@ echo ""
 echo "Configuration loaded:"
 echo "  GPS: baudrate=$GPS_BAUDRATE, timeout=$GPS_TIMEOUT, update_rate=${GPS_UPDATE_RATE}Hz"
 echo "  GPS Device Paths: [$GPS_DEVICE_PATHS]"
-echo "  IMU: heading_offset=$IMU_HEADING_OFFSET, extended_node=$IMU_USE_EXTENDED"
+echo "  IMU: heading_offset=$IMU_HEADING_OFFSET, publish_rate=${IMU_PUBLISH_RATE}Hz, extended=$IMU_ENABLE_EXTENDED"
 echo "  Locomotion: max_vel=$LOCOMOTION_MAX_VEL, battery_monitoring=$BATTERY_ENABLED"
 echo "  Monitoring: sensor_timeout=$MONITOR_SENSOR_TIMEOUT"
 
@@ -294,9 +303,9 @@ ${ROBOT_ID}_gps1:
     device_paths: [$GPS_DEVICE_PATHS]
 EOF
 
-# IMU node parameters  
+# Unified IMU node parameters  
 cat > "$WORK_DIR/pioneer_ws/config/nodes/imu_params.yaml" << EOF
-# Auto-generated IMU parameters from system config
+# Auto-generated unified IMU parameters from system config
 ${ROBOT_ID}_imu:
   ros__parameters:
     robot_id: "$ROBOT_ID"
@@ -305,17 +314,9 @@ ${ROBOT_ID}_imu:
     retry_delay: $IMU_RETRY_DELAY
     calibration_file: "$HOME_DIR/$IMU_CALIBRATION_FILE"
     calibFileLoc: "$HOME_DIR/$IMU_CALIBRATION_FILE"
-
-${ROBOT_ID}_imu_extended:
-  ros__parameters:
-    robot_id: "$ROBOT_ID"
-    heading_offset: $IMU_HEADING_OFFSET
-    connection_timeout: $IMU_CONNECTION_TIMEOUT
-    retry_delay: $IMU_RETRY_DELAY
-    calibration_file: "$HOME_DIR/$IMU_CALIBRATION_FILE"
-    calibFileLoc: "$HOME_DIR/$IMU_CALIBRATION_FILE"
-    publish_rate: $IMU_EXTENDED_RATE
-    acceleration_threshold: $IMU_ACCEL_THRESHOLD
+    publish_rate: $IMU_PUBLISH_RATE
+    enable_extended_output: $IMU_ENABLE_EXTENDED
+    enable_legacy_compatibility: $IMU_ENABLE_LEGACY
 EOF
 
 # Pose converter parameters
@@ -407,23 +408,13 @@ def generate_launch_description():
         output='screen'
     )
     
-    # IMU node with parameters
-    # Check if extended node should be used
-    use_extended_imu = "$IMU_USE_EXTENDED"
-    if use_extended_imu == "true":
-        imu_node = Node(
-            package="imu_core",
-            executable="run_imu_extended",
-            parameters=[os.path.join(config_dir, "imu_params.yaml")],
-            output='screen'
-        )
-    else:
-        imu_node = Node(
-            package="imu_core",
-            executable="run_imu",
-            parameters=[os.path.join(config_dir, "imu_params.yaml")],
-            output='screen'
-        )
+    # Unified IMU node with parameters
+    imu_node = Node(
+        package="imu_core",
+        executable="run_imu",
+        parameters=[os.path.join(config_dir, "imu_params.yaml")],
+        output='screen'
+    )
     
     # Locomotion nodes with parameters
     movebase_node = Node(
@@ -683,7 +674,7 @@ echo "  Service: ${SERVICE_NAME}.service"
 echo ""
 echo "Key Settings Applied:"
 echo "  GPS: baudrate=$GPS_BAUDRATE, timeout=$GPS_TIMEOUT, update_rate=${GPS_UPDATE_RATE}Hz"
-echo "  IMU: heading_offset=$IMU_HEADING_OFFSET, extended_node=$IMU_USE_EXTENDED" 
+echo "  IMU: heading_offset=$IMU_HEADING_OFFSET, publish_rate=${IMU_PUBLISH_RATE}Hz, extended=$IMU_ENABLE_EXTENDED" 
 echo "  Locomotion: max_vel=$LOCOMOTION_MAX_VEL"
 echo "  Monitoring: sensor_timeout=$MONITOR_SENSOR_TIMEOUT"
 echo ""

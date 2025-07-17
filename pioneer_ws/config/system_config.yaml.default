@@ -29,9 +29,9 @@ imu:
   retry_delay: 2.0
   calibration_file: "imu_calib/bno055_offsets.json"  # Relative to user home
   # Advanced options
-  use_extended_node: false  # Use extended IMU node with full sensor data
-  extended_publish_rate: 20.0  # Hz for extended IMU data
-  acceleration_threshold: 0.1  # m/s² - Acceleration noise threshold
+  publish_rate: 20.0  # Hz for IMU data publishing
+  enable_extended_output: true  # Enable extended sensor data outputs (magnetic field, gravity, etc.)
+  enable_legacy_compatibility: true  # Enable legacy message formats for backward compatibility
 
 # RF Receiver configuration
 rf_receiver:
@@ -64,9 +64,6 @@ pose_converter:
   timer_period: 0.1  # seconds
   health_check_period: 1.0  # seconds
   reset_timeout: 5.0  # seconds
-  # Advanced sensor fusion options
-  use_advanced_fusion: false  # Use EKF-based sensor fusion
-  advanced_timer_period: 0.05  # seconds (20Hz for EKF)
   publish_diagnostics: true  # Publish diagnostics information
 
 # System monitoring
