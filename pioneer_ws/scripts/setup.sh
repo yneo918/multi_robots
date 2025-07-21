@@ -355,7 +355,7 @@ cat > "$WORK_DIR/pioneer_ws/config/nodes/rf_receiver_params.yaml" << EOF
 ${ROBOT_ID}_rf_receiver:
   ros__parameters:
     robot_id: "$ROBOT_ID"
-    device_paths: $RF_DEVICE_PATHS
+    device_paths: [$RF_DEVICE_PATHS]
     baudrate: $RF_BAUDRATE
     update_rate: $RF_UPDATE_RATE
     timer_period: $RF_TIMER_PERIOD

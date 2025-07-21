@@ -250,9 +250,6 @@ class RFReceiver(Node):
 
         except Exception as e:
             self.error(f"Error receiving RSSI: {e}")
-
-        finally:
-
             # Close device if caught exception
             if self.device is not None and self.device.is_open():
                 self.device.close()
