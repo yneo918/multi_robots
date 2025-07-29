@@ -51,8 +51,6 @@ class ANNode(Node):
         self.z = -65.0  # Desired RSSI value for the robot to navigate towards, in dBm
 
         self.cli = self.create_client(GetRxPower, 'get_rx_power') #service to get the RSSI values
-        while not self.cli.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('Waiting for service get_rx_power...')
     def set_pubsub(self):
         self.pubsub.create_subscription(Bool, '/joy/hardware', self.hw_sim_callback, 1)
         self.pubsub.create_publisher(Twist, '/ctrl/cmd_vel', 5) #publish to cluster
@@ -70,12 +68,12 @@ class ANNode(Node):
                 lambda msg, robot_id=robot_id: self.sim_pose(msg, robot_id),
                 5)
             self.pubsub.create_subscription(
-                Float64,
+                Int16,
                 f'/{robot_id}/rssi',
                 lambda msg, robot_id=robot_id: self.actual_rssi(msg, robot_id),
                 5)
             self.pubsub.create_subscription(
-                Float64,
+                Int16,
                 f'/sim/{robot_id}/rssi',
                 lambda msg, robot_id=robot_id: self.sim_rssi(msg, robot_id),
                 5)
@@ -98,7 +96,7 @@ class ANNode(Node):
         #self.sim_gradient.robot_positions[self.robot_id_list.index(robot_id)][2] = 10 ** (msg.data/ 10) # Convert dBm to power to linearize
         #self.get_logger().info(f"Simulated RSSI for {robot_id}: {self.normalize_db(msg.data)}") #values range from -33 to -70
 
-    def normalize_db(self, db_val, db_min=-70.0, db_max=-33.0):
+    def normalize_db(self, db_val, db_min=-90.0, db_max=-33.0):
         db_val_clipped = max(min(db_val, db_max), db_min)  # Clamp to expected range
         norm = (db_val_clipped - db_min) / (db_max - db_min)
         return norm
@@ -145,6 +143,13 @@ class ANNode(Node):
         temp = self.output
         if not msg.data:
             self.output = "sim"
+            count = 0
+            while count < 10 or not self.cli.wait_for_service(timeout_sec=1.0):
+                self.get_logger().info('Waiting for service get_rx_power...')
+                count  += 1
+            if(count >=10):
+                self.get_logger().info('Unable to connect to sim rssi changing mode to idle')
+            self.output = "idle"
         else:
             self.output = "actual"
         if temp != self.output:
