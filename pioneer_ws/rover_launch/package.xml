@@ -3,9 +3,15 @@
 <package format="3">
   <name>rover_launch</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>ROS2 launch package for rover system integration</description>
   <maintainer email="yneo918@gmail.com">neo</maintainer>
-  <license>TODO: License declaration</license>
+  <license>Apache-2.0</license>
+
+  <exec_depend>convert_pose</exec_depend>
+  <exec_depend>gps_core</exec_depend>
+  <exec_depend>imu_core</exec_depend>
+  <exec_depend>locomotion_core</exec_depend>
+  <exec_depend>rf_receiver</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
