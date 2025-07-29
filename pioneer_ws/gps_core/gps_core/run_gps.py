@@ -48,15 +48,15 @@ class EnhancedReadGPS(Node):
         
         # Log loaded configuration
         self.get_logger().info(f'GPS Node Configuration:')
-        self.get_logger().info(f'  Robot ID: {self.robot_id}')
-        self.get_logger().info(f'  Baudrate: {self.baudrate}')
-        self.get_logger().info(f'  Timeout: {self.timeout}')
-        self.get_logger().info(f'  Connection Timeout: {self.connection_timeout}s')
-        self.get_logger().info(f'  Retry Delay: {self.retry_delay}s')
-        self.get_logger().info(f'  Moving Average Rate: {self.moving_avg_r}')
-        self.get_logger().info(f'  Update Rate: {self.update_rate}Hz')
-        self.get_logger().info(f'  Timer Period: {self.timer_period}s')
-        self.get_logger().info(f'  Device Paths: {self.device_paths}')
+        self.get_logger().debug(f'  Robot ID: {self.robot_id}')
+        self.get_logger().debug(f'  Baudrate: {self.baudrate}')
+        self.get_logger().debug(f'  Timeout: {self.timeout}')
+        self.get_logger().debug(f'  Connection Timeout: {self.connection_timeout}s')
+        self.get_logger().debug(f'  Retry Delay: {self.retry_delay}s')
+        self.get_logger().debug(f'  Moving Average Rate: {self.moving_avg_r}')
+        self.get_logger().debug(f'  Update Rate: {self.update_rate}Hz')
+        self.get_logger().debug(f'  Timer Period: {self.timer_period}s')
+        self.get_logger().debug(f'  Device Paths: {self.device_paths}')
         
         # Thread-safe callback group
         self.callback_group = ReentrantCallbackGroup()
@@ -107,12 +107,12 @@ class EnhancedReadGPS(Node):
     def _initialize_gps_connection(self):
         """Initialize GPS connection with retry mechanism using configured device paths"""
         for device_path in self.device_paths:
-            self.get_logger().info(f'Trying GPS device: {device_path}')
+            self.get_logger().debug(f'Trying GPS device: {device_path}')
             
             for attempt in range(self.retry_attempts):
                 try:
                     self.connection_attempts += 1
-                    self.get_logger().info(f'Attempting GPS connection to {device_path} ({attempt + 1}/{self.retry_attempts})')
+                    self.get_logger().debug(f'Attempting GPS connection to {device_path} ({attempt + 1}/{self.retry_attempts})')
                     
                     # Close any existing connection
                     self._close_connection()
@@ -168,17 +168,17 @@ class EnhancedReadGPS(Node):
             if self.update_rate == 1.0:
                 # 1Hz update rate
                 self.gps_serial.send_command(b"PMTK220,1000")
-                self.get_logger().info('GPS module set to 1Hz update rate')
+                self.get_logger().debug('GPS module set to 1Hz update rate')
             elif self.update_rate == 10.0:
                 # 10Hz update rate
                 self.gps_serial.send_command(b"PMTK220,100")
-                self.get_logger().info('GPS module set to 10Hz update rate')
+                self.get_logger().debug('GPS module set to 10Hz update rate')
             else:
                 # Custom update rate (convert Hz to milliseconds)
                 update_ms = int(1000 / self.update_rate)
                 cmd = f"PMTK220,{update_ms}".encode()
                 self.gps_serial.send_command(cmd)
-                self.get_logger().info(f'GPS module set to {self.update_rate}Hz update rate')
+                self.get_logger().debug(f'GPS module set to {self.update_rate}Hz update rate')
             
             time.sleep(0.1)
             

@@ -18,6 +18,14 @@ from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
     robot_id = os.getenv("ROBOT_ID")
+    
+    # Validate ROBOT_ID environment variable
+    if robot_id is None:
+        raise RuntimeError("ROBOT_ID environment variable is not set. Please set it before launching.")
+    
+    if not robot_id.strip():
+        raise RuntimeError("ROBOT_ID environment variable is empty. Please set a valid robot ID.")
+    
     ld = LaunchDescription()
     
     # Nodes

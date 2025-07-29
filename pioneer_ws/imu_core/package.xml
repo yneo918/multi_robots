@@ -3,9 +3,15 @@
 <package format="3">
   <name>imu_core</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>ROS2 package for IMU data acquisition and processing</description>
   <maintainer email="pioneer3@todo.todo">pioneer3</maintainer>
-  <license>TODO: License declaration</license>
+  <license>Apache-2.0</license>
+
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>diagnostic_msgs</depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

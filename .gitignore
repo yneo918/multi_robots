@@ -2,6 +2,15 @@ build/
 install/
 log/
 *Zone.Identifier
-__pycache__/
+**__pycache__/
+*.pyc
 record/rosbag*
 CLAUDE.md
+
+# Local configuration files
+pioneer_ws/config/system_config.yaml
+pioneer_ws/config/local/
+pioneer_ws/config/nodes/
+pioneer_ws/rover_launch/launch/rover_with_params.launch.py
+pioneer_ws/scripts/start_ros2.sh
+

@@ -13,7 +13,7 @@ user:
 # GPS configuration
 gps:
   device_paths:
-    - "/dev/ttyUSB0"
+    - "/dev/usb"
   baudrate: 9600
   timeout: 10
   moving_average_rate: 0.2
@@ -28,15 +28,20 @@ imu:
   connection_timeout: 10.0  # seconds
   retry_delay: 2.0
   calibration_file: "imu_calib/bno055_offsets.json"  # Relative to user home
+  # Advanced options
+  publish_rate: 20.0  # Hz for IMU data publishing
+  enable_extended_output: true  # Enable extended sensor data outputs (magnetic field, gravity, etc.)
+  enable_legacy_compatibility: true  # Enable legacy message formats for backward compatibility
 
 # RF Receiver configuration
 rf_receiver:
-  device_paths: ["/dev/ttyUSB1", "/dev/ttyUSB0", "/dev/ttyUSB2"]
+  device_paths:
+    - "/dev/xbee"
   baudrate: 115200
-  update_rate: 2.0
-  timer_period: 2.0
-  retry_delay: 2.0
-  retry_attempts: 5
+  retry_delay: 2.0 # seconds
+  retry_attempts: 5 # Number of connections attempts per device_path entry
+  update_rate: 2.0 # Hz - RF Receiver module update rate
+  timer_period: 2.0 # seconds - ROS timer
   pub_topic: "rssi"
 
 
@@ -49,12 +54,17 @@ locomotion:
   # Motor direction configuration - adjust these values based on electrical connections
   left_motor_sign: 1   # -1 or 1 to invert left motor direction
   right_motor_sign: 1   # -1 or 1 to invert right motor direction
+  # Battery monitoring configuration
+  battery_monitoring:
+    enabled: true  # Enable battery voltage monitoring
+    update_interval: 1.0  # seconds - Battery voltage check interval
 
 # Pose converter configuration
 pose_converter:
   timer_period: 0.1  # seconds
   health_check_period: 1.0  # seconds
   reset_timeout: 5.0  # seconds
+  publish_diagnostics: true  # Publish diagnostics information
 
 # System monitoring
 monitoring:
