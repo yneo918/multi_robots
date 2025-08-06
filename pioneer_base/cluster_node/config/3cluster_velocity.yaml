@@ -1,6 +1,6 @@
 cluster_feedback:
   ros__parameters:
-    robot_id_list: ["p1", "p2", "p3"]
+    robot_id_list: ["p4", "p2", "p3"]
     cluster_size: 3
     cluster_params: [8.0, 8.0, 1.047]
     adaptive_navigation: True

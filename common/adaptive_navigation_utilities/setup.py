@@ -16,7 +16,7 @@ setup(
     maintainer='christian',
     maintainer_email='cpedrigal@scu.edu',
     description='Utility functions and classes used across packages in repo',
-    license='Apache-2.0',
+    license='ECL-2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [

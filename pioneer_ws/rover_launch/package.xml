@@ -5,7 +5,7 @@
   <version>0.0.0</version>
   <description>ROS2 launch package for rover system integration</description>
   <maintainer email="yneo918@gmail.com">neo</maintainer>
-  <license>Apache-2.0</license>
+  <license>ECL-2.0</license>
 
   <exec_depend>convert_pose</exec_depend>
   <exec_depend>gps_core</exec_depend>

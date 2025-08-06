@@ -16,7 +16,7 @@ setup(
     maintainer='neo',
     maintainer_email='neo.yuichiro@megachips.co.jp',
     description='TODO: Package description',
-    license='TODO: License declaration',
+    license='ECL-2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [

@@ -16,7 +16,7 @@ setup(
     maintainer='vboxuser',
     maintainer_email='vboxuser@todo.todo',
     description='Locomotion control package',
-    license='Apache License 2.0',
+    license='ECL License 2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [

@@ -5,7 +5,7 @@
   <version>0.0.0</version>
   <description>ROS2 package for robot locomotion and motor control</description>
   <maintainer email="vboxuser@todo.todo">vboxuser</maintainer>
-  <license>Apache-2.0</license>
+  <license>ECL-2.0</license>
 
   <depend>rclpy</depend>
   <depend>std_msgs</depend>

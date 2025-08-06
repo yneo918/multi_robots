@@ -5,7 +5,7 @@
   <version>0.0.0</version>
   <description>ROS2 package for IMU data acquisition and processing</description>
   <maintainer email="pioneer3@todo.todo">pioneer3</maintainer>
-  <license>Apache-2.0</license>
+  <license>ECL-2.0</license>
 
   <depend>rclpy</depend>
   <depend>std_msgs</depend>

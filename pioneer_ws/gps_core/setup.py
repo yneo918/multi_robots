@@ -16,7 +16,7 @@ setup(
     maintainer='gps-cluster-i',
     maintainer_email='gps-cluster-i@todo.todo',
     description='TODO: Package description',
-    license='TODO: License declaration',
+    license='ECL-2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
