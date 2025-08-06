@@ -50,7 +50,7 @@ class ANNode(Node):
 
         self.z = -65.0  # Desired RSSI value for the robot to navigate towards, in dBm
 
-        self.cli = self.create_client(GetRxPower, 'get_rx_power') #service to get the RSSI values
+        self.cli = self.create_client(GetRxPower, '/get_rx_power') #service to get the RSSI values
     def set_pubsub(self):
         self.pubsub.create_subscription(Bool, '/joy/hardware', self.hw_sim_callback, 1)
         self.pubsub.create_publisher(Twist, '/ctrl/cmd_vel', 5) #publish to cluster
@@ -144,12 +144,12 @@ class ANNode(Node):
         if not msg.data:
             self.output = "sim"
             count = 0
-            while count < 10 or not self.cli.wait_for_service(timeout_sec=1.0):
+            while count < 10 and not self.cli.wait_for_service(timeout_sec=1.0):
                 self.get_logger().info('Waiting for service get_rx_power...')
                 count  += 1
             if(count >=10):
                 self.get_logger().info('Unable to connect to sim rssi changing mode to idle')
-            self.output = "idle"
+                self.output = "idle"
         else:
             self.output = "actual"
         if temp != self.output:
