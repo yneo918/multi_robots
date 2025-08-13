@@ -5,7 +5,7 @@
   <version>0.0.0</version>
   <description>ROS2 package for GPS data acquisition and processing</description>
   <maintainer email="gps-cluster-i@todo.todo">gps-cluster-i</maintainer>
-  <license>Apache-2.0</license>
+  <license>ECL-2.0</license>
 
   <depend>rclpy</depend>
   <depend>std_msgs</depend>

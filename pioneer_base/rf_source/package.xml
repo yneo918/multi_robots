@@ -5,7 +5,7 @@
   <version>0.0.0</version>
   <description>"RF Source for Adaptive Navigation"</description>
   <maintainer email="cpedrigal@scu.edu">christian</maintainer>
-  <license>Apache-2.0</license>
+  <license>ECL-2.0</license>
 
   <depend>rclpy</depend>
   <depend>std_msgs</depend>

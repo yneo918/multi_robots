@@ -18,7 +18,7 @@ setup(
     maintainer='ricky',
     maintainer_email='rschober@scu.edu',
     description='TODO: Package description',
-    license='Apache-2.0',
+    license='ECL-2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
