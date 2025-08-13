@@ -276,7 +276,8 @@ class EnhancedReadGPS(Node):
             self.read_attempts += 1
             
             # Update GPS data
-            self.gps_serial.update()
+            while self.gps_serial.update():
+                self.get_logger().debug("Clearing GPS Buffer")
             
             lat = self.gps_serial.latitude
             lon = self.gps_serial.longitude
