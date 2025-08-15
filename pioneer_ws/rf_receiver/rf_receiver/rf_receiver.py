@@ -1,8 +1,7 @@
 import rclpy
 from rclpy.node import Node
 
-from std_msgs.msg import String
-from std_msgs.msg import Int16
+from std_msgs.msg import String, Int16, Float64
 
 from digi.xbee.devices import XBeeDevice, XBee64BitAddress
 from typing import Any, Union, Callable, Optional, Tuple, List
@@ -214,7 +213,7 @@ class RFReceiver(Node):
     def update_rssi(self) -> Optional[float]:
         rssi_bytes: bytes = self.device.get_parameter("DB")
         if rssi_bytes:
-            return - float.from_bytes(rssi_bytes)
+            return - float(int.from_bytes(rssi_bytes))
         else:
             return None
     
