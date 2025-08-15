@@ -57,7 +57,7 @@ class Controller(Node):
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('robot_id_list', ["p2", "p3", "p4"]),
+                ('robot_id_list', ["p1", "p2", "p3"]),
                 ('cluster_size', 3),
                 ('cluster_params', [8.0, 8.0, 1.047]), 
                 ('adaptive_navigation', True),
@@ -383,6 +383,8 @@ class Controller(Node):
         if (self.output == "sim" and not self.sim_configured and 
             self._count_alive_robots("sim") >= self.cluster_size):
             self._assign_robots("sim")
+        #else: 
+        #   self.get_logger().info(f"Not enough robots to assign sim. Output {self.output} Sim Configured {self.sim_configured} Robots Alive {self._count_alive_robots("sim")} ")
 
     def _assign_robots(self, output: str):
         """Assign available robots to cluster formation"""

@@ -24,6 +24,8 @@ def generate_launch_description():
     display_launch_file = os.path.join(get_package_share_directory('rover_description'), 'launch', 'display.launch.py')
     pioneer_launch_file = os.path.join(get_package_share_directory('sim_launch'), 'pioneer_with_desired.launch.py')
     # Check if parameter files exist
+    custom_rviz_config = os.path.join(get_package_share_directory('rover_description'), 'rviz/clusterp1-p3withdesired.rviz')
+
     if not os.path.isfile(cluster_file):
         raise FileNotFoundError(f"Parameter file not found: {cluster_file}")
 
@@ -59,7 +61,8 @@ def generate_launch_description():
         parameters=["pioneer_base/teleop_core/config/joy-assign.yaml"],
         ),   
         IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(display_launch_file)
+            PythonLaunchDescriptionSource(display_launch_file),
+            launch_arguments={'rvizconfig': custom_rviz_config}.items()
         ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(pioneer_launch_file),

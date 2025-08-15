@@ -96,7 +96,7 @@ class ANNode(Node):
         #self.sim_gradient.robot_positions[self.robot_id_list.index(robot_id)][2] = 10 ** (msg.data/ 10) # Convert dBm to power to linearize
         #self.get_logger().info(f"Simulated RSSI for {robot_id}: {self.normalize_db(msg.data)}") #values range from -33 to -70
 
-    def normalize_db(self, db_val, db_min=-90.0, db_max=-33.0):
+    def normalize_db(self, db_val, db_min=-105.0, db_max=-65.0):
         db_val_clipped = max(min(db_val, db_max), db_min)  # Clamp to expected range
         norm = (db_val_clipped - db_min) / (db_max - db_min)
         return norm

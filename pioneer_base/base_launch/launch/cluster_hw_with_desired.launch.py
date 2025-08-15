@@ -13,7 +13,7 @@ def generate_launch_description():
     cluster_package_name = 'cluster_node'
     cluster_pkg_share = get_package_share_directory(cluster_package_name)
     # Construct paths to the parameter files relative to the launch file directory
-    cluster_file = os.path.join(cluster_pkg_share, 'config', 'cluster_multi.yaml')
+    cluster_file = os.path.join(cluster_pkg_share, 'config', '3cluster_velocity.yaml')
 
     # Check if parameter files exist
     if not os.path.isfile(cluster_file):

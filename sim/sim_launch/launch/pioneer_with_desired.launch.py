@@ -36,7 +36,7 @@ def generate_launch_description():
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(pioneer_launch_file),
             launch_arguments={
-                'robot_id': 'p4',
+                'robot_id': 'p1',
                 'x': '0.0', 
                 'y': '0.0',
                 't': '-1.0',

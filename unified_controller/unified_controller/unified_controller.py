@@ -17,13 +17,13 @@ class MinimalSubscriber(Node):
         super().__init__('pose_listener')
         self.pose_sub = self.create_subscription(
             Pose2D,
-            '/p4/pose2D',
+            '/p1/pose2D',
             self.listener_callback,
             10)
         self.pose_sub  # prevent unused variable warning
       
 
-        self.pub_cmdvel = self.create_publisher(Twist, '/p4/cmd_vel', 10)
+        self.pub_cmdvel = self.create_publisher(Twist, '/p1/cmd_vel', 10)
         
         self.joy_sub = self.create_subscription(
             Joy,
@@ -35,7 +35,7 @@ class MinimalSubscriber(Node):
         
         self.leader_sub = self.create_subscription(
             Pose2D,
-            '/p5/pose2D',
+            '/p2/pose2D',
             self.leader_callback,
             10)
         
@@ -166,7 +166,7 @@ class MinimalSubscriber(Node):
         elif self.ctrl_mode==5: #trajectory
             x=0.0
             y=0.0
-            tfinal=20.0
+            tfinal=40.0
             xend,yend,thetaend=self.path(x,y,tfinal,self.ctrl_mode)
             if self.last_mode!=5:
             	self.tstart=self.get_clock().now()
@@ -204,14 +204,14 @@ class MinimalSubscriber(Node):
             self.uaz = -0.6
         
         self.ulx = Vx+Klx*self.e_d
-        if self.ulx > 0.9:
-            self.ulx = 0.9
-        elif self.ulx < -0.9:
-            self.ulx = -0.9
+        if self.ulx > 0.4:
+            self.ulx = 0.4
+        elif self.ulx < -0.4:
+            self.ulx = -0.4
             
 
         msg_cmd = Twist()
-        msg_cmd.linear.x = -self.ulx
+        msg_cmd.linear.x = self.ulx
         msg_cmd.angular.z = self.uaz
         self.pub_cmdvel.publish(msg_cmd)
 
@@ -247,6 +247,8 @@ class MinimalSubscriber(Node):
         eit=dx*math.cos(path_dir)+dy*math.sin(path_dir)
         ect=dx*math.sin(path_dir)-dy*math.cos(path_dir)
         headingerr=path_dir+Kpct*ect-theta
+        if abs(headingerr) >= math.pi/2:
+             headingerr=path_dir+math.copysign(1,headingerr)*math.pi/2-theta
         e_dist=eit
         return e_dist, headingerr, eit, ect
         
@@ -258,7 +260,7 @@ class MinimalSubscriber(Node):
     	    dx=1.0
     	if mode==5:
     	    y=0.0
-    	    x=t
+    	    x=t/2
     	    dy=0.0
     	    dx=1.0
     	path_dir=math.atan2(dy,dx)
