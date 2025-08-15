@@ -68,12 +68,12 @@ class ANNode(Node):
                 lambda msg, robot_id=robot_id: self.sim_pose(msg, robot_id),
                 5)
             self.pubsub.create_subscription(
-                Int16,
+                Float64,
                 f'/{robot_id}/rssi',
                 lambda msg, robot_id=robot_id: self.actual_rssi(msg, robot_id),
                 5)
             self.pubsub.create_subscription(
-                Int16,
+                Float64,
                 f'/sim/{robot_id}/rssi',
                 lambda msg, robot_id=robot_id: self.sim_rssi(msg, robot_id),
                 5)
@@ -92,7 +92,7 @@ class ANNode(Node):
         #self.gradient.robot_positions[self.robot_id_list.index(robot_id)][2] = 10 ** (msg.data/ 10) # Convert dBm to power to linearize
 
     def sim_rssi(self, msg, robot_id): 
-        self.sim_gradient.robot_positions[self.robot_id_list.index(robot_id)][2] = self.normalize_db(msg.data)  # Normalize the RSSI value
+        self.sim_gradient.robot_positions[self.robot_id_list.index(robot_id)][2] = self.normalize_db(msg.data, db_min=-70.0, db_max=-33.0)  # Normalize the RSSI value
         #self.sim_gradient.robot_positions[self.robot_id_list.index(robot_id)][2] = 10 ** (msg.data/ 10) # Convert dBm to power to linearize
         #self.get_logger().info(f"Simulated RSSI for {robot_id}: {self.normalize_db(msg.data)}") #values range from -33 to -70
 

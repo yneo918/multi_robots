@@ -96,7 +96,7 @@ class RFReceiver(Node):
         self.msg: str = ''
         self.remote_device: XBee64BitAddress = None
         self.timestamp: Numeric  = None
-        self.rssi: int = None
+        self.rssi: float = None
 
         # Add aliases for logging
         self.debug: Callable = self.log().debug
@@ -150,7 +150,7 @@ class RFReceiver(Node):
 
         # Create publish topic of message
         self.pubsub.create_publisher(
-            Int16,
+            Float64,
             f'/{self.robot_id}/{self.get(RFReceiver.PUB_TOPIC)}',
             10
         )
@@ -211,10 +211,10 @@ class RFReceiver(Node):
     def add_data_received_callback(self, func: Callable) -> None:
         self.device.add_data_received_callback(func)
     
-    def update_rssi(self) -> Optional[int]:
+    def update_rssi(self) -> Optional[float]:
         rssi_bytes: bytes = self.device.get_parameter("DB")
         if rssi_bytes:
-            return - int.from_bytes(rssi_bytes)
+            return - float.from_bytes(rssi_bytes)
         else:
             return None
     
@@ -245,7 +245,7 @@ class RFReceiver(Node):
             # Publish data
             self.pubsub.publish(
                 f'/{self.robot_id}/{self.get(RFReceiver.PUB_TOPIC)}',
-                Int16(data=self.rssi)
+                Float64(data=self.rssi)
             )
 
         except Exception as e:
@@ -268,7 +268,7 @@ class RFReceiver(Node):
         # Publish fake data
         self.pubsub.publish(
             f'/{self.robot_id}/{self.get(RFReceiver.PUB_TOPIC)}',
-            Int16(data=self.rssi)
+            Float64(data=self.rssi)
         )
 
 

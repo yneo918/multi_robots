@@ -4,7 +4,9 @@ log/
 *Zone.Identifier
 **__pycache__/
 *.pyc
+*.csv
 record/rosbag*
+record/*/rosbag*
 CLAUDE.md
 
 # Local configuration files
