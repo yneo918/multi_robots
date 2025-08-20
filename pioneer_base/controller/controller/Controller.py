@@ -557,32 +557,41 @@ class Controller(Node):
     def _compute_robot_command(self, x_vel: float, y_vel: float, 
                               current_theta: float) -> Tuple[float, float]:
         """Compute linear and angular velocity commands for a single robot"""
-        translation_magnitude = math.sqrt(x_vel**2 + y_vel**2)
-        
-        # Check if robot is close enough to desired position
-        if self.control_mode == ControlMode.POSITION and translation_magnitude < EPSILON * KP_GAIN:
-            return 0.0, 0.0
-        
-        # Compute desired heading and angular error
-        desired_angle = math.atan2(x_vel, y_vel)
-        angular_error = self._wrap_to_pi(desired_angle - current_theta)
-        
-        #self.get_logger().info(
-        #    f"x_vel={x_vel:.3f}, y_vel={y_vel:.3f}, "
-        #    f"current_theta={current_theta:.3f}, desired_angle={desired_angle:.3f}"
-        #)
-        
-        # Determine forward/backward motion based on angular error
-        if abs(angular_error) < math.pi / 2:
-            linear_vel = translation_magnitude * math.cos(abs(angular_error))
-            angular_vel = angular_error * 3
-        else:
-            # Move backward if angle error is large
-            corrected_error = self._wrap_to_pi(math.pi - angular_error)
-            linear_vel = -translation_magnitude * math.cos(abs(corrected_error))
-            angular_vel = corrected_error * 3
-        
-        return linear_vel, angular_vel
+        try:
+            translation_magnitude = math.sqrt(x_vel**2 + y_vel**2)
+            
+            # Check if robot is close enough to desired position
+            if self.control_mode == ControlMode.POSITION and translation_magnitude < EPSILON * KP_GAIN:
+                return 0.0, 0.0
+            
+            # Compute desired heading and angular error
+            desired_angle = math.atan2(x_vel, y_vel) #x and y are swapped to get angle from y axis
+            angular_error = desired_angle - current_theta #-2pi to 2pi
+            #Get angular error for shortest path
+            angular_error = angular_error%(2*np.pi) 
+            if(angular_error > np.pi):
+                angular_error = angular_error - 2*np.pi
+            
+            #self.get_logger().info(
+            #    f"x_vel={x_vel:.3f}, y_vel={y_vel:.3f}, "
+            #    f"current_theta={current_theta:.3f}, desired_angle={desired_alargengle:.3f}"
+            #)
+            
+            # Determine forward/backward motion based on angular error
+            if(abs(angular_error) < math.pi / 2):
+                linear_vel = translation_magnitude * math.cos(abs(angular_error))
+                angular_vel = -angular_error * 0.3
+                #self.get_logger().info(f"Angular error small going forward {angular_error} with velocities {linear_vel}, {angular_vel}")
+            else:
+                # Move backward if angle error is large
+                #self.get_logger().info(f"Angular error too large {angular_error}")
+                corrected_error = self._wrap_to_pi(math.pi - angular_error)
+                linear_vel = -translation_magnitude * math.cos(abs(corrected_error))
+                angular_vel = corrected_error * 0.3
+            
+            return linear_vel, angular_vel
+        except Exception as e:
+            self.get_logger().error(f"Error in _publish_desired_poses: {e}")
 
     def _apply_velocity_limits(self, rover_commands: List[List[float]]) -> np.ndarray:
         """Apply velocity limits to robot commands"""
