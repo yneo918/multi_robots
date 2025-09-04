@@ -67,9 +67,16 @@ def extract_fields(msg, dict: dict, unique_slot_key: str = ""):
 
                 # FOR DEBUG ONLY
                 # print(f"slot: {slot}, type val: {type(val)}")
+                
+                # If the field is empty, then don't add it to dictionary
+                if val is None: pass
+
+                # If the field is an empty iterable, pass
+                elif isinstance(val, (list, tuple, array.array)) \
+                     and not len(val): pass
 
                 # If data type is an array
-                if slot == "_data" and isinstance(val, array.array):
+                elif slot == "_data" and isinstance(val, array.array):
 
                     # Create each key for each data
                     for i, v in enumerate(val):
@@ -153,7 +160,7 @@ class Recorder(Node):
         self.pubsub: PubSubManager = PubSubManager(self)
 
         # Create cachce dictionary of logged objects
-        self.cdict: dict = defaultdict(lambda: None)
+        self.cdict: dict = defaultdict()
 
         # Create publishers and subscribers
         self.create_publishers_and_subscribers()
@@ -217,8 +224,9 @@ class Recorder(Node):
             # subscribers
             if name not in self.pubsub._subscribers[1]:
 
-                # Create key in logged dictionary
-                self.cdict[name] = None
+                # # Create key in logged dictionary
+                # FIX
+                # self.cdict[name] = None
 
                 # create a subscription
                 self.pubsub.create_subscription(
