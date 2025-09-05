@@ -1,44 +1,29 @@
-## Usage
-### Run Joypad node for multi pioneers
-```
-$ ros2 launch teleop_core gui.launch.py
-```
-You can set robot id in config/demux.yaml.
+# Multirobot Cluster Control Base Station
 
-### Run Autonavigation(Under Dev)
-```
-$ ros2 run auto_nav_core nav_controller --ros-args --params-file src/auto_nav_core/config/navparams.yaml
-```
+## Overview
 
-### Joy Stick
-```
-LY: ↕  
-RX: ↔   
-LB: enable
-```
-You can set button assignment in config/joy-assign.yaml.
+This folder contains the base station packages to perform cluster control and adaptive navigation on a multi-robot platform. While this code was designed for the pioneer robots, it is mostly generalized and can be used for any multi-robot platform with similar DOF and could be extended further with slight modification.
 
-## Message
-```
-Role:          msg_name                    Type
-joy_input:     /joy                        sensor_msgs.Joy
-broadcast:     /joy/broadcast              std_msgs.msg.Bool
-joy_cmd_vel:   /joy/cmd_vel                geometry_msgs.msg.Twist
-joy_enable:    /joy/enable                 std_msgs.msg.Bool
-select_rover:  /select_rover               std_msgs.msg.Int16
-cmd_vel_rover: /{ROBOT_ID}/cmd_vel         geometry_msgs.msg.Twist
+### Key Features
+
+1. **Cluster Control**: Implementation of cluster control algorithm
+2. **Adaptive Navigation**: Implementation of adaptive navigation for scalar fields
+3. **Manual Control**: Manual control during runtime of robots, mode selection, and cluster parameters using gamepad controller and GUI
+4. **Configuration Files**: Change parameters more extensively before launch by editing configuration files
+5. **Comprehensive Launch Files**: A nested series of launch files to launch different parts or the whole project
+
+## File Structure
 
 ```
-
-## Structure
-```
-Representation:[package_name/run_name] (massage)
-
-[joy_core/joy_node]
-  ↓ (/joy)
-[teleop_core/joy2cmd]  → (enable) / Not used
-  ↓ (/joy/broadcast),(/joy/cmd_vel),(/joy/enable),(select_rover)
-[teleop_core/demux]
-  ↓ (/{ROBOT_ID}/cmd_vel)
-[[pioneer_ws]]
+~/ros2_ws/pioneer_base/
+├── adaptive_nav/
+│   ├── adaptive_nav.py             # Adaptive nav ROS manager
+│   ├── ScalarGradient.py           # Gradient Descent Class Definition
+├── base_launch/                   # GPS/IMU to pose conversion
+│   ├── launch/
+│   │   └── cluster_hw_with_desired.launch.py           # 3 robot cluster control full launch file
+├── cluster_node/                       
+│   └── Cluster.py                 # Cluster Controller Class definition
+├── controller/                       # GPS sensor management
+│   └── Controller.py                 # Cluster Controller ROS manager
 ```
