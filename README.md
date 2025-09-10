@@ -25,10 +25,9 @@ Video of 5 robot cluster moving forward in field.
 <p align="center">
   <img src="record/5robot.gif" width="600" alt="5 robot"/>
 </p>
----
 
 ## File Structure
-Each of the highest level files has an extended read me detailed there purpose and use.
+Each of the highest level files has an extended read me detailing there purpose and use.
 ```
 ~/ros2_ws/
 ├── Docker/                # Files to launch project in docker container
