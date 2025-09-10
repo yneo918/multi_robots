@@ -17,15 +17,14 @@ The pioneer multi-robot testbed is platform designed for development and testing
 ---
 
 ## Demo
-Video of profiler navigating to gps waypoint.
+Video of 3 robot cluster following contour clockwise in simulation.
 <p align="center">
-  <img src="WaypointNavigation (1).gif" width="600" alt="Waypoint Profiler navigation and dive demo"/>
+  <img src="record/simmr.gif" width="600" alt="an sim demo"/>
 </p>
-Video of profiler flipping oreintation and diving to desired depth.
+Video of 5 robot cluster moving forward in field.
 <p align="center">
-  <img src="WaypointNavigation (2).gif" width="600" alt="Waypoint Profiler navigation and dive demo"/>
+  <img src="record/5robot.gif" width="600" alt="5 robot"/>
 </p>
-The profiler is tethered in both videos with a rope as a failsafe but a final product would be tetherless.
 ---
 
 ## File Structure
