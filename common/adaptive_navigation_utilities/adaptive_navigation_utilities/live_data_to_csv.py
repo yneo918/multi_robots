@@ -456,6 +456,7 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     finally:
+        recorder.write_to_file()
         recorder.destroy_node()
         rclpy.shutdown()
         
