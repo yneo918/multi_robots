@@ -22,6 +22,7 @@ def generate_launch_description():
     display_launch_file = os.path.join(get_package_share_directory('rover_description'), 'launch', 'display_with_hw_desired.launch.py')
     pioneer_launch_file = os.path.join(get_package_share_directory('sim_launch'), 'pioneer_with_hw_desired.launch.py')
     teleop_launch_file = os.path.join(get_package_share_directory("teleop_core"), 'gui_3.launch.py')
+    csv_logger = os.path.join( get_package_share_directory('adaptive_navigation_utilities'), 'live_data_to_csv.launch.py')
 
     return LaunchDescription([
         Node(
@@ -38,5 +39,8 @@ def generate_launch_description():
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(teleop_launch_file)
         ),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(csv_logger)
+        )
     ])
 
