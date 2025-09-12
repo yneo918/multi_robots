@@ -1,0 +1,82 @@
+data: "output_09_02_25_120729_v2.csv"
+
+adaptive_nav:
+  - enable: True
+    time:
+      - start: 1198
+        end: 2041
+      - start: 2535
+        end: 2859
+      - start: 3246
+        end: 4039
+    dirname: maximum
+    figures:
+        time_history:
+          enable: False
+          filename: frisbee_cluster_params
+          use_subplots: True
+          ylim:
+            - [-5, 3]
+            - [-30, 15]
+            - [-4, 4]
+            - [0, 15]
+            - [0, 25]
+            - [0, 2]
+          figsize: [9, 10]
+        centroid_phase_portrait:
+          enable: True
+          filename: maximum_adaptive_nav_centroid_phase_portrait
+        cluster_phase_portrait:
+          enable: True
+          include_label: False
+          filename: maximum_adaptive_nav_cluster_phase_portrait
+
+  - enable: True
+    time:
+      - start: 4040
+        end: 4688
+    dirname: contour_following_clockwise
+    figures:
+        time_history:
+          enable: False
+        centroid_phase_portrait:
+          enable: True
+          filename: clockwise_adaptive_nav_centroid_phase_portrait
+        cluster_phase_portrait:
+          enable: True
+          include_label: False
+          filename: clockwise_adaptive_nav_cluster_phase_portrait
+
+  - enable: True
+    time:
+      - start: 4689
+        end: 4807
+      - start: 4838
+        end: 4974
+    dirname: contour_following_counter_clockwise
+    figures:
+        time_history:
+          enable: False
+        centroid_phase_portrait:
+          enable: True
+          filename: counter_clockwise_adaptive_nav_centroid_phase_portrait
+        cluster_phase_portrait:
+          enable: True
+          include_label: False
+          filename: counter_clockwise_adaptive_nav_cluster_phase_portrait
+
+  - enable: True
+    time:
+      - start: 2042
+        end: 2535
+    dirname: minimum
+    figures:
+        time_history:
+          enable: False
+        centroid_phase_portrait:
+          enable: True
+          filename: minimum_adaptive_nav_cluster_phase_portrait
+        cluster_phase_portrait:
+          enable: True
+          include_label: False
+          filename: minimum_adaptive_nav_cluster_phase_portrait
