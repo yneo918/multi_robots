@@ -1,6 +1,6 @@
 # Pioneer Multi-Robot Testbed
 
-The pioneer multi-robot testbed is platform designed for development and testing of cluster control and adaptive navigation algorithms of land rovers. It can be deployed in a simulation environement or with physical robots with the ability to manually control the robots and change parameters during runtime.
+The pioneer multi-robot testbed is platform designed for development and testing of cluster control and adaptive navigation algorithms of land rovers. It can be deployed in a simulation environement or with physical robots with the ability to manually control the robots and change parameters during runtime. The bulk of the codebase is implemented using ROS2 Jazzy and the simulation environment uses Rviz2.
 
 ---
 
