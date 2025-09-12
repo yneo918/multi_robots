@@ -24,8 +24,8 @@ adaptive_nav:
             - [0, 2]
           figsize: [9, 10]
         centroid_phase_portrait:
-          enable: False
-          filename: frisbee_centroid_phase
+          enable: True
+          filename: maximum_adaptive_nav_centroid_phase_portrait
         cluster_phase_portrait:
           enable: True
           include_label: False
@@ -40,8 +40,8 @@ adaptive_nav:
         time_history:
           enable: False
         centroid_phase_portrait:
-          enable: False
-          filename: rotation_centroid_phase
+          enable: True
+          filename: clockwise_adaptive_nav_centroid_phase_portrait
         cluster_phase_portrait:
           enable: True
           include_label: False
@@ -58,8 +58,8 @@ adaptive_nav:
         time_history:
           enable: False
         centroid_phase_portrait:
-          enable: False
-          filename: rotation_centroid_phase
+          enable: True
+          filename: counter_clockwise_adaptive_nav_centroid_phase_portrait
         cluster_phase_portrait:
           enable: True
           include_label: False
@@ -74,8 +74,8 @@ adaptive_nav:
         time_history:
           enable: False
         centroid_phase_portrait:
-          enable: False
-          filename: rotation_centroid_phase
+          enable: True
+          filename: minimum_adaptive_nav_cluster_phase_portrait
         cluster_phase_portrait:
           enable: True
           include_label: False
