@@ -43,6 +43,7 @@ rf_receiver:
   update_rate: 2.0 # Hz - RF Receiver module update rate
   timer_period: 2.0 # seconds - ROS timer
   pub_topic: "rssi"
+  moving_average_rate: 0.15
 
 
 # Locomotion configuration
