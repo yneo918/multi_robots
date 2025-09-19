@@ -2,6 +2,7 @@ import rclpy
 from rclpy.node import Node
 
 from std_msgs.msg import String, Int16, Float64
+from rcl_interfaces.msg import SetParametersResult
 
 from digi.xbee.devices import XBeeDevice, XBee64BitAddress
 from typing import Any, Union, Callable, Optional, Tuple, List
@@ -119,6 +120,9 @@ class RFReceiver(Node):
         # Create publish topics
         self.create_publish_topics()
 
+        # Validate ROS params
+        self._validate_params()
+
         if DEBUG: print(self.device_paths)
 
         # If not simulation
@@ -167,6 +171,22 @@ class RFReceiver(Node):
     
     def log(self):
         return self.get_logger()
+
+    def _valiate_moving_average_pct(self) -> None:
+
+        if self.moving_average_pct > 1:
+            self.warn(f"Cannot set moving average above 1. Limiting to 1")
+            self.moving_average_pct = 1
+
+        if self.moving_average_pct <= 0:
+            self.warn(f"Cannot set moving average equal or less than 0. Setting to 0.01")
+            self.moving_average_pct = 0.01
+        
+    
+    def _validate_params(self) -> bool:
+
+        # Validate the moving_average_pct ROS param
+        self._valiate_moving_average_pct()
 
     # Create XBee device
     def xbee_init(self) -> Optional[XBeeDevice]:
@@ -310,6 +330,33 @@ class RFReceiver(Node):
             self.debug(f"Polled RSSI: {self.rssi}")
         except Exception as e:
             self.error(f"Polling error: {e}")
+
+    # Add callback if there is any change in ROS parameters
+    def parameters_callback(self, params):
+
+        # For all parameters
+        for p in params:
+        
+            # If the class has this attribute and
+            # is the same as the parameter name
+            if hasattr(self, p.name):
+
+                # Set the attribute value
+                self.info(f"{p.name}")
+                setattr(self, p.name, p.value)
+
+                self.info(f"Set {p.name} to {p.value}")
+
+            else:
+
+                # Create a variable and set it as such
+                setattr(self, p.name, p.value)
+
+            
+        # For specific parameter checks
+        self._validate_params()
+
+        return SetParametersResult(successful=True)
 
             
 def main(args=None):
