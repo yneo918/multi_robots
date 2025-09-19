@@ -74,7 +74,7 @@ class RFReceiver(Node):
                 (RFReceiver.RETRY_DELAY, 2.0),
                 (RFReceiver.RETRY_ATTEMPTS, 5),
                 (RFReceiver.PUB_TOPIC, 'rssi'),
-                (RFReceiver.MOVING_AVERAGE_PCT, 0.2)
+                (RFReceiver.MOVING_AVERAGE_PCT, 0.1)
             ]
         )
 
