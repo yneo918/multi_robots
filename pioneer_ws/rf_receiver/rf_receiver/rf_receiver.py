@@ -40,6 +40,9 @@ class RFReceiver(Node):
     TIMER_PERIOD: str = 'timer_period'
     RETRY_DELAY: float = 'retry_delay'
     RETRY_ATTEMPTS: int = 'retry_attempts'
+    MOVING_AVERAGE_PCT: str = 'moving_average_pct' # 0 to 1
+                                                   # 1 = use live value
+                                                   # 0 = use infinite size average
 
     PUB_TOPIC: str = 'pub_topic'
     RANGE_FAKE_RSSI: Tuple[int] = (-100, -10)
@@ -69,7 +72,8 @@ class RFReceiver(Node):
                 (RFReceiver.TIMER_PERIOD, 2.0),
                 (RFReceiver.RETRY_DELAY, 2.0),
                 (RFReceiver.RETRY_ATTEMPTS, 5),
-                (RFReceiver.PUB_TOPIC, 'rssi')
+                (RFReceiver.PUB_TOPIC, 'rssi'),
+                (RFReceiver.MOVING_AVERAGE_PCT, 0.2)
             ]
         )
 
@@ -86,6 +90,8 @@ class RFReceiver(Node):
         self.timer_period: float = self.get(RFReceiver.TIMER_PERIOD)
         self.retry_delay: float = self.get(RFReceiver.RETRY_DELAY)
         self.retry_attempts: int = self.get(RFReceiver.RETRY_ATTEMPTS)
+        self.use_moving_average: bool = self.get(RFReceiver.USE_MOVING_AVERAGE)
+        self.moving_average_pct: float = self.get(RFReceiver.MOVING_AVERAGE_PCT)
 
         # Statistics for mointoring
         self.connection_attempts: int = 0
@@ -96,6 +102,7 @@ class RFReceiver(Node):
         self.remote_device: XBee64BitAddress = None
         self.timestamp: Numeric  = None
         self.rssi: float = None
+        self.last_rssi: float = None
 
         # Add aliases for logging
         self.debug: Callable = self.log().debug
@@ -210,12 +217,23 @@ class RFReceiver(Node):
     def add_data_received_callback(self, func: Callable) -> None:
         self.device.add_data_received_callback(func)
     
-    def update_rssi(self) -> Optional[float]:
+    def update_rssi(self) -> None:
+
+        # Get raw RSSI value
         rssi_bytes: bytes = self.device.get_parameter("DB")
+
         if rssi_bytes:
-            return - float(int.from_bytes(rssi_bytes))
-        else:
-            return None
+
+            # Convert bytes to float
+            rssi_bytes = - float(int.from_bytes(rssi_bytes))
+
+            # Apply moving average
+            # TODO: Add this as a general utilities function
+            self.rssi = (1 - self.moving_average_pct) * self.rssi \
+                            + self.moving_average_pct * rssi_bytes
+            
+            # Update last rssi
+            self.last_rssi = rssi_bytes
     
     def get_rssi_from_received_msg(self, message) -> None:
 
@@ -237,9 +255,10 @@ class RFReceiver(Node):
             if not self.device.is_open():
                 self.device.open()
 
-            # Get rssi
-            self.rssi = self.update_rssi()
-            self.debug(f"RSSI of last message: {self.rssi}")
+            # Update rssi
+            self.update_rssi()
+            self.debug(f"RSSI of last message: {self.last_rssi}")
+            self.debug(f"Averaged RSSI over last {1/self.moving_average_pct} values: {self.rssi}")
             
             # Publish data
             self.pubsub.publish(
@@ -256,13 +275,20 @@ class RFReceiver(Node):
     def get_fake_rssi_from_received_msg(self) -> None:
 
         # Update fake rssi
-        self.rssi = randrange(
+        self.last_rssi = randrange(
                     RFReceiver.RANGE_FAKE_RSSI[0],
                     RFReceiver.RANGE_FAKE_RSSI[1]
                         )
         
+        # Apply moving average
+        # TODO: Add this as a general utilities function
+        self.rssi = (1 - self.moving_average_pct) * self.rssi \
+                        + self.moving_average_pct * self.last_rssi
+        
         # Log rssi
-        self.debug(f"RSSI: {self.rssi}")
+        self.debug(f"RSSI of last message: {self.last_rssi}")
+        self.debug(f"Averaged RSSI over last {1/self.moving_average_pct} values: {self.rssi}")
+            
 
         # Publish fake data
         self.pubsub.publish(
