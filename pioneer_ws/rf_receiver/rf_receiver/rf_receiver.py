@@ -91,7 +91,6 @@ class RFReceiver(Node):
         self.timer_period: float = self.get(RFReceiver.TIMER_PERIOD)
         self.retry_delay: float = self.get(RFReceiver.RETRY_DELAY)
         self.retry_attempts: int = self.get(RFReceiver.RETRY_ATTEMPTS)
-        self.use_moving_average: bool = self.get(RFReceiver.USE_MOVING_AVERAGE)
         self.moving_average_pct: float = self.get(RFReceiver.MOVING_AVERAGE_PCT)
 
         # Statistics for mointoring
