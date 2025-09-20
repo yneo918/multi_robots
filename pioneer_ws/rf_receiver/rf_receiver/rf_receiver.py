@@ -246,11 +246,18 @@ class RFReceiver(Node):
             # Convert bytes to float
             rssi_bytes = - float(int.from_bytes(rssi_bytes))
 
-            # Apply moving average
-            # TODO: Add this as a general utilities function
-            self.rssi = (1 - self.moving_average_pct) * self.rssi \
-                            + self.moving_average_pct * rssi_bytes
             
+            # If the rssi has not been received yet,
+            # the moving average cannot be applied as there
+            # is no initial value
+            if not self.rssi:
+                self.rssi = rssi_bytes
+            else:
+
+                # Apply moving average
+                self.rssi = (1 - self.moving_average_pct) * self.rssi \
+                                + self.moving_average_pct * rssi_bytes
+                
             # Update last rssi
             self.last_rssi = rssi_bytes
     
