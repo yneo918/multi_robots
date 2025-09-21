@@ -124,6 +124,9 @@ class RFReceiver(Node):
 
         if DEBUG: print(self.device_paths)
 
+        # Callback function for set parameters
+        self.add_on_set_parameters_callback(self.parameters_callback)
+
         # If not simulation
         if not self.ns.is_simulation:
 
