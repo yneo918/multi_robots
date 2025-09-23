@@ -5,13 +5,10 @@ from enum import Enum
 from typing import Optional, List, Tuple, Union
 from abc import ABC, abstractmethod
 
-class ClusterConfig(Enum):
+class ClusterConfig(Enum): 
     """Enumeration of available cluster configurations."""
-    TRICEN = "TriangleatCentroid"
-    TRILEAD = "TriangleatLeader"
-    ELLIPSE = "Ellipse"
-    DIAMOND = "Diamond"
-    LINE = "Line"
+    TRICEN = "TriangleatCentroid" 
+    TRILEAD = "TriangleatLeader" 
     
     def __str__(self):
         return self.value
@@ -179,6 +176,7 @@ class Cluster:
     """
     
     # Configuration registry
+    # To add new configurations write out the kinematic equations in a new class inheriting ClusterConfigurationBase and add the enum name here
     _CONFIG_REGISTRY = {
         (3, ClusterConfig.TRICEN): TriangleCentroidConfig,
         (5, ClusterConfig.TRILEAD): TriangleLeaderConfig,

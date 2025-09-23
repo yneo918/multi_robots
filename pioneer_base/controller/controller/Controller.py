@@ -13,11 +13,11 @@ from cluster_node.Cluster import Cluster, ClusterConfig, ControlMode
 
 # Constants
 FREQ = 10
-JOY_FREQ = FREQ
-KP_GAIN = 1.0
-KV_GAIN = 1.0
-EPSILON = 0.1
-MAX_VEL = 1.0
+JOY_FREQ = FREQ # Frequency for joystick commands
+KP_GAIN = 0.2  # Position gain in m/s per m error
+KV_GAIN = 0.2  # Velocity gain in m/s per m/s error
+EPSILON = 0.5  # Distance threshold to consider robot at desired position in meters
+MAX_VEL = 1.0  # Maximum linear+angular velocity in m/s
 ROVER_DOF = 3  # (x, y, theta)
 
 class RobotStatus:
@@ -445,21 +445,16 @@ class Controller(Node):
             self._publish_zero_velocities(msg_prefix, cluster_robots)
             return
         
-        # Gather robot positions and velocities
+        # Gather current robot positions and velocities
         robot_positions, robot_velocities = self._gather_robot_data(
             cluster_robots, robot_status_dict
         )
         
-        # Compute cluster control
+        # Compute position in cluster space
         cluster_position = self.cluster.get_cluster_position(robot_positions)
         
-        # Apply adaptive navigation if enabled
-        if self.adaptive_navigation:
-            # Placeholder for adaptive navigation logic
-            pass
-        
         # Get velocity commands from cluster controller
-        cdot_des = self.cdot_des if output == "actual" else self.sim_cdot_des
+        cdot_des = self.cdot_des if output == "actual" else self.sim_cdot_des # Desired cluster velocity
         cdot_cmd, rdot_des, c_cur = self.cluster.get_velocity_command(
             robot_positions, robot_velocities, self.c_des, cdot_des
         )
@@ -472,11 +467,11 @@ class Controller(Node):
         # Publish cluster information
         self._publish_cluster_info(msg_prefix, c_cur, robot_positions, rdot_des)
         
-        # Publish desired poses
+        # Publish desired robot poses
         self._publish_desired_poses(cluster_robots)
 
     def _publish_zero_velocities(self, msg_prefix: str, cluster_robots: List[str]):
-        """Publish zero velocities to all robots"""
+        """Publish velocity of 0 to all robots"""
         zero_vel = Twist()
         zero_vel.linear.x = 0.0
         zero_vel.angular.z = 0.0
@@ -524,7 +519,7 @@ class Controller(Node):
         """Compute individual robot commands and publish them"""
         rover_commands = []
         
-        # Convert desired velocities to robot commands
+        # Due to non-holonomic constraints we need to convert x,y velocities to linear/angular velocities
         for i in range(len(cluster_robots)):
             x_vel = float(rdot_des[i * ROVER_DOF + 0, 0])
             y_vel = float(rdot_des[i * ROVER_DOF + 1, 0])
@@ -535,10 +530,10 @@ class Controller(Node):
             )
             rover_commands.append([linear_cmd, angular_cmd])
         
-        # Apply velocity limits
+        # Limit velocities based on physical constraints
         rover_commands = self._apply_velocity_limits(rover_commands)
         
-        # Publish commands
+        # Publish robot velocity commands
         for i, robot_id in enumerate(cluster_robots):
             vel_msg = Twist()
             vel_msg.linear.x = rover_commands[i][0]
@@ -556,18 +551,18 @@ class Controller(Node):
 
     def _compute_robot_command(self, x_vel: float, y_vel: float, 
                               current_theta: float) -> Tuple[float, float]:
-        """Compute linear and angular velocity commands for a single robot"""
+        """Heading controller to compute linear and angular velocity commands for a single robot"""
         try:
             translation_magnitude = math.sqrt(x_vel**2 + y_vel**2)
             
-            # Check if robot is close enough to desired position
-            if self.control_mode == ControlMode.POSITION and translation_magnitude < EPSILON * KP_GAIN:
+            # If in position control mode check if robot is close enough to desired position
+            if self.control_mode == ControlMode.POSITION and translation_magnitude < EPSILON * KP_GAIN: #multiply by gain to convert to m/s
                 return 0.0, 0.0
             
             # Compute desired heading and angular error
             desired_angle = math.atan2(x_vel, y_vel) #x and y are swapped to get angle from y axis
             angular_error = desired_angle - current_theta #-2pi to 2pi
-            #Get angular error for shortest path
+            #Get angular error for shortest path to desired angle
             angular_error = angular_error%(2*np.pi) 
             if(angular_error > np.pi):
                 angular_error = angular_error - 2*np.pi
@@ -577,7 +572,7 @@ class Controller(Node):
             #    f"current_theta={current_theta:.3f}, desired_angle={desired_alargengle:.3f}"
             #)
             
-            # Determine forward/backward motion based on angular error
+            # If angle error is small, move forward otherwise move backward to avoid large turns
             if(abs(angular_error) < math.pi / 2):
                 linear_vel = translation_magnitude * math.cos(abs(angular_error))
                 angular_vel = -angular_error * 0.3
