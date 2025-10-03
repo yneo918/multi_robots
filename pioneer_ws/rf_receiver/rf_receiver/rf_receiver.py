@@ -2,6 +2,7 @@ import rclpy
 from rclpy.node import Node
 
 from std_msgs.msg import String, Int16, Float64
+from rcl_interfaces.msg import SetParametersResult
 
 from digi.xbee.devices import XBeeDevice, XBee64BitAddress
 from typing import Any, Union, Callable, Optional, Tuple, List
@@ -40,6 +41,9 @@ class RFReceiver(Node):
     TIMER_PERIOD: str = 'timer_period'
     RETRY_DELAY: float = 'retry_delay'
     RETRY_ATTEMPTS: int = 'retry_attempts'
+    MOVING_AVERAGE_PCT: str = 'moving_average_pct' # 0 to 1
+                                                   # 1 = use live value
+                                                   # 0 = use infinite size average
 
     PUB_TOPIC: str = 'pub_topic'
     RANGE_FAKE_RSSI: Tuple[int] = (-100, -10)
@@ -69,7 +73,8 @@ class RFReceiver(Node):
                 (RFReceiver.TIMER_PERIOD, 2.0),
                 (RFReceiver.RETRY_DELAY, 2.0),
                 (RFReceiver.RETRY_ATTEMPTS, 5),
-                (RFReceiver.PUB_TOPIC, 'rssi')
+                (RFReceiver.PUB_TOPIC, 'rssi'),
+                (RFReceiver.MOVING_AVERAGE_PCT, 0.1)
             ]
         )
 
@@ -86,6 +91,7 @@ class RFReceiver(Node):
         self.timer_period: float = self.get(RFReceiver.TIMER_PERIOD)
         self.retry_delay: float = self.get(RFReceiver.RETRY_DELAY)
         self.retry_attempts: int = self.get(RFReceiver.RETRY_ATTEMPTS)
+        self.moving_average_pct: float = self.get(RFReceiver.MOVING_AVERAGE_PCT)
 
         # Statistics for mointoring
         self.connection_attempts: int = 0
@@ -96,6 +102,7 @@ class RFReceiver(Node):
         self.remote_device: XBee64BitAddress = None
         self.timestamp: Numeric  = None
         self.rssi: float = None
+        self.last_rssi: float = None
 
         # Add aliases for logging
         self.debug: Callable = self.log().debug
@@ -112,7 +119,13 @@ class RFReceiver(Node):
         # Create publish topics
         self.create_publish_topics()
 
+        # Validate ROS params
+        self._validate_params()
+
         if DEBUG: print(self.device_paths)
+
+        # Callback function for set parameters
+        self.add_on_set_parameters_callback(self.parameters_callback)
 
         # If not simulation
         if not self.ns.is_simulation:
@@ -160,6 +173,22 @@ class RFReceiver(Node):
     
     def log(self):
         return self.get_logger()
+
+    def _valiate_moving_average_pct(self) -> None:
+
+        if self.moving_average_pct > 1:
+            self.warn(f"Cannot set moving average above 1. Limiting to 1")
+            self.moving_average_pct = 1
+
+        if self.moving_average_pct <= 0:
+            self.warn(f"Cannot set moving average equal or less than 0. Setting to 0.01")
+            self.moving_average_pct = 0.01
+        
+    
+    def _validate_params(self) -> bool:
+
+        # Validate the moving_average_pct ROS param
+        self._valiate_moving_average_pct()
 
     # Create XBee device
     def xbee_init(self) -> Optional[XBeeDevice]:
@@ -210,12 +239,30 @@ class RFReceiver(Node):
     def add_data_received_callback(self, func: Callable) -> None:
         self.device.add_data_received_callback(func)
     
-    def update_rssi(self) -> Optional[float]:
+    def update_rssi(self) -> None:
+
+        # Get raw RSSI value
         rssi_bytes: bytes = self.device.get_parameter("DB")
+
         if rssi_bytes:
-            return - float(int.from_bytes(rssi_bytes))
-        else:
-            return None
+
+            # Convert bytes to float
+            rssi_bytes = - float(int.from_bytes(rssi_bytes))
+
+            
+            # If the rssi has not been received yet,
+            # the moving average cannot be applied as there
+            # is no initial value
+            if not self.rssi:
+                self.rssi = rssi_bytes
+            else:
+
+                # Apply moving average
+                self.rssi = (1 - self.moving_average_pct) * self.rssi \
+                                + self.moving_average_pct * rssi_bytes
+                
+            # Update last rssi
+            self.last_rssi = rssi_bytes
     
     def get_rssi_from_received_msg(self, message) -> None:
 
@@ -237,9 +284,10 @@ class RFReceiver(Node):
             if not self.device.is_open():
                 self.device.open()
 
-            # Get rssi
-            self.rssi = self.update_rssi()
-            self.debug(f"RSSI of last message: {self.rssi}")
+            # Update rssi
+            self.update_rssi()
+            self.debug(f"RSSI of last message: {self.last_rssi}")
+            self.debug(f"Averaged RSSI over last {1/self.moving_average_pct} values: {self.rssi}")
             
             # Publish data
             self.pubsub.publish(
@@ -256,13 +304,20 @@ class RFReceiver(Node):
     def get_fake_rssi_from_received_msg(self) -> None:
 
         # Update fake rssi
-        self.rssi = randrange(
+        self.last_rssi = randrange(
                     RFReceiver.RANGE_FAKE_RSSI[0],
                     RFReceiver.RANGE_FAKE_RSSI[1]
                         )
         
+        # Apply moving average
+        # TODO: Add this as a general utilities function
+        self.rssi = (1 - self.moving_average_pct) * self.rssi \
+                        + self.moving_average_pct * self.last_rssi
+        
         # Log rssi
-        self.debug(f"RSSI: {self.rssi}")
+        self.debug(f"RSSI of last message: {self.last_rssi}")
+        self.debug(f"Averaged RSSI over last {1/self.moving_average_pct} values: {self.rssi}")
+            
 
         # Publish fake data
         self.pubsub.publish(
@@ -284,6 +339,33 @@ class RFReceiver(Node):
             self.debug(f"Polled RSSI: {self.rssi}")
         except Exception as e:
             self.error(f"Polling error: {e}")
+
+    # Add callback if there is any change in ROS parameters
+    def parameters_callback(self, params):
+
+        # For all parameters
+        for p in params:
+        
+            # If the class has this attribute and
+            # is the same as the parameter name
+            if hasattr(self, p.name):
+
+                # Set the attribute value
+                self.info(f"{p.name}")
+                setattr(self, p.name, p.value)
+
+                self.info(f"Set {p.name} to {p.value}")
+
+            else:
+
+                # Create a variable and set it as such
+                setattr(self, p.name, p.value)
+
+            
+        # For specific parameter checks
+        self._validate_params()
+
+        return SetParametersResult(successful=True)
 
             
 def main(args=None):

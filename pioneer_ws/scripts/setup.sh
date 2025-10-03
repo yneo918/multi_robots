@@ -213,6 +213,7 @@ RF_RETRY_DELAY=$(read_yaml "$CONFIG_FILE" "rf_receiver.retry_delay")
 RF_RETRY_ATTEMPTS=$(read_yaml "$CONFIG_FILE" "rf_receiver.retry_attempts")
 RF_UPDATE_RATE=$(read_yaml "$CONFIG_FILE" "rf_receiver.update_rate")
 RF_TIMER_PERIOD=$(read_yaml "$CONFIG_FILE" "rf_receiver.timer_period")
+RF_MOVING_AVG_RATE=$(read_yaml "$CONFIG_FILE" "rf_receiver.moving_average_rate")
 
 # Read RF device paths as array
 RF_DEVICE_PATHS=""
@@ -362,6 +363,7 @@ ${ROBOT_ID}_rf_receiver:
     retry_delay: $RF_RETRY_DELAY
     retry_attempts: $RF_RETRY_ATTEMPTS
     pub_topic: "$RF_PUB_TOPIC"
+    moving_average_rate: "$RF_MOVING_AVG_RATE"
 EOF
 
 # Export environment variables for current session
