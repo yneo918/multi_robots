@@ -24,8 +24,9 @@ The following shows the file structure of the pioneer_base with the most importa
 │   │   └── ANHardware.launch.py      # full launch file for adaptive navigation of physical robots
 ├── base_launch/                    
 │   ├── launch/
-|   │   ├── 5cluster_hw_with_desired.launch.py          # 5 robot cluster control full launch file
-│   │   └── cluster_hw_with_desired.launch.py           # 3 robot cluster control full launch file
+|   │   ├── AN.launch.py                              # Unified adaptive navigation launcher (sim/hardware toggle)
+|   │   ├── 5cluster_hw_with_desired.launch.py         # 5 robot cluster control full launch file
+│   │   └── cluster_hw_with_desired.launch.py          # 3 robot cluster control full launch file
 ├── cluster_node/                       
 │   └── Cluster.py                    # Cluster Controller Class definition
 │   ├── config/                       # Folder for cluster configuration files
@@ -86,6 +87,17 @@ Node(
 ```
 
 You can edit the yaml files to modify the node parameters or create your own following the same format.
+
+### 3. Adaptive Navigation Simulation
+1. Launch the base station stack:
+   ```bash
+   ros2 launch base_launch AN.launch.py
+   ```
+2. In a separate terminal (keep the first launch running), start the simulated rover cluster:
+   ```bash
+   ros2 launch sim_launch pioneer_with_desired.launch.py
+   ```
+   This pairing reproduces the adaptive navigation workflow in simulation.
 
 ### Cluster configuration
 3cluster_velocity.yaml contains an example of the cluster configuration
